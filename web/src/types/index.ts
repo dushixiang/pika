@@ -242,6 +242,7 @@ export interface MonitorTask {
     target: string;
     description?: string;
     enabled: boolean;
+    showTargetPublic: boolean;
     interval: number;
     httpConfig?: MonitorHttpConfig | null;
     tcpConfig?: MonitorTcpConfig | null;
@@ -256,6 +257,7 @@ export interface MonitorTaskRequest {
     target: string;
     description?: string;
     enabled?: boolean;
+    showTargetPublic?: boolean;
     interval: number;
     httpConfig?: MonitorHttpConfig | null;
     tcpConfig?: MonitorTcpConfig | null;
@@ -275,6 +277,7 @@ export interface PublicMonitor {
     name: string;
     type: 'http' | 'https' | 'tcp';
     target: string;
+    showTargetPublic: boolean;
     description?: string;
     enabled: boolean;
     interval: number;
@@ -299,6 +302,7 @@ export interface MonitorStats {
     name: string;                 // 监控项名称
     type: string;
     target: string;
+    showTargetPublic: boolean;    // 在公开页面是否显示目标地址
     currentResponse: number;      // 当前响应时间(ms)
     avgResponse24h: number;       // 24小时平均响应时间(ms)
     uptime24h: number;            // 24小时在线率(百分比)

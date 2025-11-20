@@ -40,36 +40,38 @@ func NewMonitorService(logger *zap.Logger, db *gorm.DB, wsManager *ws.Manager) *
 }
 
 type MonitorTaskRequest struct {
-	Name        string                     `json:"name"`
-	Type        string                     `json:"type"`
-	Target      string                     `json:"target"`
-	Description string                     `json:"description"`
-	Enabled     bool                       `json:"enabled,omitempty"`
-	Interval    int                        `json:"interval"` // 检测频率（秒）
-	HTTPConfig  protocol.HTTPMonitorConfig `json:"httpConfig,omitempty"`
-	TCPConfig   protocol.TCPMonitorConfig  `json:"tcpConfig,omitempty"`
-	AgentIds    []string                   `json:"agentIds,omitempty"`
+	Name             string                     `json:"name"`
+	Type             string                     `json:"type"`
+	Target           string                     `json:"target"`
+	Description      string                     `json:"description"`
+	Enabled          bool                       `json:"enabled,omitempty"`
+	ShowTargetPublic bool                       `json:"showTargetPublic,omitempty"` // 在公开页面是否显示目标地址
+	Interval         int                        `json:"interval"`                   // 检测频率（秒）
+	HTTPConfig       protocol.HTTPMonitorConfig `json:"httpConfig,omitempty"`
+	TCPConfig        protocol.TCPMonitorConfig  `json:"tcpConfig,omitempty"`
+	AgentIds         []string                   `json:"agentIds,omitempty"`
 }
 
 // PublicMonitorOverview 用于公开展示的监控配置及汇总数据
 type PublicMonitorOverview struct {
-	ID              string   `json:"id"`
-	Name            string   `json:"name"`
-	Type            string   `json:"type"`
-	Target          string   `json:"target"`
-	Description     string   `json:"description"`
-	Enabled         bool     `json:"enabled"`
-	Interval        int      `json:"interval"`
-	AgentIds        []string `json:"agentIds"`
-	AgentCount      int      `json:"agentCount"`
-	LastCheckStatus string   `json:"lastCheckStatus"`
-	CurrentResponse int64    `json:"currentResponse"`
-	AvgResponse24h  int64    `json:"avgResponse24h"`
-	Uptime24h       float64  `json:"uptime24h"`
-	Uptime30d       float64  `json:"uptime30d"`
-	CertExpiryDate  int64    `json:"certExpiryDate"`
-	CertExpiryDays  int      `json:"certExpiryDays"`
-	LastCheckTime   int64    `json:"lastCheckTime"`
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	Type             string   `json:"type"`
+	Target           string   `json:"target"`
+	ShowTargetPublic bool     `json:"showTargetPublic"` // 在公开页面是否显示目标地址
+	Description      string   `json:"description"`
+	Enabled          bool     `json:"enabled"`
+	Interval         int      `json:"interval"`
+	AgentIds         []string `json:"agentIds"`
+	AgentCount       int      `json:"agentCount"`
+	LastCheckStatus  string   `json:"lastCheckStatus"`
+	CurrentResponse  int64    `json:"currentResponse"`
+	AvgResponse24h   int64    `json:"avgResponse24h"`
+	Uptime24h        float64  `json:"uptime24h"`
+	Uptime30d        float64  `json:"uptime30d"`
+	CertExpiryDate   int64    `json:"certExpiryDate"`
+	CertExpiryDays   int      `json:"certExpiryDays"`
+	LastCheckTime    int64    `json:"lastCheckTime"`
 }
 
 func (s *MonitorService) CreateMonitor(ctx context.Context, req *MonitorTaskRequest) (*models.MonitorTask, error) {
@@ -80,18 +82,19 @@ func (s *MonitorService) CreateMonitor(ctx context.Context, req *MonitorTaskRequ
 	}
 
 	task := &models.MonitorTask{
-		ID:          uuid.NewString(),
-		Name:        strings.TrimSpace(req.Name),
-		Type:        req.Type,
-		Target:      strings.TrimSpace(req.Target),
-		Description: req.Description,
-		Enabled:     req.Enabled,
-		Interval:    interval,
-		AgentIds:    datatypes.JSONSlice[string](req.AgentIds),
-		HTTPConfig:  datatypes.NewJSONType(req.HTTPConfig),
-		TCPConfig:   datatypes.NewJSONType(req.TCPConfig),
-		CreatedAt:   0,
-		UpdatedAt:   0,
+		ID:               uuid.NewString(),
+		Name:             strings.TrimSpace(req.Name),
+		Type:             req.Type,
+		Target:           strings.TrimSpace(req.Target),
+		Description:      req.Description,
+		Enabled:          req.Enabled,
+		ShowTargetPublic: req.ShowTargetPublic,
+		Interval:         interval,
+		AgentIds:         datatypes.JSONSlice[string](req.AgentIds),
+		HTTPConfig:       datatypes.NewJSONType(req.HTTPConfig),
+		TCPConfig:        datatypes.NewJSONType(req.TCPConfig),
+		CreatedAt:        0,
+		UpdatedAt:        0,
 	}
 
 	if err := s.MonitorRepo.Create(ctx, task); err != nil {
@@ -111,6 +114,7 @@ func (s *MonitorService) UpdateMonitor(ctx context.Context, id string, req *Moni
 	task.Type = req.Type
 	task.Target = strings.TrimSpace(req.Target)
 	task.Description = req.Description
+	task.ShowTargetPublic = req.ShowTargetPublic
 
 	// 更新检测频率
 	interval := req.Interval
@@ -167,24 +171,32 @@ func (s *MonitorService) GetPublicMonitorOverview(ctx context.Context) ([]Public
 	items := make([]PublicMonitorOverview, 0, len(monitors))
 	for _, monitor := range monitors {
 		summary := aggregateMonitorStats(statsMap[monitor.ID])
+
+		// 根据 ShowTargetPublic 字段决定是否返回真实的 Target
+		target := monitor.Target
+		if !monitor.ShowTargetPublic {
+			target = "***"
+		}
+
 		item := PublicMonitorOverview{
-			ID:              monitor.ID,
-			Name:            monitor.Name,
-			Type:            monitor.Type,
-			Target:          monitor.Target,
-			Description:     monitor.Description,
-			Enabled:         monitor.Enabled,
-			Interval:        monitor.Interval,
-			AgentIds:        cloneAgentIDs(monitor.AgentIds),
-			AgentCount:      summary.AgentCount,
-			LastCheckStatus: summary.LastCheckStatus,
-			CurrentResponse: summary.CurrentResponse,
-			AvgResponse24h:  summary.AvgResponse24h,
-			Uptime24h:       summary.Uptime24h,
-			Uptime30d:       summary.Uptime30d,
-			CertExpiryDate:  summary.CertExpiryDate,
-			CertExpiryDays:  summary.CertExpiryDays,
-			LastCheckTime:   summary.LastCheckTime,
+			ID:               monitor.ID,
+			Name:             monitor.Name,
+			Type:             monitor.Type,
+			Target:           target,
+			ShowTargetPublic: monitor.ShowTargetPublic,
+			Description:      monitor.Description,
+			Enabled:          monitor.Enabled,
+			Interval:         monitor.Interval,
+			AgentIds:         cloneAgentIDs(monitor.AgentIds),
+			AgentCount:       summary.AgentCount,
+			LastCheckStatus:  summary.LastCheckStatus,
+			CurrentResponse:  summary.CurrentResponse,
+			AvgResponse24h:   summary.AvgResponse24h,
+			Uptime24h:        summary.Uptime24h,
+			Uptime30d:        summary.Uptime30d,
+			CertExpiryDate:   summary.CertExpiryDate,
+			CertExpiryDays:   summary.CertExpiryDays,
+			LastCheckTime:    summary.LastCheckTime,
 		}
 
 		items = append(items, item)
@@ -630,9 +642,15 @@ func (s *MonitorService) GetMonitorStatsByID(ctx context.Context, monitorID stri
 		return nil, err
 	}
 
-	// 填充监控名称和探针名称
+	// 填充监控名称、探针名称和隐私设置
 	for i := range statsList {
 		statsList[i].MonitorName = monitor.Name
+		statsList[i].ShowTargetPublic = monitor.ShowTargetPublic
+
+		// 根据 ShowTargetPublic 字段决定是否隐藏 Target
+		if !monitor.ShowTargetPublic {
+			statsList[i].Target = "***"
+		}
 
 		// 查询探针名称
 		agent, err := s.agentRepo.FindById(ctx, statsList[i].AgentID)

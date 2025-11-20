@@ -9,6 +9,7 @@ type MonitorStats struct {
 	MonitorName      string  `gorm:"-" json:"name"`                         // 监控项名称（不存储在数据库，仅用于 API 返回）
 	MonitorType      string  `json:"type"`                                  // 监控类型
 	Target           string  `json:"target"`                                // 目标地址
+	ShowTargetPublic bool    `gorm:"-" json:"showTargetPublic"`             // 在公开页面是否显示目标地址（不存储在数据库，仅用于 API 返回）
 	CurrentResponse  int64   `json:"currentResponse"`                       // 当前响应时间(ms)
 	AvgResponse24h   int64   `json:"avgResponse24h"`                        // 24小时平均响应时间(ms)
 	Uptime24h        float64 `json:"uptime24h"`                             // 24小时在线率(百分比)

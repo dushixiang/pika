@@ -392,7 +392,7 @@ const MonitorDetail = () => {
                                             <h1 className="text-3xl font-semibold">{monitorTitle}</h1>
                                         </div>
                                         <p className="mt-2 text-sm text-white/80">
-                                            {firstStat.target}
+                                            {firstStat.showTargetPublic ? firstStat.target : '***'}
                                         </p>
                                         <p className="text-xs text-white/60">公共视图 · 实时监控概览</p>
                                     </div>

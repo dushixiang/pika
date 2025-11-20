@@ -134,8 +134,8 @@ const MonitorList = () => {
                                     </h3>
                                     <StatusBadge status={stats.lastCheckStatus}/>
                                 </div>
-                                <p className="mt-1 text-sm text-slate-500 truncate" title={stats.target}>
-                                    {stats.target}
+                                <p className="mt-1 text-sm text-slate-500 truncate" title={stats.showTargetPublic ? stats.target : '已隐藏'}>
+                                    {stats.showTargetPublic ? stats.target : '***'}
                                 </p>
                                 {stats.agentCount > 1 && (
                                     <p className="mt-1 text-xs text-slate-400">
@@ -249,7 +249,9 @@ const MonitorList = () => {
                                         </span>
                                         <StatusBadge status={stats.lastCheckStatus}/>
                                     </div>
-                                    <p className="mt-1 text-sm text-slate-500 break-all">{stats.target}</p>
+                                    <p className="mt-1 text-sm text-slate-500 break-all">
+                                        {stats.showTargetPublic ? stats.target : '***'}
+                                    </p>
                                     {stats.agentCount > 1 && (
                                         <p className="mt-1 text-xs text-slate-400">
                                             {stats.agentCount} 个探针
@@ -351,7 +353,7 @@ const MonitorList = () => {
                                             {stats.name}
                                         </div>
                                         <div className="mt-1 text-xs text-slate-500 break-all">
-                                            {stats.target}
+                                            {stats.showTargetPublic ? stats.target : '***'}
                                         </div>
                                         {stats.agentCount > 1 && (
                                             <div className="mt-1 text-xs text-slate-400">

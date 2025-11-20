@@ -71,6 +71,7 @@ const MonitorList = () => {
             target: '',
             description: '',
             enabled: true,
+            showTargetPublic: true,
             interval: 60,
             agentIds: [],
             httpMethod: 'GET',
@@ -97,6 +98,7 @@ const MonitorList = () => {
             target: monitor.target,
             description: monitor.description,
             enabled: monitor.enabled,
+            showTargetPublic: monitor.showTargetPublic ?? true,
             interval: monitor.interval || 60,
             agentIds: monitor.agentIds || [],
             httpMethod: monitor.httpConfig?.method || 'GET',
@@ -138,6 +140,7 @@ const MonitorList = () => {
                 target: values.target?.trim(),
                 description: values.description?.trim(),
                 enabled: values.enabled,
+                showTargetPublic: values.showTargetPublic ?? true,
                 interval: values.interval || 60,
                 agentIds: values.agentIds || [],
             };
@@ -411,6 +414,15 @@ const MonitorList = () => {
 
                     <Form.Item label="启用状态" name="enabled" valuePropName="checked">
                         <Switch checkedChildren="启用" unCheckedChildren="停用"/>
+                    </Form.Item>
+
+                    <Form.Item
+                        label="公开页面显示目标"
+                        name="showTargetPublic"
+                        valuePropName="checked"
+                        extra="控制在公开监控页面是否显示监控目标地址"
+                    >
+                        <Switch checkedChildren="显示" unCheckedChildren="隐藏"/>
                     </Form.Item>
 
                     {watchType === 'tcp' ? (
