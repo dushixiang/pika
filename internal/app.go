@@ -187,6 +187,12 @@ func setupApi(app *orz.App, components *AppComponents) {
 		adminApi.GET("/agents/:id/audit/result", components.AgentHandler.GetAuditResult)
 		adminApi.GET("/agents/:id/audit/results", components.AgentHandler.ListAuditResults)
 
+		// 防篡改管理（管理员功能）
+		adminApi.GET("/agents/:id/tamper/config", components.TamperHandler.GetTamperConfig)
+		adminApi.PUT("/agents/:id/tamper/config", components.TamperHandler.UpdateTamperConfig)
+		adminApi.GET("/agents/:id/tamper/events", components.TamperHandler.GetTamperEvents)
+		adminApi.GET("/agents/:id/tamper/alerts", components.TamperHandler.GetTamperAlerts)
+
 		// 通用属性管理
 		adminApi.GET("/properties/:id", components.PropertyHandler.GetProperty)
 		adminApi.PUT("/properties/:id", components.PropertyHandler.SetProperty)
@@ -241,6 +247,9 @@ func autoMigrate(database *gorm.DB) error {
 		&models.MonitorMetric{},
 		&models.MonitorTask{},
 		&models.MonitorStats{},
+		&models.TamperProtectConfig{},
+		&models.TamperEvent{},
+		&models.TamperAlert{},
 	)
 }
 

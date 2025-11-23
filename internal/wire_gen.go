@@ -9,6 +9,7 @@ package internal
 import (
 	"github.com/dushixiang/pika/internal/config"
 	"github.com/dushixiang/pika/internal/handler"
+	"github.com/dushixiang/pika/internal/repo"
 	"github.com/dushixiang/pika/internal/service"
 	"github.com/dushixiang/pika/internal/websocket"
 	"go.uber.org/zap"
@@ -28,7 +29,9 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 	agentService := service.NewAgentService(logger, db, apiKeyService)
 	manager := websocket.NewManager(logger)
 	monitorService := service.NewMonitorService(logger, db, manager)
-	agentHandler := handler.NewAgentHandler(logger, agentService, monitorService, manager)
+	tamperRepo := repo.NewTamperRepo(db)
+	tamperService := service.NewTamperService(logger, tamperRepo, manager)
+	agentHandler := handler.NewAgentHandler(logger, agentService, monitorService, tamperService, manager)
 	apiKeyHandler := handler.NewApiKeyHandler(logger, apiKeyService)
 	propertyService := service.NewPropertyService(logger, db)
 	notifier := service.NewNotifier(logger)
@@ -36,6 +39,7 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 	alertHandler := handler.NewAlertHandler(logger, alertService)
 	propertyHandler := handler.NewPropertyHandler(logger, propertyService, notifier)
 	monitorHandler := handler.NewMonitorHandler(logger, monitorService)
+	tamperHandler := handler.NewTamperHandler(logger, tamperService)
 	appComponents := &AppComponents{
 		AccountHandler:  accountHandler,
 		AgentHandler:    agentHandler,
@@ -43,11 +47,13 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 		AlertHandler:    alertHandler,
 		PropertyHandler: propertyHandler,
 		MonitorHandler:  monitorHandler,
+		TamperHandler:   tamperHandler,
 		AgentService:    agentService,
 		AlertService:    alertService,
 		PropertyService: propertyService,
 		MonitorService:  monitorService,
 		ApiKeyService:   apiKeyService,
+		TamperService:   tamperService,
 		WSManager:       manager,
 	}
 	return appComponents, nil
@@ -63,12 +69,14 @@ type AppComponents struct {
 	AlertHandler    *handler.AlertHandler
 	PropertyHandler *handler.PropertyHandler
 	MonitorHandler  *handler.MonitorHandler
+	TamperHandler   *handler.TamperHandler
 
 	AgentService    *service.AgentService
 	AlertService    *service.AlertService
 	PropertyService *service.PropertyService
 	MonitorService  *service.MonitorService
 	ApiKeyService   *service.ApiKeyService
+	TamperService   *service.TamperService
 
 	WSManager *websocket.Manager
 }

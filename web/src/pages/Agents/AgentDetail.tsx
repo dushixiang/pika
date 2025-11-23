@@ -12,8 +12,10 @@ import {
     CheckCircle,
     XCircle,
     AlertTriangle,
-    TrendingUp
+    TrendingUp,
+    FileWarning
 } from 'lucide-react';
+import TamperProtection from './TamperProtection.tsx';
 import {getAgentForAdmin, getAuditResult, sendAuditCommand, type VPSAuditResult} from '../../api/agent';
 import type {Agent} from '../../types';
 import dayjs from 'dayjs';
@@ -138,12 +140,6 @@ const AgentDetail = () => {
                     </Descriptions.Item>
                     <Descriptions.Item label="系统架构">
                         <Tag>{agent?.arch}</Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="平台">
-                        {agent?.platform ? <Tag color="purple">{agent.platform}</Tag> : '-'}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="位置">
-                        {agent?.location ? <Tag color="blue">{agent.location}</Tag> : '-'}
                     </Descriptions.Item>
                     <Descriptions.Item label="到期时间">
                         {agent?.expireTime ? (
@@ -301,6 +297,25 @@ const AgentDetail = () => {
                         </>
                     )}
                 </Space>
+            ),
+        },
+        {
+            key: 'tamper',
+            label: (
+                <div className="flex items-center gap-2 text-sm">
+                    <FileWarning size={16}/>
+                    <div>防篡改保护</div>
+                </div>
+            ),
+            children: agent?.os.toLowerCase().includes('linux') ? (
+                <TamperProtection agentId={agent.id} />
+            ) : (
+                <Alert
+                    message="功能限制"
+                    description="防篡改保护功能仅支持 Linux 系统。当前系统为 Windows 或其他系统，无法使用此功能。"
+                    type="warning"
+                    showIcon
+                />
             ),
         },
     ];

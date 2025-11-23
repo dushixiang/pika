@@ -149,7 +149,7 @@ func (a *Agent) runOnce(ctx context.Context) error {
 		// WriteControl 有内置锁，可以安全调用
 		err := rawConn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(time.Second))
 		if err == nil {
-			log.Println("💓 收到 Ping，已发送 Pong")
+			//log.Println("💓 收到 Ping，已发送 Pong")
 		}
 		return err
 	})
@@ -383,7 +383,7 @@ func (a *Agent) heartbeatLoop(ctx context.Context, conn *safeConn, done chan str
 			if err := conn.WriteJSON(msg); err != nil {
 				return fmt.Errorf("发送心跳失败: %w", err)
 			}
-			log.Println("💓 心跳已发送")
+			//log.Println("💓 心跳已发送")
 		case <-done:
 			return nil
 		case <-ctx.Done():
@@ -592,16 +592,16 @@ func GetVersion() string {
 	return version.GetVersion()
 }
 
-// handleTamperProtect 处理防篡改保护指令
+// handleTamperProtect 处理防篡改保护指令（增量更新）
 func (a *Agent) handleTamperProtect(data json.RawMessage) {
-	var config protocol.TamperProtectConfig
-	if err := json.Unmarshal(data, &config); err != nil {
+	var tamperProtectConfig protocol.TamperProtectConfig
+	if err := json.Unmarshal(data, &tamperProtectConfig); err != nil {
 		log.Printf("⚠️  解析防篡改保护配置失败: %v", err)
 		a.sendTamperProtectResponse(false, "解析配置失败", nil, nil, nil, err.Error())
 		return
 	}
 
-	log.Printf("📥 收到防篡改保护配置: Paths=%v", config.Paths)
+	log.Printf("📥 收到防篡改保护增量配置: Added=%v, Removed=%v", tamperProtectConfig.Added, tamperProtectConfig.Removed)
 
 	conn := a.getActiveConn()
 	if conn == nil {
@@ -609,23 +609,19 @@ func (a *Agent) handleTamperProtect(data json.RawMessage) {
 		return
 	}
 
-	// 如果配置为空列表,停止所有保护
-	if len(config.Paths) == 0 {
-		if err := a.tamperProtector.StopAll(); err != nil {
-			log.Printf("❌ 停止所有防篡改保护失败: %v", err)
-			a.sendTamperProtectResponse(false, "停止所有保护失败", []string{}, nil, nil, err.Error())
-			return
-		}
-		log.Println("✅ 已停止所有防篡改保护")
-		a.sendTamperProtectResponse(true, "已停止所有防篡改保护", []string{}, []string{}, a.tamperProtector.GetProtectedPaths(), "")
+	// 如果没有新增也没有移除，不需要做任何操作
+	if len(tamperProtectConfig.Added) == 0 && len(tamperProtectConfig.Removed) == 0 {
+		log.Println("ℹ️  配置无变化，跳过更新")
+		a.sendTamperProtectResponse(true, "配置无变化", a.tamperProtector.GetProtectedPaths(), []string{}, []string{}, "")
 		return
 	}
 
-	// 更新保护目录列表
 	ctx := context.Background()
-	result, err := a.tamperProtector.UpdatePaths(ctx, config.Paths)
+
+	// 应用增量更新
+	result, err := a.tamperProtector.ApplyIncrementalUpdate(ctx, tamperProtectConfig.Added, tamperProtectConfig.Removed)
 	if err != nil {
-		log.Printf("⚠️  更新防篡改保护失败: %v", err)
+		log.Printf("⚠️  应用增量更新失败: %v", err)
 		// 即使有错误也返回部分成功的结果
 		if result != nil {
 			a.sendTamperProtectResponse(false, "部分更新失败", result.Current, result.Added, result.Removed, err.Error())

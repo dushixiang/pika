@@ -45,6 +45,7 @@ type Protector struct {
 	eventCh     chan TamperEvent
 	alertCh     chan AttributeTamperAlert // 属性篡改告警通道
 	watcherOnce sync.Once                 // 确保 watcher 只创建一次
+	checkTicker *time.Ticker              // 属性检查定时器
 }
 
 // NewProtector 创建防篡改保护器
@@ -56,7 +57,87 @@ func NewProtector() *Protector {
 	}
 }
 
-// UpdatePaths 更新保护的目录列表
+// ApplyIncrementalUpdate 应用增量更新（服务端已计算好新增和移除）
+// 参数 toAdd: 需要新增保护的目录列表
+// 参数 toRemove: 需要移除保护的目录列表
+// 返回: 更新结果和错误
+func (p *Protector) ApplyIncrementalUpdate(ctx context.Context, toAdd, toRemove []string) (*UpdateResult, error) {
+	// 检查操作系统
+	if runtime.GOOS != "linux" {
+		return nil, fmt.Errorf("防篡改功能仅支持 Linux 系统")
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// 如果没有变化,直接返回
+	if len(toAdd) == 0 && len(toRemove) == 0 {
+		log.Println("ℹ️  防篡改保护目录列表无变化")
+		return &UpdateResult{
+			Added:   []string{},
+			Removed: []string{},
+			Current: p.getCurrentPaths(),
+		}, nil
+	}
+
+	// 初始化 watcher(如果还没创建且有新增目录)
+	if len(toAdd) > 0 {
+		if err := p.initWatcher(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	// 处理需要移除的目录
+	var removeFailed []string
+	for _, path := range toRemove {
+		if !p.paths[path] {
+			log.Printf("ℹ️  目录 %s 未被保护，跳过移除", path)
+			continue
+		}
+		if err := p.removePath(path); err != nil {
+			log.Printf("⚠️  移除目录 %s 保护失败: %v", path, err)
+			removeFailed = append(removeFailed, path)
+		} else {
+			delete(p.paths, path)
+			log.Printf("✅ 已取消保护目录: %s", path)
+		}
+	}
+
+	// 处理需要新增的目录
+	var addFailed []string
+	for _, path := range toAdd {
+		if p.paths[path] {
+			log.Printf("ℹ️  目录 %s 已被保护，跳过新增", path)
+			continue
+		}
+		if err := p.addPath(path); err != nil {
+			log.Printf("⚠️  添加目录 %s 保护失败: %v", path, err)
+			addFailed = append(addFailed, path)
+		} else {
+			p.paths[path] = true
+			log.Printf("✅ 已保护目录: %s", path)
+		}
+	}
+
+	// 构建结果
+	result := &UpdateResult{
+		Added:   filterFailed(toAdd, addFailed),
+		Removed: filterFailed(toRemove, removeFailed),
+		Current: p.getCurrentPaths(),
+	}
+
+	// 如果有失败的操作,返回错误
+	if len(addFailed) > 0 || len(removeFailed) > 0 {
+		return result, fmt.Errorf("部分操作失败: 添加失败 %d 个, 移除失败 %d 个", len(addFailed), len(removeFailed))
+	}
+
+	log.Printf("✅ 防篡改保护已更新: 新增 %d 个目录, 移除 %d 个目录, 当前保护 %d 个目录",
+		len(result.Added), len(result.Removed), len(result.Current))
+
+	return result, nil
+}
+
+// UpdatePaths 更新保护的目录列表（保留此方法用于完整配置更新）
 // 参数 newPaths: 新的完整目录列表
 // 返回: 更新结果(新增/移除的目录)和错误
 func (p *Protector) UpdatePaths(ctx context.Context, newPaths []string) (*UpdateResult, error) {
@@ -165,6 +246,12 @@ func (p *Protector) StopAll() error {
 		p.cancel = nil
 	}
 
+	// 停止定时器
+	if p.checkTicker != nil {
+		p.checkTicker.Stop()
+		p.checkTicker = nil
+	}
+
 	// 关闭监控器
 	if p.watcher != nil {
 		if err := p.watcher.Close(); err != nil {
@@ -242,6 +329,10 @@ func (p *Protector) initWatcher(ctx context.Context) error {
 		// 启动监控循环
 		go p.watchLoop()
 
+		// 启动定期属性检查
+		p.checkTicker = time.NewTicker(5 * time.Second)
+		go p.periodicAttributeCheck()
+
 		log.Println("✅ 文件监控器已启动")
 	})
 	return err
@@ -310,13 +401,6 @@ func (p *Protector) handleEvent(event fsnotify.Event) {
 	var details string
 
 	switch {
-	case event.Op&fsnotify.Chmod == fsnotify.Chmod:
-		// Chmod 事件可能是属性变化,需要检查是否是不可变属性被篡改
-		if p.IsProtected(event.Name) {
-			p.handleChmodEvent(event.Name)
-		}
-		operation = "chmod"
-		details = "文件权限或属性被修改"
 	case event.Op&fsnotify.Write == fsnotify.Write:
 		operation = "write"
 		details = "文件被写入"
@@ -329,6 +413,9 @@ func (p *Protector) handleEvent(event fsnotify.Event) {
 	case event.Op&fsnotify.Create == fsnotify.Create:
 		operation = "create"
 		details = "文件被创建"
+	case event.Op&fsnotify.Chmod == fsnotify.Chmod:
+		operation = "chmod"
+		details = "文件权限被修改"
 	default:
 		operation = "unknown"
 		details = fmt.Sprintf("未知操作: %v", event.Op)
@@ -350,8 +437,34 @@ func (p *Protector) handleEvent(event fsnotify.Event) {
 	}
 }
 
-// handleChmodEvent 处理 Chmod 事件,检查是否是不可变属性被篡改
-func (p *Protector) handleChmodEvent(path string) {
+// periodicAttributeCheck 定期检查所有受保护目录的不可变属性
+func (p *Protector) periodicAttributeCheck() {
+	for {
+		select {
+		case <-p.ctx.Done():
+			return
+		case <-p.checkTicker.C:
+			p.checkAllAttributes()
+		}
+	}
+}
+
+// checkAllAttributes 检查所有受保护目录的属性
+func (p *Protector) checkAllAttributes() {
+	p.mu.RLock()
+	paths := make([]string, 0, len(p.paths))
+	for path := range p.paths {
+		paths = append(paths, path)
+	}
+	p.mu.RUnlock()
+
+	for _, path := range paths {
+		p.checkAndRestoreImmutable(path)
+	}
+}
+
+// checkAndRestoreImmutable 检查并恢复目录的不可变属性
+func (p *Protector) checkAndRestoreImmutable(path string) {
 	// 检查不可变属性
 	hasImmutable, err := p.checkImmutable(path)
 	if err != nil {

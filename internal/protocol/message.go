@@ -267,9 +267,10 @@ type MonitorData struct {
 	CertDaysLeft   int   `json:"certDaysLeft,omitempty"`   // 证书剩余天数
 }
 
-// TamperProtectConfig 防篡改保护配置
+// TamperProtectConfig 防篡改保护配置（增量更新）
 type TamperProtectConfig struct {
-	Paths []string `json:"paths"` // 要保护的目录列表(完整列表)
+	Added   []string `json:"added,omitempty"`   // 新增保护的目录
+	Removed []string `json:"removed,omitempty"` // 移除保护的目录
 }
 
 // TamperProtectResponse 防篡改保护响应

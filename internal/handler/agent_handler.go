@@ -24,20 +24,22 @@ import (
 )
 
 type AgentHandler struct {
-	logger       *zap.Logger
-	agentService *service.AgentService
-	monitorSvc   *service.MonitorService
-	wsManager    *ws.Manager
-	upgrader     websocket.Upgrader
+	logger        *zap.Logger
+	agentService  *service.AgentService
+	monitorSvc    *service.MonitorService
+	tamperService *service.TamperService
+	wsManager     *ws.Manager
+	upgrader      websocket.Upgrader
 }
 
-func NewAgentHandler(logger *zap.Logger, agentService *service.AgentService, monitorService *service.MonitorService, wsManager *ws.Manager) *AgentHandler {
+func NewAgentHandler(logger *zap.Logger, agentService *service.AgentService, monitorService *service.MonitorService, tamperService *service.TamperService, wsManager *ws.Manager) *AgentHandler {
 
 	h := &AgentHandler{
-		logger:       logger,
-		agentService: agentService,
-		monitorSvc:   monitorService,
-		wsManager:    wsManager,
+		logger:        logger,
+		agentService:  agentService,
+		monitorSvc:    monitorService,
+		tamperService: tamperService,
+		wsManager:     wsManager,
 	}
 
 	// 初始化upgrader，需要在创建handler之后因为需要引用h.checkOrigin
@@ -117,6 +119,12 @@ func (h *AgentHandler) HandleWebSocket(c echo.Context) error {
 		return err
 	}
 
+	// 下发防篡改配置
+	if err := h.sendTamperConfig(conn, agent.ID); err != nil {
+		h.logger.Error("failed to send tamper config", zap.Error(err))
+		// 配置下发失败不中断连接，只记录日志
+	}
+
 	// 创建客户端并注册到管理器
 	client := &ws.Client{
 		ID:         agent.ID,
@@ -156,6 +164,24 @@ func (h *AgentHandler) handleWebSocketMessage(ctx context.Context, agentID strin
 			return err
 		}
 		return h.agentService.HandleCommandResponse(ctx, agentID, &cmdResp)
+
+	case protocol.MessageTypeTamperEvent:
+		// 防篡改事件
+		var eventData protocol.TamperEventData
+		if err := json.Unmarshal(data, &eventData); err != nil {
+			h.logger.Error("failed to unmarshal tamper event", zap.Error(err))
+			return err
+		}
+		return h.tamperService.CreateEvent(agentID, eventData.Path, eventData.Operation, eventData.Details, eventData.Timestamp)
+
+	case protocol.MessageTypeTamperAlert:
+		// 防篡改告警
+		var alertData protocol.TamperAlertData
+		if err := json.Unmarshal(data, &alertData); err != nil {
+			h.logger.Error("failed to unmarshal tamper alert", zap.Error(err))
+			return err
+		}
+		return h.tamperService.CreateAlert(agentID, alertData.Path, alertData.Details, alertData.Restored, alertData.Timestamp)
 
 	default:
 		h.logger.Warn("unknown message type", zap.String("type", messageType))
@@ -199,6 +225,46 @@ func (h *AgentHandler) sendRegisterError(conn *websocket.Conn, errMsg string) er
 		Data: respData,
 	}
 	msgData, _ := json.Marshal(msg)
+
+	return conn.WriteMessage(websocket.TextMessage, msgData)
+}
+
+// sendTamperConfig 发送防篡改配置（探针初始化时发送完整配置作为新增）
+func (h *AgentHandler) sendTamperConfig(conn *websocket.Conn, agentID string) error {
+	// 获取探针的防篡改配置
+	config, err := h.tamperService.GetConfigByAgentID(agentID)
+	if err != nil {
+		return err
+	}
+
+	// 构建配置数据 - 将完整配置作为新增发送（探针刚连接，所有路径都是新增）
+	var paths []string
+	if config != nil && len(config.Paths) > 0 {
+		paths = config.Paths
+	} else {
+		paths = []string{} // 空列表
+	}
+
+	// 使用增量配置格式，将所有路径作为新增
+	configData := protocol.TamperProtectConfig{
+		Added:   paths,
+		Removed: []string{}, // 初始化时没有需要移除的
+	}
+
+	data, err := json.Marshal(configData)
+	if err != nil {
+		return err
+	}
+
+	msg := protocol.Message{
+		Type: protocol.MessageTypeTamperProtect,
+		Data: data,
+	}
+
+	msgData, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
 
 	return conn.WriteMessage(websocket.TextMessage, msgData)
 }
