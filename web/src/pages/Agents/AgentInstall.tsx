@@ -18,7 +18,7 @@ interface OSConfig {
 }
 
 const AgentInstall = () => {
-    const [selectedOS, setSelectedOS] = useState<string>('linux-amd64');
+    const [selectedOS, setSelectedOS] = useState<string>('linux');
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
     const [selectedApiKey, setSelectedApiKey] = useState<string>('');
 
@@ -44,28 +44,18 @@ const AgentInstall = () => {
     }, []);
 
     const osConfigs: Record<string, OSConfig> = {
-        'linux-amd64': {
-            name: 'Linux (AMD64)',
+        'linux': {
+            name: 'Linux',
             icon: <img src={linuxPng} alt="Linux" className={'h-4 w-4'}/>,
             downloadUrl: '/api/agent/downloads/agent-linux-amd64',
         },
-        'linux-arm64': {
-            name: 'Linux (ARM64)',
-            icon: <img src={linuxPng} alt="Linux" className={'h-4 w-4'}/>,
-            downloadUrl: '/api/agent/downloads/agent-linux-arm64',
-        },
-        'darwin-amd64': {
-            name: 'macOS (Intel)',
+        'darwin': {
+            name: 'macOS',
             icon: <img src={applePng} alt="macOS" className={'h-4 w-4'}/>,
             downloadUrl: '/api/agent/downloads/agent-darwin-amd64',
         },
-        'darwin-arm64': {
-            name: 'macOS (Apple Silicon)',
-            icon: <img src={applePng} alt="macOS" className={'h-4 w-4'}/>,
-            downloadUrl: '/api/agent/downloads/agent-darwin-arm64',
-        },
-        'windows-amd64': {
-            name: 'Windows (AMD64)',
+        'windows': {
+            name: 'Windows',
             icon: <img src={windowsPng} alt="Windows" className={'h-4 w-4'}/>,
             downloadUrl: '/api/agent/downloads/agent-windows-amd64.exe',
         },
@@ -76,36 +66,24 @@ const AgentInstall = () => {
         message.success('已复制到剪贴板');
     };
 
-    // 一键注册命令
-    const getRegisterCommand = (os: string) => {
-        const config = osConfigs[os];
-        const agentName = os.startsWith('windows') ? 'pika-agent.exe' : 'pika-agent';
+    // 获取一键安装命令
+    const getInstallCommand = (os: string) => {
         const token = selectedApiKey;
 
         if (os.startsWith('windows')) {
-            return `# 1. 下载探针
+            // Windows 使用 PowerShell 手动安装
+            const config = osConfigs[os];
+            const agentName = 'pika-agent.exe';
+            return `# Windows 安装方式（需要管理员权限）
+
+# 1. 下载探针
 Invoke-WebRequest -Uri "${serverUrl}${config.downloadUrl}" -OutFile "${agentName}"
 
-# 2. 运行注册命令（需要管理员权限）
+# 2. 运行注册命令
 .\\${agentName} register --endpoint "${serverUrl}" --token "${token}"`;
-        } else if (os.startsWith('linux')) {
-            return `# 1. 下载探针
-wget ${serverUrl}${config.downloadUrl} -O ${agentName}
-
-# 2. 添加执行权限
-chmod +x ${agentName}
-
-# 3. 运行注册命令（需要 root 权限）
-sudo ./${agentName} register --endpoint "${serverUrl}" --token "${token}"`;
-        } else { // macOS
-            return `# 1. 下载探针
-curl -L ${serverUrl}${config.downloadUrl} -o ${agentName}
-
-# 2. 添加执行权限
-chmod +x ${agentName}
-
-# 3. 运行注册命令（需要 root 权限）
-sudo ./${agentName} register --endpoint "${serverUrl}" --token "${token}"`;
+        } else {
+            // Linux/macOS 使用一键安装脚本
+            return `curl -fsSL ${serverUrl}/api/agent/install.sh?token=${token} | sudo bash`;
         }
     };
 
@@ -190,14 +168,19 @@ ${agentCmd} version`;
                         key={key}
                     >
                         <Space direction={'vertical'} className={'w-full'}>
-                            <Card type="inner" title="安装步骤">
-                                    <pre className="m-0 overflow-auto text-sm">
-                                        <code>{getRegisterCommand(key)}</code>
-                                    </pre>
+                            <Card type="inner" title={key.startsWith('windows') ? '安装步骤' : '一键安装'}>
+                                {!key.startsWith('windows') && (
+                                    <Paragraph type="secondary" className="mb-3">
+                                        脚本会自动检测系统架构并下载对应版本的探针，然后完成注册和安装。
+                                    </Paragraph>
+                                )}
+                                <pre className="m-0 overflow-auto text-sm">
+                                    <code>{getInstallCommand(key)}</code>
+                                </pre>
                                 <Button
                                     type={'link'}
                                     onClick={() => {
-                                        copyToClipboard(getRegisterCommand(key));
+                                        copyToClipboard(getInstallCommand(key));
                                     }}
                                     icon={<CopyIcon className={'h-4 w-4'}/>}
                                     style={{margin: 0, padding: 0}}

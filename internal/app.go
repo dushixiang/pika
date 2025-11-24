@@ -135,6 +135,7 @@ func setupApi(app *orz.App, components *AppComponents) {
 		// Agent 版本和下载（完全公开，无需任何认证）
 		publicApi.GET("/agent/version", components.AgentHandler.GetAgentVersion)
 		publicApi.GET("/agent/downloads/:filename", components.AgentHandler.DownloadAgent)
+		publicApi.GET("/agent/install.sh", components.AgentHandler.GetInstallScript)
 	}
 
 	// 公开接口（支持可选认证）- 已登录返回全部数据，未登录只返回公开数据

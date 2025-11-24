@@ -802,3 +802,148 @@ func (h *AgentHandler) GetTags(c echo.Context) error {
 		"tags": tags,
 	})
 }
+
+// GetInstallScript 生成自动安装脚本
+func (h *AgentHandler) GetInstallScript(c echo.Context) error {
+	token := c.QueryParam("token")
+	if token == "" {
+		return orz.NewError(400, "token不能为空")
+	}
+
+	serverUrl := c.Scheme() + "://" + c.Request().Host
+
+	script := `#!/bin/bash
+set -e
+
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+echo_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+echo_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+# 检查是否为 root 用户
+if [ "$EUID" -ne 0 ]; then
+    echo_error "请使用 root 权限运行此脚本"
+    echo_info "使用方式: sudo bash install.sh"
+    exit 1
+fi
+
+# 检测操作系统和架构
+detect_platform() {
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m)
+
+    case "$ARCH" in
+        x86_64)
+            ARCH="amd64"
+            ;;
+        aarch64|arm64)
+            ARCH="arm64"
+            ;;
+        *)
+            echo_error "不支持的架构: $ARCH"
+            exit 1
+            ;;
+    esac
+
+    case "$OS" in
+        linux)
+            PLATFORM="linux-$ARCH"
+            AGENT_NAME="pika-agent"
+            ;;
+        darwin)
+            PLATFORM="darwin-$ARCH"
+            AGENT_NAME="pika-agent"
+            ;;
+        *)
+            echo_error "不支持的操作系统: $OS"
+            exit 1
+            ;;
+    esac
+
+    echo_info "检测到平台: $PLATFORM"
+}
+
+# 下载探针
+download_agent() {
+    local download_url="` + serverUrl + `/api/agent/downloads/agent-$PLATFORM"
+    local temp_file="/tmp/pika-agent-download"
+
+    echo_info "正在下载探针..."
+
+    if command -v wget &> /dev/null; then
+        wget -q --show-progress "$download_url" -O "$temp_file"
+    elif command -v curl &> /dev/null; then
+        curl -# -L "$download_url" -o "$temp_file"
+    else
+        echo_error "未找到 wget 或 curl 命令，请先安装其中之一"
+        exit 1
+    fi
+
+    if [ ! -f "$temp_file" ]; then
+        echo_error "下载失败"
+        exit 1
+    fi
+
+    # 移动到目标位置
+    mv "$temp_file" "/usr/local/bin/$AGENT_NAME"
+    chmod +x "/usr/local/bin/$AGENT_NAME"
+
+    echo_info "探针下载完成: /usr/local/bin/$AGENT_NAME"
+}
+
+# 注册并启动服务
+register_agent() {
+    local endpoint="` + serverUrl + `"
+    local token="` + token + `"
+
+    echo_info "正在注册探针..."
+
+    if /usr/local/bin/$AGENT_NAME register --endpoint "$endpoint" --token "$token"; then
+        echo_info "探针注册成功"
+    else
+        echo_error "探针注册失败"
+        exit 1
+    fi
+}
+
+# 主流程
+main() {
+    echo_info "开始安装 Pika Agent..."
+    echo ""
+
+    detect_platform
+    download_agent
+    register_agent
+
+    echo ""
+    echo_info "=========================================="
+    echo_info "安装完成！"
+    echo_info "=========================================="
+    echo ""
+    echo_info "常用命令："
+    echo "  查看状态: pika-agent status"
+    echo "  启动服务: pika-agent start"
+    echo "  停止服务: pika-agent stop"
+    echo "  重启服务: pika-agent restart"
+    echo "  卸载服务: pika-agent uninstall"
+    echo ""
+}
+
+main`
+
+	c.Response().Header().Set("Content-Type", "text/plain; charset=utf-8")
+	return c.String(http.StatusOK, script)
+}

@@ -2,7 +2,7 @@ import {type JSX, useEffect, useMemo, useState} from 'react';
 import {Outlet, useLocation, useNavigate} from 'react-router-dom';
 import type {MenuProps} from 'antd';
 import {App, Avatar, Button, Dropdown, Space} from 'antd';
-import {Activity, Eye, Key, LogOut, Server, Settings, User as UserIcon} from 'lucide-react';
+import {Activity, BookOpen, Eye, Key, LogOut, Server, Settings, User as UserIcon} from 'lucide-react';
 import {logout} from '../../api/auth';
 import {getServerVersion} from '../../api/agent';
 import type {User} from '../../types';
@@ -130,6 +130,14 @@ const AdminLayout = () => {
                             className="hidden !h-9 !items-center !rounded-full !px-3 !text-xs !text-white/80 hover:!bg-white/10 sm:!inline-flex"
                         >
                             公共页面
+                        </Button>
+                        <Button
+                            type="text"
+                            icon={<BookOpen className="h-4 w-4" strokeWidth={2} />}
+                            onClick={() => navigate('/admin/agents-install')}
+                            className="!h-9 !items-center !rounded-full !px-3 !text-xs !text-white hover:!bg-blue-500/10"
+                        >
+                            部署指南
                         </Button>
                         <Dropdown menu={{items: userMenuItems}} placement="bottomRight" trigger={['click']}>
                             <button
