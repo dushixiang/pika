@@ -620,7 +620,7 @@ func (h *AgentHandler) SendCommand(c echo.Context) error {
 	})
 }
 
-// GetAuditResult 获取审计结果
+// GetAuditResult 获取审计结果(原始数据)
 func (h *AgentHandler) GetAuditResult(c echo.Context) error {
 	agentID := c.Param("id")
 	ctx := c.Request().Context()

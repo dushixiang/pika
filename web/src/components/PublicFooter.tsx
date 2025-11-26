@@ -2,6 +2,7 @@ import {Heart} from 'lucide-react';
 
 const PublicFooter = () => {
     const currentYear = new Date().getFullYear();
+    const icpCode = window.SystemConfig?.ICPCode || '';
 
     return (
         <footer className="border-t border-slate-100 bg-gradient-to-b from-white to-slate-50">
@@ -24,6 +25,20 @@ const PublicFooter = () => {
                             </a>
                             <span className="text-slate-300">·</span>
                             <span>保持洞察，稳定运行</span>
+                            {/* ICP 备案号 */}
+                            {icpCode && (
+                                <>
+                                    <span className="text-slate-300">·</span>
+                                    <a
+                                        href="https://beian.miit.gov.cn"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-slate-500 hover:text-slate-700 transition-colors"
+                                    >
+                                        {icpCode}
+                                    </a>
+                                </>
+                            )}
                         </div>
                         <div className="flex items-center gap-1">
                             <span>用</span>

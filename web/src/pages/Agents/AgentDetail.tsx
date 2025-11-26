@@ -16,7 +16,12 @@ import {
     FileWarning
 } from 'lucide-react';
 import TamperProtection from './TamperProtection.tsx';
-import {getAgentForAdmin, getAuditResult, sendAuditCommand, type VPSAuditResult} from '../../api/agent';
+import {
+    getAgentForAdmin,
+    getAuditResult,
+    sendAuditCommand,
+    type VPSAuditResult
+} from '../../api/agent';
 import type {Agent} from '../../types';
 import dayjs from 'dayjs';
 import {getErrorMessage} from '../../lib/utils';
@@ -66,10 +71,10 @@ const AgentDetail = () => {
             await sendAuditCommand(id);
             messageApi.success('安全审计已启动,请稍后查看结果');
 
-            // 5秒后刷新结果
+            // 10秒后刷新结果 (给Server端分析时间)
             setTimeout(() => {
                 fetchData();
-            }, 5000);
+            }, 10000);
         } catch (error: unknown) {
             messageApi.error(getErrorMessage(error, '启动审计失败'));
         } finally {
@@ -113,11 +118,6 @@ const AgentDetail = () => {
         },
     ];
 
-    // 计算审计统计
-    const passCount = auditResult?.securityChecks.filter(c => c.status === 'pass').length || 0;
-    const failCount = auditResult?.securityChecks.filter(c => c.status === 'fail').length || 0;
-    const warnCount = auditResult?.securityChecks.filter(c => c.status === 'warn').length || 0;
-    const totalCount = auditResult?.securityChecks.length || 0;
 
     // Tab 项配置
     const tabItems: TabsProps['items'] = [
@@ -185,13 +185,10 @@ const AgentDetail = () => {
                 <div className="flex items-center gap-2 text-sm">
                     <Shield size={16}/>
                     <div>安全审计</div>
-                    {auditResult && failCount > 0 && (
-                        <Tag color="error" style={{marginLeft: 4}}>{failCount}</Tag>
-                    )}
                 </div>
             ),
             children: (
-                <Space direction="vertical">
+                <Space direction="vertical" style={{width: '100%'}}>
                     {/* 非 Linux 系统提示 */}
                     {agent && !agent.os.toLowerCase().includes('linux') && (
                         <Alert
@@ -224,77 +221,7 @@ const AgentDetail = () => {
                             />
                         ) : null
                     ) : (
-                        <>
-                            {/* 审计概览 */}
-                            <Card bordered={false}>
-                                <Row gutter={[16, 16]}>
-                                    <Col xs={12} sm={6}>
-                                        <Statistic
-                                            title="总检查项"
-                                            value={totalCount}
-                                            prefix={<Shield size={18} className="lg:w-5 lg:h-5"/>}
-                                        />
-                                    </Col>
-                                    <Col xs={12} sm={6}>
-                                        <Statistic
-                                            title="通过"
-                                            value={passCount}
-                                            valueStyle={{color: '#52c41a'}}
-                                            prefix={<CheckCircle size={18} className="lg:w-5 lg:h-5"/>}
-                                        />
-                                    </Col>
-                                    <Col xs={12} sm={6}>
-                                        <Statistic
-                                            title="失败"
-                                            value={failCount}
-                                            valueStyle={{color: '#ff4d4f'}}
-                                            prefix={<XCircle size={18} className="lg:w-5 lg:h-5"/>}
-                                        />
-                                    </Col>
-                                    <Col xs={12} sm={6}>
-                                        <Statistic
-                                            title="警告"
-                                            value={warnCount}
-                                            valueStyle={{color: '#faad14'}}
-                                            prefix={<AlertTriangle size={18} className="lg:w-5 lg:h-5"/>}
-                                        />
-                                    </Col>
-                                    <Col xs={12} sm={12}>
-                                        <Statistic
-                                            title="风险评分"
-                                            value={auditResult.riskScore}
-                                            suffix="/ 100"
-                                            valueStyle={{
-                                                color: auditResult.riskScore >= 80 ? '#ff4d4f' :
-                                                    auditResult.riskScore >= 50 ? '#faad14' :
-                                                        auditResult.riskScore >= 20 ? '#1890ff' : '#52c41a'
-                                            }}
-                                            prefix={<Activity size={18} className="lg:w-5 lg:h-5"/>}
-                                        />
-                                    </Col>
-                                    <Col xs={12} sm={12}>
-                                        <div className="text-sm text-gray-500 mb-2">威胁等级</div>
-                                        <Tag
-                                            color={
-                                                auditResult.threatLevel === 'critical' || auditResult.threatLevel === 'high' ? 'error' :
-                                                    auditResult.threatLevel === 'medium' ? 'warning' : 'success'
-                                            }
-                                            className="text-base px-3 py-1"
-                                        >
-                                            {auditResult.threatLevel === 'critical' ? '严重风险' :
-                                                auditResult.threatLevel === 'high' ? '高风险' :
-                                                    auditResult.threatLevel === 'medium' ? '中风险' : '低风险'}
-                                        </Tag>
-                                    </Col>
-                                </Row>
-                                <div className="mt-4 text-sm text-gray-500">
-                                    最近审计时间: {dayjs(auditResult.startTime).format('YYYY-MM-DD HH:mm:ss')}
-                                </div>
-                            </Card>
-
-                            {/* 详细审计结果 */}
-                            <AuditResultView result={auditResult}/>
-                        </>
+                        <AuditResultView result={auditResult}/>
                     )}
                 </Space>
             ),
@@ -368,18 +295,6 @@ const AgentDetail = () => {
                             </Space>
                         </div>
                     </div>
-                    {auditResult && (
-                        <div className="text-center">
-                            <div className="text-sm text-gray-500">安全评分</div>
-                            <div className={`text-3xl font-bold ${
-                                auditResult.riskScore >= 80 ? 'text-red-500' :
-                                    auditResult.riskScore >= 50 ? 'text-orange-500' :
-                                        auditResult.riskScore >= 20 ? 'text-blue-500' : 'text-green-500'
-                            }`}>
-                                {100 - auditResult.riskScore}
-                            </div>
-                        </div>
-                    )}
                 </div>
             </Card>
 

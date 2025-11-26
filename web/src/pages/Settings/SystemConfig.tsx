@@ -3,9 +3,9 @@ import {App, Button, Card, Form, Input, Space, Spin, Upload} from 'antd';
 import {Upload as UploadIcon} from 'lucide-react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import type {SystemConfig} from '../../api/system-config';
-import {getSystemConfig, saveSystemConfig, DEFAULT_SYSTEM_CONFIG} from '../../api/system-config';
+import {getSystemConfig, saveSystemConfig} from '../../api/system-config';
 import {getErrorMessage} from '../../lib/utils';
-import type {RcFile, UploadFile} from 'antd/es/upload/interface';
+import type {RcFile} from 'antd/es/upload/interface';
 
 const SystemConfigComponent = () => {
     const [form] = Form.useForm();
@@ -40,15 +40,11 @@ const SystemConfigComponent = () => {
             form.setFieldsValue({
                 systemNameEn: config.systemNameEn,
                 systemNameZh: config.systemNameZh,
+                icpCode: config.icpCode,
             });
             if (config.logoBase64) {
                 setLogoPreview(config.logoBase64);
             }
-        } else {
-            form.setFieldsValue({
-                systemNameEn: DEFAULT_SYSTEM_CONFIG.systemNameEn,
-                systemNameZh: DEFAULT_SYSTEM_CONFIG.systemNameZh,
-            });
         }
     }, [config, form]);
 
@@ -100,6 +96,7 @@ const SystemConfigComponent = () => {
                 systemNameEn: values.systemNameEn,
                 systemNameZh: values.systemNameZh,
                 logoBase64: logoPreview,
+                icpCode: values.icpCode || '',
             } as SystemConfig);
         } catch (error) {
             // 表单验证失败
@@ -107,11 +104,15 @@ const SystemConfigComponent = () => {
     };
 
     const handleReset = () => {
-        form.setFieldsValue({
-            systemNameEn: DEFAULT_SYSTEM_CONFIG.systemNameEn,
-            systemNameZh: DEFAULT_SYSTEM_CONFIG.systemNameZh,
-        });
-        setLogoPreview('');
+        // 重置为当前配置的值
+        if (config) {
+            form.setFieldsValue({
+                systemNameEn: config.systemNameEn,
+                systemNameZh: config.systemNameZh,
+                icpCode: config.icpCode,
+            });
+            setLogoPreview(config.logoBase64 || '');
+        }
     };
 
     // 获取 Logo 显示 URL
@@ -144,28 +145,39 @@ const SystemConfigComponent = () => {
                         type="inner"
                         className="mb-4"
                     >
-                        <Form.Item
-                            label="系统英文名称"
-                            name="systemNameEn"
-                            rules={[
-                                {required: true, message: '请输入系统英文名称'},
-                                {max: 50, message: '系统名称不能超过 50 个字符'},
-                            ]}
-                            tooltip="系统英文名称将显示在页面头部"
-                        >
-                            <Input placeholder="例如：Pika Monitor"/>
-                        </Form.Item>
+                        <div className={'flex items-center gap-2'}>
+                            <Form.Item
+                                label="系统英文名称"
+                                name="systemNameEn"
+                                rules={[
+                                    {required: true, message: '请输入系统英文名称'},
+                                    {max: 50, message: '系统名称不能超过 50 个字符'},
+                                ]}
+                            >
+                                <Input placeholder="例如：Pika Monitor"/>
+                            </Form.Item>
+
+                            <Form.Item
+                                label="系统中文名称"
+                                name="systemNameZh"
+                                rules={[
+                                    {required: true, message: '请输入系统中文名称'},
+                                    {max: 50, message: '系统名称不能超过 50 个字符'},
+                                ]}
+                            >
+                                <Input placeholder="例如：皮卡监控"/>
+                            </Form.Item>
+                        </div>
 
                         <Form.Item
-                            label="系统中文名称"
-                            name="systemNameZh"
+                            label="ICP 备案号"
+                            name="icpCode"
                             rules={[
-                                {required: true, message: '请输入系统中文名称'},
-                                {max: 50, message: '系统名称不能超过 50 个字符'},
+                                {max: 50, message: 'ICP 备案号不能超过 50 个字符'},
                             ]}
-                            tooltip="系统中文名称将显示在页面头部"
+                            tooltip="ICP 备案号将显示在公共页面底部，例如：京ICP备12345678号"
                         >
-                            <Input placeholder="例如：皮卡监控"/>
+                            <Input placeholder="例如：京ICP备12345678号"/>
                         </Form.Item>
 
                         <Form.Item
@@ -205,8 +217,8 @@ const SystemConfigComponent = () => {
                     >
                         <Form.Item noStyle shouldUpdate>
                             {({getFieldValue}) => {
-                                const systemNameEn = getFieldValue('systemNameEn') || DEFAULT_SYSTEM_CONFIG.systemNameEn;
-                                const systemNameZh = getFieldValue('systemNameZh') || DEFAULT_SYSTEM_CONFIG.systemNameZh;
+                                const systemNameEn = getFieldValue('systemNameEn') || '';
+                                const systemNameZh = getFieldValue('systemNameZh') || '';
                                 return (
                                     <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
                                         <img

@@ -195,24 +195,36 @@ type CommandResponse struct {
 	Result string `json:"result,omitempty"` // 结果数据(JSON字符串)
 }
 
-// VPSAuditResult VPS安全审计结果
+// VPSAuditResult VPS资产采集结果(Agent端只负责采集,不做安全判断)
 type VPSAuditResult struct {
 	// 系统信息
 	SystemInfo SystemInfo `json:"systemInfo"`
+	// 【核心】资产清单(Agent收集的原始数据)
+	AssetInventory AssetInventory `json:"assetInventory"`
+	// 统计摘要
+	Statistics AuditStatistics `json:"statistics"`
+	// 采集开始时间
+	StartTime int64 `json:"startTime"`
+	// 采集结束时间
+	EndTime int64 `json:"endTime"`
+	// 采集警告（权限不足、命令失败等问题）
+	CollectWarnings []string `json:"collectWarnings,omitempty"`
+}
+
+// VPSAuditAnalysis VPS安全分析结果(Server端分析后的结果)
+type VPSAuditAnalysis struct {
+	// 关联的审计ID
+	AuditID string `json:"auditId"`
 	// 安全检查结果
 	SecurityChecks []SecurityCheck `json:"securityChecks"`
-	// 审计开始时间
-	StartTime int64 `json:"startTime"`
-	// 审计结束时间
-	EndTime int64 `json:"endTime"`
 	// 风险评分 (0-100)
 	RiskScore int `json:"riskScore"`
 	// 威胁等级: low/medium/high/critical
 	ThreatLevel string `json:"threatLevel"`
 	// 修复建议
 	Recommendations []string `json:"recommendations,omitempty"`
-	// 审计警告（权限不足、检查失败等非安全问题）
-	AuditWarnings []string `json:"auditWarnings,omitempty"`
+	// 分析时间
+	AnalyzedAt int64 `json:"analyzedAt"`
 }
 
 // SystemInfo 系统信息
@@ -234,10 +246,11 @@ type SecurityCheck struct {
 
 // SecurityCheckSub 安全检查子项
 type SecurityCheckSub struct {
-	Name     string    `json:"name"`               // 子检查名称
-	Status   string    `json:"status"`             // pass/fail/warn/skip
-	Message  string    `json:"message"`            // 检查消息
-	Evidence *Evidence `json:"evidence,omitempty"` // 证据信息
+	Name     string `json:"name"`               // 子检查名称
+	Status   string `json:"status"`             // pass/fail/warn/skip
+	Severity string `json:"severity,omitempty"` // 严重程度: high/medium/low
+	Message  string `json:"message"`            // 检查消息
+	Evidence string `json:"evidence,omitempty"` // 证据信息(简化为字符串)
 }
 
 // Evidence 安全事件证据
@@ -297,4 +310,295 @@ type TamperAlertData struct {
 	Timestamp int64  `json:"timestamp"` // 检测时间(毫秒)
 	Details   string `json:"details"`   // 详细信息(如: "不可变属性被移除")
 	Restored  bool   `json:"restored"`  // 是否已自动恢复
+}
+
+// ==================== 资产清单相关数据结构 ====================
+
+// AssetInventory 资产清单
+type AssetInventory struct {
+	NetworkAssets *NetworkAssets `json:"networkAssets,omitempty"` // 网络资产
+	ProcessAssets *ProcessAssets `json:"processAssets,omitempty"` // 进程资产
+	UserAssets    *UserAssets    `json:"userAssets,omitempty"`    // 用户资产
+	FileAssets    *FileAssets    `json:"fileAssets,omitempty"`    // 文件资产
+	KernelAssets  *KernelAssets  `json:"kernelAssets,omitempty"`  // 内核资产
+}
+
+// AuditStatistics 审计统计摘要
+type AuditStatistics struct {
+	NetworkStats *NetworkStatistics `json:"networkStats,omitempty"` // 网络统计
+	ProcessStats *ProcessStatistics `json:"processStats,omitempty"` // 进程统计
+	UserStats    *UserStatistics    `json:"userStats,omitempty"`    // 用户统计
+	FileStats    *FileStatistics    `json:"fileStats,omitempty"`    // 文件统计
+}
+
+// ==================== 网络资产 ====================
+
+// NetworkAssets 网络资产
+type NetworkAssets struct {
+	ListeningPorts []ListeningPort     `json:"listeningPorts,omitempty"` // 监听端口
+	Connections    []NetworkConnection `json:"connections,omitempty"`    // 网络连接
+	Interfaces     []NetworkInterface  `json:"interfaces,omitempty"`     // 网卡接口
+	RoutingTable   []RouteEntry        `json:"routingTable,omitempty"`   // 路由表
+	FirewallRules  *FirewallInfo       `json:"firewallRules,omitempty"`  // 防火墙规则
+	DNSServers     []string            `json:"dnsServers,omitempty"`     // DNS服务器
+	ARPTable       []ARPEntry          `json:"arpTable,omitempty"`       // ARP表
+	Statistics     *NetworkStatistics  `json:"statistics,omitempty"`     // 统计信息
+}
+
+// ListeningPort 监听端口
+type ListeningPort struct {
+	Protocol    string `json:"protocol"`              // tcp/udp
+	Address     string `json:"address"`               // 0.0.0.0/127.0.0.1/::
+	Port        uint32 `json:"port"`                  // 端口号
+	ProcessPID  int32  `json:"processPid"`            // 进程PID
+	ProcessName string `json:"processName,omitempty"` // 进程名
+	ProcessPath string `json:"processPath,omitempty"` // 进程路径
+	IsPublic    bool   `json:"isPublic"`              // 是否公网监听
+}
+
+// NetworkConnection 网络连接
+type NetworkConnection struct {
+	Protocol    string `json:"protocol"`              // tcp/udp
+	LocalAddr   string `json:"localAddr"`             // 本地地址
+	LocalPort   uint32 `json:"localPort"`             // 本地端口
+	RemoteAddr  string `json:"remoteAddr"`            // 远程地址
+	RemotePort  uint32 `json:"remotePort"`            // 远程端口
+	State       string `json:"state"`                 // ESTABLISHED/LISTEN/...
+	ProcessPID  int32  `json:"processPid"`            // 进程PID
+	ProcessName string `json:"processName,omitempty"` // 进程名
+}
+
+// NetworkInterface 网卡接口
+type NetworkInterface struct {
+	Name       string   `json:"name"`                // 接口名
+	MacAddress string   `json:"macAddress"`          // MAC地址
+	Addresses  []string `json:"addresses,omitempty"` // IP地址列表
+	MTU        int      `json:"mtu"`                 // MTU
+	IsUp       bool     `json:"isUp"`                // 是否启用
+	Flags      []string `json:"flags,omitempty"`     // 标志
+}
+
+// RouteEntry 路由表条目
+type RouteEntry struct {
+	Destination string `json:"destination"` // 目标网络
+	Gateway     string `json:"gateway"`     // 网关
+	Genmask     string `json:"genmask"`     // 子网掩码
+	Interface   string `json:"interface"`   // 接口
+	Metric      int    `json:"metric"`      // 优先级
+}
+
+// FirewallInfo 防火墙信息
+type FirewallInfo struct {
+	Type   string         `json:"type"`            // iptables/ufw/firewalld
+	Status string         `json:"status"`          // active/inactive
+	Rules  []FirewallRule `json:"rules,omitempty"` // 规则列表
+}
+
+// FirewallRule 防火墙规则
+type FirewallRule struct {
+	Chain    string `json:"chain"`              // 链名
+	Target   string `json:"target"`             // 目标动作
+	Protocol string `json:"protocol,omitempty"` // 协议
+	Source   string `json:"source,omitempty"`   // 源地址
+	Dest     string `json:"dest,omitempty"`     // 目标地址
+	Port     string `json:"port,omitempty"`     // 端口
+}
+
+// ARPEntry ARP表条目
+type ARPEntry struct {
+	IPAddress  string `json:"ipAddress"`  // IP地址
+	MacAddress string `json:"macAddress"` // MAC地址
+	Interface  string `json:"interface"`  // 接口
+}
+
+// NetworkStatistics 网络统计
+type NetworkStatistics struct {
+	TotalListeningPorts  int            `json:"totalListeningPorts"`          // 总监听端口数
+	PublicListeningPorts int            `json:"publicListeningPorts"`         // 公网监听端口数
+	ActiveConnections    int            `json:"activeConnections"`            // 活跃连接数
+	ConnectionsByState   map[string]int `json:"connectionsByState,omitempty"` // 连接状态分布
+	InterfaceCount       int            `json:"interfaceCount"`               // 网卡数量
+}
+
+// ==================== 进程资产 ====================
+
+// ProcessAssets 进程资产
+type ProcessAssets struct {
+	RunningProcesses   []ProcessInfo      `json:"runningProcesses,omitempty"`   // 所有运行进程(可选)
+	TopCPUProcesses    []ProcessInfo      `json:"topCpuProcesses,omitempty"`    // CPU占用TOP进程
+	TopMemoryProcesses []ProcessInfo      `json:"topMemoryProcesses,omitempty"` // 内存占用TOP进程
+	Statistics         *ProcessStatistics `json:"statistics,omitempty"`         // 统计信息
+}
+
+// ProcessInfo 进程信息
+type ProcessInfo struct {
+	PID        int32   `json:"pid"`                // 进程ID
+	Name       string  `json:"name"`               // 进程名
+	Cmdline    string  `json:"cmdline,omitempty"`  // 命令行
+	Exe        string  `json:"exe,omitempty"`      // 可执行文件路径
+	PPID       int32   `json:"ppid"`               // 父进程ID
+	Username   string  `json:"username,omitempty"` // 用户名
+	CPUPercent float64 `json:"cpuPercent"`         // CPU使用率
+	MemPercent float32 `json:"memPercent"`         // 内存使用率
+	MemoryMB   uint64  `json:"memoryMb"`           // 内存占用(MB)
+	Status     string  `json:"status,omitempty"`   // 状态
+	CreateTime int64   `json:"createTime"`         // 创建时间(毫秒)
+}
+
+// ProcessStatistics 进程统计
+type ProcessStatistics struct {
+	TotalProcesses    int `json:"totalProcesses"`    // 进程总数
+	RunningProcesses  int `json:"runningProcesses"`  // 运行中进程
+	SleepingProcesses int `json:"sleepingProcesses"` // 睡眠进程
+	ZombieProcesses   int `json:"zombieProcesses"`   // 僵尸进程
+	ThreadCount       int `json:"threadCount"`       // 线程总数
+}
+
+// ==================== 用户资产 ====================
+
+// UserAssets 用户资产
+type UserAssets struct {
+	SystemUsers   []UserInfo      `json:"systemUsers,omitempty"`   // 系统用户
+	LoginHistory  []LoginRecord   `json:"loginHistory,omitempty"`  // 登录历史
+	CurrentLogins []LoginSession  `json:"currentLogins,omitempty"` // 当前登录
+	SSHKeys       []SSHKeyInfo    `json:"sshKeys,omitempty"`       // SSH密钥
+	SudoUsers     []SudoUserInfo  `json:"sudoUsers,omitempty"`     // Sudo用户
+	Statistics    *UserStatistics `json:"statistics,omitempty"`    // 统计信息
+}
+
+// UserInfo 用户信息
+type UserInfo struct {
+	Username    string `json:"username"`              // 用户名
+	UID         string `json:"uid"`                   // UID
+	GID         string `json:"gid"`                   // GID
+	HomeDir     string `json:"homeDir,omitempty"`     // 家目录
+	Shell       string `json:"shell,omitempty"`       // Shell
+	IsLoginable bool   `json:"isLoginable"`           // 是否可登录
+	IsRootEquiv bool   `json:"isRootEquiv,omitempty"` // 是否UID=0
+	HasPassword bool   `json:"hasPassword"`           // 是否有密码
+}
+
+// LoginRecord 登录记录
+type LoginRecord struct {
+	Username  string `json:"username"`         // 用户名
+	IP        string `json:"ip,omitempty"`     // IP地址
+	Terminal  string `json:"terminal"`         // 终端
+	Timestamp int64  `json:"timestamp"`        // 时间戳(毫秒)
+	Status    string `json:"status,omitempty"` // success/failed
+}
+
+// LoginSession 登录会话
+type LoginSession struct {
+	Username  string `json:"username"`  // 用户名
+	Terminal  string `json:"terminal"`  // 终端
+	IP        string `json:"ip"`        // IP地址
+	LoginTime int64  `json:"loginTime"` // 登录时间(毫秒)
+	IdleTime  int    `json:"idleTime"`  // 空闲时间(秒)
+}
+
+// SSHKeyInfo SSH密钥信息
+type SSHKeyInfo struct {
+	Username    string `json:"username"`            // 用户名
+	KeyType     string `json:"keyType"`             // 密钥类型
+	Fingerprint string `json:"fingerprint"`         // 指纹
+	Comment     string `json:"comment,omitempty"`   // 注释
+	FilePath    string `json:"filePath"`            // 文件路径
+	AddedTime   int64  `json:"addedTime,omitempty"` // 添加时间(毫秒)
+}
+
+// SudoUserInfo Sudo用户信息
+type SudoUserInfo struct {
+	Username string `json:"username"`        // 用户名
+	Rules    string `json:"rules,omitempty"` // 规则
+	NoPasswd bool   `json:"noPasswd"`        // 是否免密
+}
+
+// UserStatistics 用户统计
+type UserStatistics struct {
+	TotalUsers          int `json:"totalUsers"`          // 用户总数
+	LoginableUsers      int `json:"loginableUsers"`      // 可登录用户数
+	RootEquivalentUsers int `json:"rootEquivalentUsers"` // Root权限用户数
+	RecentLoginCount    int `json:"recentLoginCount"`    // 近期登录次数
+	FailedLoginCount    int `json:"failedLoginCount"`    // 失败登录次数
+}
+
+// ==================== 文件资产 ====================
+
+// FileAssets 文件资产
+type FileAssets struct {
+	CronJobs        []CronJob        `json:"cronJobs,omitempty"`        // 定时任务
+	SystemdServices []SystemdService `json:"systemdServices,omitempty"` // Systemd服务
+	StartupScripts  []StartupScript  `json:"startupScripts,omitempty"`  // 启动脚本
+	RecentModified  []FileInfo       `json:"recentModified,omitempty"`  // 最近修改文件
+	LargeFiles      []FileInfo       `json:"largeFiles,omitempty"`      // 大文件
+	Statistics      *FileStatistics  `json:"statistics,omitempty"`      // 统计信息
+}
+
+// CronJob 定时任务
+type CronJob struct {
+	User     string `json:"user"`               // 用户
+	Schedule string `json:"schedule"`           // 计划
+	Command  string `json:"command"`            // 命令
+	FilePath string `json:"filePath,omitempty"` // 文件路径
+}
+
+// SystemdService Systemd服务
+type SystemdService struct {
+	Name        string `json:"name"`                  // 服务名
+	State       string `json:"state,omitempty"`       // 状态
+	Enabled     bool   `json:"enabled"`               // 是否开机启动
+	ExecStart   string `json:"execStart,omitempty"`   // 启动命令
+	Description string `json:"description,omitempty"` // 描述
+	UnitFile    string `json:"unitFile,omitempty"`    // Unit文件路径
+}
+
+// StartupScript 启动脚本
+type StartupScript struct {
+	Type    string `json:"type"`    // init.d/rc.local/systemd
+	Path    string `json:"path"`    // 路径
+	Name    string `json:"name"`    // 名称
+	Enabled bool   `json:"enabled"` // 是否启用
+}
+
+// FileInfo 文件信息
+type FileInfo struct {
+	Path         string `json:"path"`                  // 路径
+	Size         int64  `json:"size"`                  // 大小(字节)
+	ModTime      int64  `json:"modTime"`               // 修改时间(毫秒)
+	Permissions  string `json:"permissions,omitempty"` // 权限
+	Owner        string `json:"owner,omitempty"`       // 所有者
+	Group        string `json:"group,omitempty"`       // 组
+	IsExecutable bool   `json:"isExecutable"`          // 是否可执行
+}
+
+// FileStatistics 文件统计
+type FileStatistics struct {
+	CronJobsCount        int `json:"cronJobsCount"`        // 定时任务数量
+	SystemdServicesCount int `json:"systemdServicesCount"` // Systemd服务数量
+	ActiveServicesCount  int `json:"activeServicesCount"`  // 活跃服务数量
+	RecentFilesCount     int `json:"recentFilesCount"`     // 最近修改文件数量
+	LargeFilesCount      int `json:"largeFilesCount"`      // 大文件数量
+}
+
+// ==================== 内核资产 ====================
+
+// KernelAssets 内核资产
+type KernelAssets struct {
+	LoadedModules    []KernelModule      `json:"loadedModules,omitempty"`    // 已加载内核模块
+	KernelParameters map[string]string   `json:"kernelParameters,omitempty"` // 内核参数
+	SecurityModules  *SecurityModuleInfo `json:"securityModules,omitempty"`  // 安全模块
+}
+
+// KernelModule 内核模块
+type KernelModule struct {
+	Name   string `json:"name"`   // 模块名
+	Size   int    `json:"size"`   // 大小
+	UsedBy int    `json:"usedBy"` // 被引用次数
+}
+
+// SecurityModuleInfo 安全模块信息
+type SecurityModuleInfo struct {
+	SELinuxStatus   string `json:"selinuxStatus,omitempty"`   // SELinux状态
+	AppArmorStatus  string `json:"apparmorStatus,omitempty"`  // AppArmor状态
+	SecureBootState string `json:"secureBootState,omitempty"` // 安全启动状态
 }

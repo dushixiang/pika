@@ -1,15 +1,21 @@
-import {Card, Collapse, List, Space, Tag, Descriptions} from 'antd';
+import {Card, Collapse, List, Space, Tag, Descriptions, Tabs, Table, Empty, Alert} from 'antd';
 import {
     CheckCircle,
     XCircle,
     AlertTriangle,
     MinusCircle,
+    Server,
+    Network,
+    Cpu,
+    Users,
     FileText,
-    Hash,
-    GitBranch,
-    Clock
+    Shield,
+    Activity,
+    Calendar,
+    Settings,
+    PlayCircle
 } from 'lucide-react';
-import type {VPSAuditResult} from '../../api/agent';
+import type {VPSAuditResult, VPSAuditAnalysis} from '../../api/agent';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 
@@ -48,28 +54,26 @@ const AuditResultView = ({result}: AuditResultViewProps) => {
         return <Tag color={config.color}>{config.text}</Tag>;
     };
 
-    const getCategoryName = (category: string) => {
-        const names: Record<string, string> = {
-            'non_root_user': '非Root用户',
-            'ufw_security': 'UFW防火墙',
-            'ssh_security': 'SSH安全',
-            'access_control': '访问控制',
-            'port_security': '端口安全',
-            'unattended_upgrades': '自动更新',
-            'fail2ban': 'Fail2ban',
-            'rootkit_detection': 'Rootkit检测',
-            'suspicious_processes': '可疑进程检测',
-            'listening_ports': '端口监听检查',
-            'cron_jobs': '定时任务检查',
-            'suspicious_files': '可疑文件检查',
-            'system_accounts': '系统账户检查',
-            'network_connections': '网络连接检查',
-            'file_integrity': '文件完整性检查',
-            'login_history': '登录历史检查',
-            'immutable_files': '不可变文件检查',
-            'suspicious_env_vars': '环境变量检查',
+    const getSeverityTag = (severity?: string) => {
+        if (!severity) return null;
+        const configs = {
+            high: {color: 'error', text: '高危'},
+            medium: {color: 'warning', text: '中危'},
+            low: {color: 'default', text: '低危'},
         };
-        return names[category] || category;
+        const config = configs[severity as keyof typeof configs];
+        return config ? <Tag color={config.color}>{config.text}</Tag> : null;
+    };
+
+    const getThreatLevelTag = (level: string) => {
+        const configs = {
+            critical: {color: 'error', text: '危急'},
+            high: {color: 'error', text: '高危'},
+            medium: {color: 'warning', text: '中危'},
+            low: {color: 'success', text: '低危'},
+        };
+        const config = configs[level as keyof typeof configs] || {color: 'default', text: level};
+        return <Tag color={config.color} className="text-lg px-3 py-1">{config.text}</Tag>;
     };
 
     const formatUptime = (seconds: number) => {
@@ -80,11 +84,135 @@ const AuditResultView = ({result}: AuditResultViewProps) => {
         return `${days}天 ${hours}小时 ${minutes}分钟`;
     };
 
+    const portColumns = [
+        {title: '协议', dataIndex: 'protocol', key: 'protocol', width: 80},
+        {
+            title: '地址:端口',
+            key: 'address',
+            render: (record: any) => `${record.address}:${record.port}`,
+        },
+        {
+            title: '公网暴露',
+            dataIndex: 'isPublic',
+            key: 'isPublic',
+            width: 100,
+            render: (isPublic: boolean) => isPublic ?
+                <Tag color="warning">是</Tag> : <Tag color="default">否</Tag>
+        },
+        {title: '进程', dataIndex: 'processName', key: 'processName'},
+        {title: 'PID', dataIndex: 'processPid', key: 'processPid', width: 80},
+    ];
+
+    const connectionColumns = [
+        {title: '协议', dataIndex: 'protocol', key: 'protocol', width: 80},
+        {
+            title: '本地地址',
+            key: 'local',
+            render: (record: any) => `${record.laddr?.ip || ''}:${record.laddr?.port || ''}`,
+        },
+        {
+            title: '远程地址',
+            key: 'remote',
+            render: (record: any) => `${record.raddr?.ip || ''}:${record.raddr?.port || ''}`,
+        },
+        {title: '状态', dataIndex: 'status', key: 'status', width: 120},
+        {title: 'PID', dataIndex: 'pid', key: 'pid', width: 80},
+        {title: '进程', dataIndex: 'processName', key: 'processName'},
+    ];
+
+    const processColumns = [
+        {title: 'PID', dataIndex: 'pid', key: 'pid', width: 80},
+        {title: '进程名', dataIndex: 'name', key: 'name'},
+        {title: '用户', dataIndex: 'username', key: 'username', width: 100},
+        {
+            title: 'CPU %',
+            dataIndex: 'cpuPercent',
+            key: 'cpuPercent',
+            width: 100,
+            render: (val: number) => `${val.toFixed(2)}%`
+        },
+        {
+            title: '内存 %',
+            dataIndex: 'memPercent',
+            key: 'memPercent',
+            width: 100,
+            render: (val: number) => `${val.toFixed(2)}%`
+        },
+        {
+            title: '内存 (MB)',
+            dataIndex: 'memoryMb',
+            key: 'memoryMb',
+            width: 120,
+            render: (val: number) => `${val} MB`
+        },
+    ];
+
+    const userColumns = [
+        {title: '用户名', dataIndex: 'username', key: 'username'},
+        {title: 'UID', dataIndex: 'uid', key: 'uid', width: 80},
+        {title: 'GID', dataIndex: 'gid', key: 'gid', width: 80},
+        {title: 'Shell', dataIndex: 'shell', key: 'shell'},
+        {
+            title: '可登录',
+            dataIndex: 'isLoginable',
+            key: 'isLoginable',
+            width: 100,
+            render: (val: boolean) => val ? <Tag color="success">是</Tag> : <Tag color="default">否</Tag>
+        },
+        {
+            title: 'Root权限',
+            dataIndex: 'isRootEquiv',
+            key: 'isRootEquiv',
+            width: 100,
+            render: (val: boolean) => val ? <Tag color="error">是</Tag> : <Tag color="default">否</Tag>
+        },
+    ];
+
+    const cronColumns = [
+        {title: '用户', dataIndex: 'user', key: 'user', width: 100},
+        {title: '计划', dataIndex: 'schedule', key: 'schedule', width: 150},
+        {title: '命令', dataIndex: 'command', key: 'command', ellipsis: true},
+        {title: '文件路径', dataIndex: 'filePath', key: 'filePath', width: 200, ellipsis: true},
+    ];
+
+    const serviceColumns = [
+        {title: '服务名', dataIndex: 'name', key: 'name'},
+        {title: '状态', dataIndex: 'state', key: 'state', width: 100},
+        {
+            title: '开机启动',
+            dataIndex: 'enabled',
+            key: 'enabled',
+            width: 100,
+            render: (val: boolean) => val ? <Tag color="success">是</Tag> : <Tag color="default">否</Tag>
+        },
+        {title: '启动命令', dataIndex: 'execStart', key: 'execStart', ellipsis: true},
+        {title: '描述', dataIndex: 'description', key: 'description', ellipsis: true},
+    ];
+
+    const startupScriptColumns = [
+        {title: '类型', dataIndex: 'type', key: 'type', width: 150},
+        {title: '名称', dataIndex: 'name', key: 'name'},
+        {title: '路径', dataIndex: 'path', key: 'path', ellipsis: true},
+        {
+            title: '启用',
+            dataIndex: 'enabled',
+            key: 'enabled',
+            width: 80,
+            render: (val: boolean) => val ? <Tag color="success">是</Tag> : <Tag color="default">否</Tag>
+        },
+    ];
+
+    const moduleColumns = [
+        {title: '模块名', dataIndex: 'name', key: 'name'},
+        {title: '大小', dataIndex: 'size', key: 'size', width: 120, render: (val: number) => `${val} bytes`},
+        {title: '被引用次数', dataIndex: 'usedBy', key: 'usedBy', width: 120},
+    ];
+
     return (
-        <div className="space-y-4">
+        <Space direction="vertical" size="large" style={{width: '100%'}}>
             {/* 系统信息 */}
             <Card
-                title={<span className="font-semibold">系统信息</span>}
+                title={<Space><Server size={18}/><span className="font-semibold">系统信息</span></Space>}
                 variant={'outlined'}
             >
                 <Descriptions column={{xs: 1, sm: 2}} bordered>
@@ -105,7 +233,7 @@ const AuditResultView = ({result}: AuditResultViewProps) => {
                             {result.systemInfo.publicIP}
                         </Descriptions.Item>
                     )}
-                    <Descriptions.Item label="审计时间" span={2}>
+                    <Descriptions.Item label="采集时间" span={2}>
                         {dayjs(result.startTime).format('YYYY-MM-DD HH:mm:ss')} - {dayjs(result.endTime).format('HH:mm:ss')}
                         <span className="ml-2 text-gray-500">
                             (耗时: {((result.endTime - result.startTime) / 1000).toFixed(2)}秒)
@@ -114,140 +242,242 @@ const AuditResultView = ({result}: AuditResultViewProps) => {
                 </Descriptions>
             </Card>
 
-            {/* 安全检查结果 */}
+
+            {/* 资产清单 */}
             <Card
-                title={<span className="font-semibold">安全检查结果</span>}
+                title={<Space><Activity size={18}/><span className="font-semibold">资产清单</span></Space>}
                 variant={'outlined'}
             >
-                <Collapse accordion>
-                    {result.securityChecks.map((check, index) => (
-                        <Panel
-                            key={index}
-                            header={
-                                <Space>
-                                    {getStatusIcon(check.status)}
-                                    <span className="font-medium">
-                                        {getCategoryName(check.category)}
-                                    </span>
-                                    {getStatusTag(check.status)}
-                                    <span className="text-gray-500 text-sm">
-                                        {check.message}
-                                    </span>
-                                </Space>
-                            }
-                        >
-                            {check.details && check.details.length > 0 && (
-                                <List
-                                    size="small"
-                                    dataSource={check.details}
-                                    renderItem={(detail) => (
-                                        <List.Item className="flex-col items-start">
-                                            <Space className="w-full">
-                                                {getStatusIcon(detail.status)}
-                                                <span className="font-mono text-sm">
-                                                    {detail.name}
-                                                </span>
-                                                {getStatusTag(detail.status)}
-                                                <span className="text-gray-600 flex-1">
-                                                    {detail.message}
-                                                </span>
-                                            </Space>
-                                            {detail.evidence && (
-                                                <div className="ml-6 mt-2 p-3 bg-gray-50 rounded text-xs w-full">
-                                                    <div className="font-semibold mb-2 flex items-center gap-2">
-                                                        <FileText size={14}/>
-                                                        证据信息
-                                                        {detail.evidence.riskLevel && (
-                                                            <Tag
-                                                                color={
-                                                                    detail.evidence.riskLevel === 'high' ? 'error' :
-                                                                        detail.evidence.riskLevel === 'medium' ? 'warning' : 'default'
-                                                                }
-                                                                className="ml-2"
-                                                            >
-                                                                {detail.evidence.riskLevel === 'high' ? '高危' :
-                                                                    detail.evidence.riskLevel === 'medium' ? '中危' : '低危'}
-                                                            </Tag>
-                                                        )}
-                                                    </div>
-                                                    {detail.evidence.filePath && (
-                                                        <div className="mb-1">
-                                                            <span className="font-medium">文件路径: </span>
-                                                            <code className="bg-white px-1">{detail.evidence.filePath}</code>
-                                                        </div>
-                                                    )}
-                                                    {detail.evidence.fileHash && (
-                                                        <div className="mb-1 flex items-start gap-1">
-                                                            <Hash size={12} className="mt-0.5"/>
-                                                            <span className="font-medium">SHA256: </span>
-                                                            <code className="bg-white px-1 break-all">{detail.evidence.fileHash}</code>
-                                                        </div>
-                                                    )}
-                                                    {detail.evidence.timestamp && (
-                                                        <div className="mb-1 flex items-center gap-1">
-                                                            <Clock size={12}/>
-                                                            <span className="font-medium">时间: </span>
-                                                            {dayjs(detail.evidence.timestamp).format('YYYY-MM-DD HH:mm:ss')}
-                                                        </div>
-                                                    )}
-                                                    {detail.evidence.networkConn && (
-                                                        <div className="mb-1">
-                                                            <span className="font-medium">网络连接: </span>
-                                                            <code className="bg-white px-1">{detail.evidence.networkConn}</code>
-                                                        </div>
-                                                    )}
-                                                    {detail.evidence.processTree && detail.evidence.processTree.length > 0 && (
-                                                        <div className="mt-2">
-                                                            <div className="font-medium mb-1 flex items-center gap-1">
-                                                                <GitBranch size={12}/>
-                                                                进程树:
-                                                            </div>
-                                                            <div className="bg-white p-2 rounded font-mono text-xs overflow-x-auto">
-                                                                {detail.evidence.processTree.map((line, idx) => (
-                                                                    <div key={idx} className="whitespace-nowrap">
-                                                                        {line}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </List.Item>
+                <Tabs
+                    items={[
+                        {
+                            key: 'network',
+                            label: <Space><Network size={16}/>网络资产</Space>,
+                            children: (
+                                <Space direction="vertical" size="middle" style={{width: '100%'}}>
+                                    <Card size="small" title="监听端口">
+                                        {result.assetInventory.networkAssets?.listeningPorts?.length ? (
+                                            <Table
+                                                size="small"
+                                                dataSource={result.assetInventory.networkAssets.listeningPorts}
+                                                columns={portColumns}
+                                                rowKey={(record, index) => `${record.address}:${record.port}-${index}`}
+                                                pagination={false}
+                                            />
+                                        ) : (
+                                            <Empty description="无数据"/>
+                                        )}
+                                    </Card>
+                                    <Card size="small" title="活跃连接">
+                                        {result.assetInventory.networkAssets?.connections?.length ? (
+                                            <Table
+                                                size="small"
+                                                dataSource={result.assetInventory.networkAssets.connections}
+                                                columns={connectionColumns}
+                                                rowKey={(record, index) => `${record.laddr?.ip}:${record.laddr?.port}-${record.raddr?.ip}:${record.raddr?.port}-${index}`}
+                                                pagination={false}
+                                            />
+                                        ) : (
+                                            <Empty description="无数据"/>
+                                        )}
+                                    </Card>
+                                    {result.statistics?.networkStats && (
+                                        <Card size="small" title="网络统计">
+                                            <Descriptions size="small" column={3}>
+                                                <Descriptions.Item label="监听端口总数">
+                                                    {result.statistics.networkStats.totalListeningPorts || 0}
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="公网端口">
+                                                    {result.statistics.networkStats.publicListeningPorts || 0}
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="活跃连接">
+                                                    {result.statistics.networkStats.activeConnections || 0}
+                                                </Descriptions.Item>
+                                            </Descriptions>
+                                        </Card>
                                     )}
-                                />
-                            )}
-                        </Panel>
-                    ))}
-                </Collapse>
+                                </Space>
+                            ),
+                        },
+                        {
+                            key: 'process',
+                            label: <Space><Cpu size={16}/>进程资产</Space>,
+                            children: (
+                                <Space direction="vertical" size="middle" style={{width: '100%'}}>
+                                    <Card size="small" title="TOP CPU进程">
+                                        {result.assetInventory.processAssets?.topCpuProcesses?.length ? (
+                                            <Table
+                                                size="small"
+                                                dataSource={result.assetInventory.processAssets.topCpuProcesses}
+                                                columns={processColumns}
+                                                rowKey="pid"
+                                                pagination={false}
+                                            />
+                                        ) : (
+                                            <Empty description="无数据"/>
+                                        )}
+                                    </Card>
+                                    <Card size="small" title="TOP 内存进程">
+                                        {result.assetInventory.processAssets?.topMemoryProcesses?.length ? (
+                                            <Table
+                                                size="small"
+                                                dataSource={result.assetInventory.processAssets.topMemoryProcesses}
+                                                columns={processColumns}
+                                                rowKey="pid"
+                                                pagination={false}
+                                            />
+                                        ) : (
+                                            <Empty description="无数据"/>
+                                        )}
+                                    </Card>
+                                </Space>
+                            ),
+                        },
+                        {
+                            key: 'user',
+                            label: <Space><Users size={16}/>用户资产</Space>,
+                            children: (
+                                <Card size="small" title="系统用户">
+                                    {result.assetInventory.userAssets?.systemUsers?.length ? (
+                                        <Table
+                                            size="small"
+                                            dataSource={result.assetInventory.userAssets.systemUsers}
+                                            columns={userColumns}
+                                            rowKey="username"
+                                            pagination={false}
+                                        />
+                                    ) : (
+                                        <Empty description="无数据"/>
+                                    )}
+                                </Card>
+                            ),
+                        },
+                        {
+                            key: 'file',
+                            label: <Space><FileText size={16}/>文件资产</Space>,
+                            children: (
+                                <Space direction="vertical" size="middle" style={{width: '100%'}}>
+                                    <Card size="small" title={<Space><Calendar size={16}/>定时任务</Space>}>
+                                        {result.assetInventory.fileAssets?.cronJobs?.length ? (
+                                            <Table
+                                                size="small"
+                                                dataSource={result.assetInventory.fileAssets.cronJobs}
+                                                columns={cronColumns}
+                                                rowKey={(record, index) => `${record.user}-${index}`}
+                                                pagination={false}
+                                            />
+                                        ) : (
+                                            <Empty description="无定时任务"/>
+                                        )}
+                                    </Card>
+                                    <Card size="small" title={<Space><Settings size={16}/>Systemd服务</Space>}>
+                                        {result.assetInventory.fileAssets?.systemdServices?.length ? (
+                                            <Table
+                                                size="small"
+                                                dataSource={result.assetInventory.fileAssets.systemdServices}
+                                                columns={serviceColumns}
+                                                rowKey="name"
+                                                pagination={false}
+                                            />
+                                        ) : (
+                                            <Empty description="无Systemd服务"/>
+                                        )}
+                                    </Card>
+                                    <Card size="small" title={<Space><PlayCircle size={16}/>启动脚本</Space>}>
+                                        {result.assetInventory.fileAssets?.startupScripts?.length ? (
+                                            <Table
+                                                size="small"
+                                                dataSource={result.assetInventory.fileAssets.startupScripts}
+                                                columns={startupScriptColumns}
+                                                rowKey={(record, index) => `${record.path}-${index}`}
+                                                pagination={false}
+                                            />
+                                        ) : (
+                                            <Empty description="无启动脚本"/>
+                                        )}
+                                    </Card>
+                                </Space>
+                            ),
+                        },
+                        {
+                            key: 'kernel',
+                            label: <Space><Shield size={16}/>内核信息</Space>,
+                            children: (
+                                <Space direction="vertical" size="middle" style={{width: '100%'}}>
+                                    <Card size="small" title="已加载内核模块">
+                                        {result.assetInventory.kernelAssets?.loadedModules?.length ? (
+                                            <Table
+                                                size="small"
+                                                dataSource={result.assetInventory.kernelAssets.loadedModules}
+                                                columns={moduleColumns}
+                                                rowKey="name"
+                                                pagination={false}
+                                            />
+                                        ) : (
+                                            <Empty description="无已加载模块"/>
+                                        )}
+                                    </Card>
+                                    {result.assetInventory.kernelAssets?.securityModules && (
+                                        <Card size="small" title="安全模块状态">
+                                            <Descriptions size="small" column={1}>
+                                                <Descriptions.Item label="SELinux">
+                                                    <Tag color={
+                                                        result.assetInventory.kernelAssets.securityModules.selinuxStatus === 'enforcing' ? 'success' :
+                                                            result.assetInventory.kernelAssets.securityModules.selinuxStatus === 'permissive' ? 'warning' : 'default'
+                                                    }>
+                                                        {result.assetInventory.kernelAssets.securityModules.selinuxStatus || 'unknown'}
+                                                    </Tag>
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="AppArmor">
+                                                    <Tag color={
+                                                        result.assetInventory.kernelAssets.securityModules.apparmorStatus === 'enabled' ? 'success' : 'default'
+                                                    }>
+                                                        {result.assetInventory.kernelAssets.securityModules.apparmorStatus || 'unknown'}
+                                                    </Tag>
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Secure Boot">
+                                                    <Tag color={
+                                                        result.assetInventory.kernelAssets.securityModules.secureBootState === 'enabled' ? 'success' : 'default'
+                                                    }>
+                                                        {result.assetInventory.kernelAssets.securityModules.secureBootState || 'unknown'}
+                                                    </Tag>
+                                                </Descriptions.Item>
+                                            </Descriptions>
+                                        </Card>
+                                    )}
+                                    {result.assetInventory.kernelAssets?.kernelParameters && (
+                                        <Card size="small" title="关键内核参数">
+                                            <Descriptions size="small" column={1}>
+                                                {Object.entries(result.assetInventory.kernelAssets.kernelParameters).map(([key, value]) => (
+                                                    <Descriptions.Item key={key} label={key}>
+                                                        <code>{value}</code>
+                                                    </Descriptions.Item>
+                                                ))}
+                                            </Descriptions>
+                                        </Card>
+                                    )}
+                                </Space>
+                            ),
+                        },
+                    ]}
+                />
             </Card>
 
-            {/* 修复建议 */}
-            {result.recommendations && result.recommendations.length > 0 && (
-                <Card
-                    title={<span className="font-semibold">修复建议</span>}
-                    variant={'outlined'}
-                >
-                    <List
-                        dataSource={result.recommendations}
-                        renderItem={(item, index) => (
-                            <List.Item>
-                                <Space align="start">
-                                    <span className="font-semibold text-gray-500">{index + 1}.</span>
-                                    <span className={
-                                        item.startsWith('【紧急】') ? 'text-red-600 font-medium' :
-                                            item.startsWith('【警告】') ? 'text-yellow-600' :
-                                                'text-gray-700'
-                                    }>
-                                        {item}
-                                    </span>
-                                </Space>
-                            </List.Item>
-                        )}
-                    />
-                </Card>
+            {/* 采集警告 */}
+            {result.collectWarnings && result.collectWarnings.length > 0 && (
+                <Alert
+                    type="warning"
+                    message="采集警告"
+                    description={
+                        <ul className="list-disc pl-5">
+                            {result.collectWarnings.map((warning, index) => (
+                                <li key={index}>{warning}</li>
+                            ))}
+                        </ul>
+                    }
+                />
             )}
-        </div>
+        </Space>
     );
 };
 

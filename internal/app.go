@@ -288,25 +288,8 @@ func autoMigrate(database *gorm.DB) error {
 
 // initDefaultProperties 初始化默认属性配置
 func initDefaultProperties(ctx context.Context, components *AppComponents, logger *zap.Logger) error {
-	const propertyIDNotificationChannels = "notification_channels"
-
-	// 检查是否已存在通知渠道配置
-	_, err := components.PropertyService.Get(ctx, propertyIDNotificationChannels)
-	if err == nil {
-		// 配置已存在，跳过初始化
-		logger.Info("通知渠道配置已存在，跳过初始化")
-		return nil
-	}
-
-	// 创建默认空配置
-	emptyChannels := make([]interface{}, 0)
-	err = components.PropertyService.Set(ctx, propertyIDNotificationChannels, "通知渠道配置", emptyChannels)
-	if err != nil {
-		return err
-	}
-
-	logger.Info("默认通知渠道配置初始化成功")
-	return nil
+	// 使用 PropertyService 的初始化方法
+	return components.PropertyService.InitializeDefaultConfigs(ctx)
 }
 
 func ErrorHandler(logger *zap.Logger) func(next echo.HandlerFunc) echo.HandlerFunc {

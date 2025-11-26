@@ -5,6 +5,7 @@ declare global {
         SystemConfig: {
             SystemNameZh: string;
             SystemNameEn: string;
+            ICPCode: string;
         };
     }
 }

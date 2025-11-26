@@ -111,20 +111,12 @@ export interface SystemInfo {
     publicIP?: string;
 }
 
-export interface Evidence {
-    fileHash?: string;
-    processTree?: string[];
-    filePath?: string;
-    timestamp?: number;
-    networkConn?: string;
-    riskLevel?: 'low' | 'medium' | 'high';
-}
-
 export interface SecurityCheckSub {
-    name: string;
+    name?: string;
     status: 'pass' | 'fail' | 'warn' | 'skip';
+    severity?: 'high' | 'medium' | 'low';
     message: string;
-    evidence?: Evidence;
+    evidence?: string; // 简化为字符串
 }
 
 export interface SecurityCheck {
@@ -134,14 +126,104 @@ export interface SecurityCheck {
     details?: SecurityCheckSub[];
 }
 
+// 资产清单相关类型
+export interface ListeningPort {
+    protocol: string;
+    address: string;
+    port: number;
+    processName?: string;
+    processPid?: number;
+    processPath?: string;
+    isPublic: boolean;
+}
+
+export interface NetworkAssets {
+    listeningPorts?: ListeningPort[];
+    connections?: any[];
+    interfaces?: any[];
+}
+
+export interface ProcessInfo {
+    pid: number;
+    name: string;
+    cmdline?: string;
+    exe?: string;
+    username?: string;
+    cpuPercent: number;
+    memPercent: number;
+    memoryMb: number;
+}
+
+export interface ProcessAssets {
+    topCpuProcesses?: ProcessInfo[];
+    topMemoryProcesses?: ProcessInfo[];
+}
+
+export interface UserInfo {
+    username: string;
+    uid: string;
+    gid: string;
+    homeDir?: string;
+    shell?: string;
+    isLoginable: boolean;
+    isRootEquiv: boolean;
+    hasPassword: boolean;
+}
+
+export interface UserAssets {
+    systemUsers?: UserInfo[];
+    loginHistory?: any[];
+    sshKeys?: any[];
+    sudoUsers?: any[];
+}
+
+export interface FileAssets {
+    cronJobs?: any[];
+    systemdServices?: any[];
+    startupScripts?: any[];
+    recentModified?: any[];
+    largeFiles?: any[];
+}
+
+export interface KernelAssets {
+    loadedModules?: any[];
+    kernelParameters?: Record<string, string>;
+    securityModules?: any;
+}
+
+export interface AssetInventory {
+    networkAssets?: NetworkAssets;
+    processAssets?: ProcessAssets;
+    userAssets?: UserAssets;
+    fileAssets?: FileAssets;
+    kernelAssets?: KernelAssets;
+}
+
+export interface AuditStatistics {
+    networkStats?: any;
+    processStats?: any;
+    userStats?: any;
+    fileStats?: any;
+}
+
+// VPS审计结果(Agent端收集的原始数据)
 export interface VPSAuditResult {
     systemInfo: SystemInfo;
-    securityChecks: SecurityCheck[];
+    assetInventory: AssetInventory;
+    statistics: AuditStatistics;
     startTime: number;
     endTime: number;
+    collectWarnings?: string[];
+}
+
+// VPS安全分析结果(Server端分析后的结果)
+export interface VPSAuditAnalysis {
+    auditId: string;
+    securityChecks: SecurityCheck[];
     riskScore: number;
     threatLevel: 'low' | 'medium' | 'high' | 'critical';
     recommendations?: string[];
+    analyzedAt: number;
 }
 
 export interface AuditResultSummary {

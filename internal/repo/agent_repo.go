@@ -95,6 +95,19 @@ func (r *AgentRepo) GetLatestAuditResult(ctx context.Context, agentID string) (*
 	return &audit, nil
 }
 
+// GetLatestAuditResultByType 根据类型获取最新的审计结果
+func (r *AgentRepo) GetLatestAuditResultByType(ctx context.Context, agentID string, resultType string) (*models.AuditResult, error) {
+	var audit models.AuditResult
+	err := r.db.WithContext(ctx).
+		Where("agent_id = ? AND type = ?", agentID, resultType).
+		Order("created_at DESC").
+		First(&audit).Error
+	if err != nil {
+		return nil, err
+	}
+	return &audit, nil
+}
+
 // ListAuditResults 获取审计结果列表
 func (r *AgentRepo) ListAuditResults(ctx context.Context, agentID string) ([]models.AuditResult, error) {
 	var audits []models.AuditResult

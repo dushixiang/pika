@@ -633,12 +633,21 @@ func (s *AgentService) SaveAuditResult(ctx context.Context, agentID string, resu
 	}
 
 	// 保存到数据库
-	return s.AgentRepo.SaveAuditResult(ctx, auditRecord)
+	if err := s.AgentRepo.SaveAuditResult(ctx, auditRecord); err != nil {
+		return err
+	}
+
+	s.logger.Info("审计结果保存成功",
+		zap.String("agentId", agentID),
+		zap.Int64("auditId", auditRecord.ID),
+	)
+
+	return nil
 }
 
-// GetAuditResult 获取最新的审计结果
+// GetAuditResult 获取最新的审计结果(原始数据)
 func (s *AgentService) GetAuditResult(ctx context.Context, agentID string) (*protocol.VPSAuditResult, error) {
-	record, err := s.AgentRepo.GetLatestAuditResult(ctx, agentID)
+	record, err := s.AgentRepo.GetLatestAuditResultByType(ctx, agentID, "vps_audit")
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -669,33 +678,19 @@ func (s *AgentService) ListAuditResults(ctx context.Context, agentID string) ([]
 			continue
 		}
 
-		// 统计检查结果
-		passCount := 0
-		failCount := 0
-		warnCount := 0
-		for _, check := range auditResult.SecurityChecks {
-			switch check.Status {
-			case "pass":
-				passCount++
-			case "fail":
-				failCount++
-			case "warn":
-				warnCount++
-			}
-		}
+		// TODO: 统计安全检查结果应该来自 Server 端分析后的 VPSAuditAnalysis
+		// Agent 端已经不再产生 SecurityChecks,需要实现 Server 端分析逻辑
 
 		results = append(results, map[string]interface{}{
-			"id":         record.ID,
-			"agentId":    record.AgentID,
-			"type":       record.Type,
-			"startTime":  record.StartTime,
-			"endTime":    record.EndTime,
-			"createdAt":  record.CreatedAt,
-			"passCount":  passCount,
-			"failCount":  failCount,
-			"warnCount":  warnCount,
-			"totalCount": len(auditResult.SecurityChecks),
-			"systemInfo": auditResult.SystemInfo,
+			"id":          record.ID,
+			"agentId":     record.AgentID,
+			"type":        record.Type,
+			"startTime":   record.StartTime,
+			"endTime":     record.EndTime,
+			"createdAt":   record.CreatedAt,
+			"systemInfo":  auditResult.SystemInfo,
+			"statistics":  auditResult.Statistics,
+			"collectTime": auditResult.EndTime - auditResult.StartTime,
 		})
 	}
 
