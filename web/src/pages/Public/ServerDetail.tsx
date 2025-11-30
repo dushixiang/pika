@@ -30,8 +30,6 @@ import {
     getAgentLatestMetrics,
     getAgentMetrics,
     type GetAgentMetricsRequest,
-    getNetworkMetricsByInterface,
-    type NetworkMetricByInterface
 } from '@/api/agent.ts';
 import type {
     Agent,
@@ -385,38 +383,6 @@ const useAggregatedMetrics = (agentId: string | undefined, range: TimeRange) => 
     return metrics;
 };
 
-// 用于获取按网卡分组的网络指标
-const useNetworkMetricsByInterface = (agentId: string | undefined, range: TimeRange) => {
-    const [networkMetrics, setNetworkMetrics] = useState<NetworkMetricByInterface[]>([]);
-
-    useEffect(() => {
-        if (!agentId) {
-            setNetworkMetrics([]);
-            return;
-        }
-
-        let cancelled = false;
-
-        const fetchNetworkMetrics = async () => {
-            try {
-                const response = await getNetworkMetricsByInterface({agentId, range});
-                if (cancelled) return;
-                setNetworkMetrics(response.data.metrics || []);
-            } catch (error) {
-                console.error('Failed to load network metrics by interface:', error);
-            }
-        };
-
-        fetchNetworkMetrics();
-        const timer = setInterval(fetchNetworkMetrics, 30000);
-        return () => {
-            cancelled = true;
-            clearInterval(timer);
-        };
-    }, [agentId, range]);
-
-    return networkMetrics;
-};
 
 type SnapshotCardData = {
     key: string;
@@ -525,7 +491,6 @@ const ServerDetail = () => {
     const [selectedInterface, setSelectedInterface] = useState<string>('all');
     const {agent, latestMetrics, loading} = useAgentOverview(id);
     const metricsData = useAggregatedMetrics(id, timeRange);
-    const networkMetricsByInterface = useNetworkMetricsByInterface(id, timeRange);
 
     const cpuChartData = useMemo(
         () =>
@@ -551,14 +516,14 @@ const ServerDetail = () => {
         [metricsData.memory]
     );
 
-    // 获取所有可用的网卡列表（从按网卡分组的数据中获取）
+    // 获取所有可用的网卡列表（从 metricsData.network 中获取）
     const availableInterfaces = useMemo(() => {
         const interfaces = new Set<string>();
-        networkMetricsByInterface.forEach((item) => {
+        metricsData.network.forEach((item) => {
             interfaces.add(item.interface);
         });
         return Array.from(interfaces).sort();
-    }, [networkMetricsByInterface]);
+    }, [metricsData.network]);
 
     useEffect(() => {
         if (selectedInterface === 'all') {
@@ -570,10 +535,10 @@ const ServerDetail = () => {
     }, [availableInterfaces, selectedInterface]);
 
     const networkChartData = useMemo(() => {
-        if (networkMetricsByInterface.length === 0) return [];
+        if (metricsData.network.length === 0) return [];
 
         // 按时间戳分组数据
-        const grouped = networkMetricsByInterface.reduce((acc, item) => {
+        const grouped = metricsData.network.reduce((acc, item) => {
             const time = new Date(item.timestamp).toLocaleTimeString('zh-CN', {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -596,7 +561,7 @@ const ServerDetail = () => {
         }, {} as Record<string, any>);
 
         return Object.values(grouped);
-    }, [networkMetricsByInterface, selectedInterface]);
+    }, [metricsData.network, selectedInterface]);
 
     // Disk I/O 图表数据（汇总所有磁盘）
     const diskIOChartData = useMemo(() => {

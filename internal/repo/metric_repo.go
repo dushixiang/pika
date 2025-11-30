@@ -335,32 +335,9 @@ type AggregatedNetworkMetricByInterface struct {
 	MaxRecvRate float64 `json:"maxRecvRate"`
 }
 
-// GetNetworkMetrics 获取聚合后的网络指标（合并所有网卡接口）
+// GetNetworkMetrics 获取聚合后的网络指标（按网卡接口分组）
 func (r *MetricRepo) GetNetworkMetrics(ctx context.Context, agentID string, start, end int64, interval int) ([]AggregatedNetworkMetric, error) {
 	var metrics []AggregatedNetworkMetric
-
-	query := `
-		SELECT
-			CAST(FLOOR(timestamp / ?) * ? AS BIGINT) as timestamp,
-			MAX(bytes_sent_rate) as max_sent_rate,
-			MAX(bytes_recv_rate) as max_recv_rate
-		FROM network_metrics
-		WHERE agent_id = ? AND timestamp >= ? AND timestamp <= ?
-		GROUP BY 1
-		ORDER BY timestamp ASC
-	`
-
-	intervalMs := int64(interval * 1000)
-	err := r.db.WithContext(ctx).
-		Raw(query, intervalMs, intervalMs, agentID, start, end).
-		Scan(&metrics).Error
-
-	return metrics, err
-}
-
-// GetNetworkMetricsByInterface 获取按网卡接口分组的网络指标
-func (r *MetricRepo) GetNetworkMetricsByInterface(ctx context.Context, agentID string, start, end int64, interval int) ([]AggregatedNetworkMetricByInterface, error) {
-	var metrics []AggregatedNetworkMetricByInterface
 
 	query := `
 		SELECT

@@ -522,13 +522,6 @@ func (s *AgentService) GetMetrics(ctx context.Context, agentID, metricType strin
 	}
 }
 
-// GetNetworkMetricsByInterface 获取按网卡接口分组的网络指标
-func (s *AgentService) GetNetworkMetricsByInterface(ctx context.Context, agentID string, start, end int64, interval int) (interface{}, error) {
-	start, end = s.normalizeTimeRange(ctx, start, end)
-	interval = s.DetermineInterval(ctx, start, end, interval)
-	return s.metricRepo.GetNetworkMetricsByInterface(ctx, agentID, start, end, interval)
-}
-
 // DetermineInterval 根据配置、用户请求和时间范围决定聚合粒度
 func (s *AgentService) DetermineInterval(ctx context.Context, start, end int64, requested int) int {
 	cfg := s.getMetricsConfig(ctx)
@@ -555,12 +548,6 @@ func (s *AgentService) normalizeTimeRange(ctx context.Context, start, end int64)
 		end = start + 1000
 	}
 	return start, end
-}
-
-// 默认间隔选择（保留旧行为的同时限制最大数据点）
-func defaultIntervalWithLimit(start, end int64) int {
-	base := calculateBaseInterval(start, end)
-	return adjustIntervalForMaxPoints(start, end, base, defaultMaxQueryPoints)
 }
 
 func calculateBaseInterval(start, end int64) int {

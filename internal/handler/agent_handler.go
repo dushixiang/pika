@@ -444,43 +444,6 @@ func (h *AgentHandler) GetMetrics(c echo.Context) error {
 	})
 }
 
-// GetNetworkMetricsByInterface 获取按网卡接口分组的网络指标（公开接口，已登录返回全部，未登录返回公开可见）
-func (h *AgentHandler) GetNetworkMetricsByInterface(c echo.Context) error {
-	agentID := c.Param("id")
-	ctx := c.Request().Context()
-
-	// 验证探针访问权限
-	if _, err := h.agentService.GetAgentByAuth(ctx, agentID, utils.IsAuthenticated(c)); err != nil {
-		return err
-	}
-
-	rangeParam := c.QueryParam("range")
-
-	// 解析时间范围
-	start, end, err := parseTimeRange(rangeParam)
-	if err != nil {
-		return orz.NewError(400, err.Error())
-	}
-
-	// 服务端自动计算最优聚合间隔
-	interval := service.CalculateInterval(start, end)
-
-	metrics, err := h.agentService.GetNetworkMetricsByInterface(ctx, agentID, start, end, interval)
-	if err != nil {
-		return err
-	}
-
-	return orz.Ok(c, orz.Map{
-		"agentId":  agentID,
-		"type":     "network_by_interface",
-		"range":    rangeParam,
-		"start":    start,
-		"end":      end,
-		"interval": interval,
-		"metrics":  metrics,
-	})
-}
-
 // GetLatestMetrics 获取探针最新指标（公开接口，已登录返回全部，未登录返回公开可见）
 func (h *AgentHandler) GetLatestMetrics(c echo.Context) error {
 	id := c.Param("id")
