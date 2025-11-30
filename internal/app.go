@@ -205,7 +205,8 @@ func setupApi(app *orz.App, components *AppComponents) {
 	{
 		adminApi.GET("/version", func(c echo.Context) error {
 			return c.JSON(http.StatusOK, orz.Map{
-				"version": version.GetVersion(),
+				"version":      version.GetVersion(),
+				"agentVersion": version.GetAgentVersion(),
 			})
 		})
 		// 账户相关

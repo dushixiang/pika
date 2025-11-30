@@ -6,7 +6,7 @@ import {Activity, BookOpen, Eye, Key, LogOut, Server, Settings, User as UserIcon
 import {logout} from '@/api/auth.ts';
 import type {User} from '@/types';
 import {cn} from '@/lib/utils';
-import {getServerVersion} from "@/api/version.ts";
+import {getServerVersion, type VersionInfo} from "@/api/version.ts";
 
 interface NavItem {
     key: string;
@@ -23,7 +23,7 @@ const AdminLayout = () => {
     const location = useLocation();
     const {message: messageApi, modal} = App.useApp();
     const [userInfo, setUserInfo] = useState<User | null>(null);
-    const [version, setVersion] = useState<string>('');
+    const [version, setVersion] = useState<VersionInfo>();
 
     const menuItems: NavItem[] = useMemo(
         () => [
@@ -69,7 +69,7 @@ const AdminLayout = () => {
         // 获取服务端版本信息
         getServerVersion()
             .then((res) => {
-                setVersion(res.data.version);
+                setVersion(res.data);
             })
             .catch((err) => {
                 console.error('获取版本信息失败:', err);
@@ -219,7 +219,8 @@ const AdminLayout = () => {
                                 <p className="text-[11px] uppercase tracking-[0.25em] text-gray-400">版本信息</p>
                                 <div className="mt-2 flex items-end justify-between">
                                     <div>
-                                        <p className="text-sm font-semibold text-gray-900">{version}</p>
+                                        <p className="text-sm font-semibold text-gray-900">Server: {version.version}</p>
+                                        <p className="text-sm font-semibold text-gray-900">Agent: {version.agentVersion}</p>
                                         <p className="text-[11px] text-gray-500 uppercase tracking-[0.1em]">
                                             {window.SystemConfig?.SystemNameEn}
                                         </p>
