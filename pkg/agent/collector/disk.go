@@ -78,7 +78,35 @@ func shouldIgnorePartition(partition disk.PartitionStat) bool {
 		}
 	}
 
-	// 过滤掉只读的 CD-ROM 等
+	// 在 Windows 上过滤掉 CD-ROM 和特殊文件系统
+	if runtime.GOOS == "windows" {
+		// 过滤 CD-ROM 文件系统类型
+		ignoredFsTypes := []string{
+			"",        // 空驱动器(如未插入光盘的光驱)
+			"UDF",     // 通用光盘格式
+			"CDFS",    // CD-ROM 文件系统
+			"iso9660", // ISO 9660 光盘格式
+		}
+
+		for _, ignoredType := range ignoredFsTypes {
+			if strings.EqualFold(partition.Fstype, ignoredType) {
+				return true
+			}
+		}
+
+		// 检查是否为 CD-ROM 驱动器(通过挂载选项)
+		for _, opt := range partition.Opts {
+			optLower := strings.ToLower(opt)
+			if strings.Contains(optLower, "cdrom") || strings.Contains(optLower, "readonly") {
+				// CD-ROM 通常是只读的,但也要排除其他只读设备的误判
+				if partition.Fstype == "" || partition.Fstype == "CDFS" || partition.Fstype == "UDF" {
+					return true
+				}
+			}
+		}
+	}
+
+	// 其他系统:过滤掉只读的 CD-ROM 等
 	for _, opt := range partition.Opts {
 		if strings.Contains(strings.ToLower(opt), "cdrom") {
 			return true

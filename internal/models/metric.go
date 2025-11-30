@@ -43,6 +43,7 @@ type DiskMetric struct {
 	Free         uint64  `json:"free"`                                                                  // 空闲(字节)
 	UsagePercent float64 `json:"usagePercent"`                                                          // 使用率
 	Timestamp    int64   `gorm:"index:idx_disk_agent_ts,priority:2;index:idx_disk_ts" json:"timestamp"` // 时间戳（毫秒）
+	TotalDisks   int     `json:"totalDisks"`                                                            // 磁盘总数量
 }
 
 func (DiskMetric) TableName() string {
@@ -51,14 +52,15 @@ func (DiskMetric) TableName() string {
 
 // NetworkMetric 网络指标
 type NetworkMetric struct {
-	ID             uint   `gorm:"primaryKey;autoIncrement" json:"id"`
-	AgentID        string `gorm:"index:idx_net_agent_ts,priority:1" json:"agentId"`                    // 探针ID
-	Interface      string `json:"interface"`                                                           // 网卡名称
-	BytesSentRate  uint64 `json:"bytesSentRate"`                                                       // 发送速率(字节/秒)
-	BytesRecvRate  uint64 `json:"bytesRecvRate"`                                                       // 接收速率(字节/秒)
-	BytesSentTotal uint64 `json:"bytesSentTotal"`                                                      // 累计发送字节数
-	BytesRecvTotal uint64 `json:"bytesRecvTotal"`                                                      // 累计接收字节数
-	Timestamp      int64  `gorm:"index:idx_net_agent_ts,priority:2;index:idx_net_ts" json:"timestamp"` // 时间戳（毫秒）
+	ID              uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	AgentID         string `gorm:"index:idx_net_agent_ts,priority:1" json:"agentId"`                    // 探针ID
+	Interface       string `json:"interface"`                                                           // 网卡名称
+	BytesSentRate   uint64 `json:"bytesSentRate"`                                                       // 发送速率(字节/秒)
+	BytesRecvRate   uint64 `json:"bytesRecvRate"`                                                       // 接收速率(字节/秒)
+	BytesSentTotal  uint64 `json:"bytesSentTotal"`                                                      // 累计发送字节数
+	BytesRecvTotal  uint64 `json:"bytesRecvTotal"`                                                      // 累计接收字节数
+	Timestamp       int64  `gorm:"index:idx_net_agent_ts,priority:2;index:idx_net_ts" json:"timestamp"` // 时间戳（毫秒）
+	TotalInterfaces int    `json:"totalInterfaces"`                                                     // 网卡总数量
 }
 
 func (NetworkMetric) TableName() string {

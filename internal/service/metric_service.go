@@ -143,6 +143,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 			Free:         totalFree,
 			UsagePercent: maxUsagePercent, // 使用率取最大值
 			Timestamp:    now,
+			TotalDisks:   len(diskDataList),
 		}
 		return s.metricRepo.SaveDiskMetric(ctx, totalMetric)
 
@@ -185,13 +186,14 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 
 		// 保存合并后的总和数据（interface 字段设置为空字符串）
 		totalMetric := &models.NetworkMetric{
-			AgentID:        agentID,
-			Interface:      "all", // 空字符串表示所有网卡的合并数据
-			BytesSentRate:  totalSentRate,
-			BytesRecvRate:  totalRecvRate,
-			BytesSentTotal: totalSentTotal,
-			BytesRecvTotal: totalRecvTotal,
-			Timestamp:      now,
+			AgentID:         agentID,
+			Interface:       "all", // 空字符串表示所有网卡的合并数据
+			BytesSentRate:   totalSentRate,
+			BytesRecvRate:   totalRecvRate,
+			BytesSentTotal:  totalSentTotal,
+			BytesRecvTotal:  totalRecvTotal,
+			Timestamp:       now,
+			TotalInterfaces: len(networkDataList),
 		}
 		return s.metricRepo.SaveNetworkMetric(ctx, totalMetric)
 
@@ -736,40 +738,25 @@ func (s *MetricService) GetLatestMetrics(ctx context.Context, agentID string) (*
 	}
 
 	// 获取最新磁盘指标并计算平均使用率和总容量
-	if disks, err := s.metricRepo.GetLatestDiskMetrics(ctx, agentID); err == nil && len(disks) > 0 {
-		var totalUsage float64
-		var totalSpace, usedSpace, freeSpace uint64
-		for _, disk := range disks {
-			totalUsage += disk.UsagePercent
-			totalSpace += disk.Total
-			usedSpace += disk.Used
-			freeSpace += disk.Free
-		}
+	if disk, err := s.metricRepo.GetLatestDiskMetrics(ctx, agentID); err == nil {
 		result.Disk = &DiskSummary{
-			AvgUsagePercent: totalUsage / float64(len(disks)),
-			TotalDisks:      len(disks),
-			Total:           totalSpace,
-			Used:            usedSpace,
-			Free:            freeSpace,
+			AvgUsagePercent: disk.UsagePercent,
+			TotalDisks:      disk.TotalDisks,
+			Total:           disk.Total,
+			Used:            disk.Used,
+			Free:            disk.Free,
 		}
 	}
 
 	// 获取最新网络指标并汇总速率和累计流量
 	// 注意: 采集器已经计算好了每秒速率,这里直接汇总所有网卡的速率和累计流量
-	if networks, err := s.metricRepo.GetLatestNetworkMetrics(ctx, agentID); err == nil && len(networks) > 0 {
-		var totalSentRate, totalRecvRate, totalSentTotal, totalRecvTotal uint64
-		for _, net := range networks {
-			totalSentRate += net.BytesSentRate   // 累加每个网卡的发送速率
-			totalRecvRate += net.BytesRecvRate   // 累加每个网卡的接收速率
-			totalSentTotal += net.BytesSentTotal // 累加每个网卡的累计发送流量
-			totalRecvTotal += net.BytesRecvTotal // 累加每个网卡的累计接收流量
-		}
+	if network, err := s.metricRepo.GetLatestNetworkMetrics(ctx, agentID); err == nil {
 		result.Network = &NetworkSummary{
-			TotalBytesSentRate:  totalSentRate,  // 所有网卡的总发送速率(字节/秒)
-			TotalBytesRecvRate:  totalRecvRate,  // 所有网卡的总接收速率(字节/秒)
-			TotalBytesSentTotal: totalSentTotal, // 所有网卡的累计发送流量
-			TotalBytesRecvTotal: totalRecvTotal, // 所有网卡的累计接收流量
-			TotalInterfaces:     len(networks),
+			TotalBytesSentRate:  network.BytesSentRate,  // 所有网卡的总发送速率(字节/秒)
+			TotalBytesRecvRate:  network.BytesRecvRate,  // 所有网卡的总接收速率(字节/秒)
+			TotalBytesSentTotal: network.BytesSentTotal, // 所有网卡的累计发送流量
+			TotalBytesRecvTotal: network.BytesRecvTotal, // 所有网卡的累计接收流量
+			TotalInterfaces:     network.TotalInterfaces,
 		}
 	}
 

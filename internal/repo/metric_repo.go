@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/dushixiang/pika/internal/models"
 	"gorm.io/gorm"
@@ -391,7 +392,7 @@ func (r *MetricRepo) GetLatestMemoryMetric(ctx context.Context, agentID string) 
 }
 
 // GetLatestDiskMetrics 获取最新的磁盘指标（所有挂载点）
-func (r *MetricRepo) GetLatestDiskMetrics(ctx context.Context, agentID string) ([]models.DiskMetric, error) {
+func (r *MetricRepo) GetLatestDiskMetrics(ctx context.Context, agentID string) (*models.DiskMetric, error) {
 	// 先获取最新时间戳
 	var latestTimestamp sql.NullInt64
 	err := r.db.WithContext(ctx).
@@ -405,20 +406,20 @@ func (r *MetricRepo) GetLatestDiskMetrics(ctx context.Context, agentID string) (
 	}
 
 	if !latestTimestamp.Valid {
-		return []models.DiskMetric{}, nil
+		return nil, fmt.Errorf("no disk metrics found for agent %s", agentID)
 	}
 
 	// 获取该时间戳的所有磁盘数据
-	var metrics []models.DiskMetric
+	var metric models.DiskMetric
 	err = r.db.WithContext(ctx).
-		Where("agent_id = ? AND timestamp = ?", agentID, latestTimestamp.Int64).
-		Find(&metrics).Error
+		Where("mount_point = ? AND agent_id = ? AND timestamp = ?", "all", agentID, latestTimestamp.Int64).
+		First(&metric).Error
 
-	return metrics, err
+	return &metric, err
 }
 
 // GetLatestNetworkMetrics 获取最新的网络指标（所有网卡）
-func (r *MetricRepo) GetLatestNetworkMetrics(ctx context.Context, agentID string) ([]models.NetworkMetric, error) {
+func (r *MetricRepo) GetLatestNetworkMetrics(ctx context.Context, agentID string) (*models.NetworkMetric, error) {
 	// 先获取最新时间戳
 	var latestTimestamp sql.NullInt64
 	err := r.db.WithContext(ctx).
@@ -432,16 +433,16 @@ func (r *MetricRepo) GetLatestNetworkMetrics(ctx context.Context, agentID string
 	}
 
 	if !latestTimestamp.Valid {
-		return []models.NetworkMetric{}, nil
+		return nil, fmt.Errorf("no network metrics found for agent %s", agentID)
 	}
 
 	// 获取该时间戳的所有网络数据
-	var metrics []models.NetworkMetric
+	var metric models.NetworkMetric
 	err = r.db.WithContext(ctx).
 		Where("agent_id = ? AND timestamp = ?", agentID, latestTimestamp.Int64).
-		Find(&metrics).Error
+		First(&metric).Error
 
-	return metrics, err
+	return &metric, err
 }
 
 // SaveMonitorMetric 保存监控指标
