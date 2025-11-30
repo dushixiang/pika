@@ -9,7 +9,7 @@ AGENT_VERSION ?= $(shell \
 	if [ "$$LAST_COMMIT" = "dev" ]; then \
 		echo "dev"; \
 	else \
-		echo "agent-$$LAST_COMMIT-$$COMMIT_COUNT"; \
+		echo "$$LAST_COMMIT-$$COMMIT_COUNT"; \
 	fi \
 )
 

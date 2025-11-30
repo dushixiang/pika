@@ -823,8 +823,11 @@ detect_platform() {
         x86_64)
             ARCH="amd64"
             ;;
-        aarch64|arm64)
+        aarch64|arm64|armv8*)
             ARCH="arm64"
+            ;;
+        armv7*|armv7l)
+            ARCH="armv7"
             ;;
         loongarch64)
             ARCH="loong64"
