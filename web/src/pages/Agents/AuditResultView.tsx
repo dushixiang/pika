@@ -248,7 +248,7 @@ const AuditResultView = ({result}: AuditResultViewProps) => {
     ];
 
     const loginRecordColumns = [
-        {title: '用户名', dataIndex: 'username', key: 'username', width: 120},
+        {title: '用户名', dataIndex: 'username', key: 'username'},
         {title: 'IP地址', dataIndex: 'ip', key: 'ip', width: 150},
         {title: '归属地', dataIndex: 'location', key: 'location', width: 200, ellipsis: true},
         {title: '终端', dataIndex: 'terminal', key: 'terminal', width: 100},
@@ -256,7 +256,8 @@ const AuditResultView = ({result}: AuditResultViewProps) => {
             title: '登录时间',
             dataIndex: 'timestamp',
             key: 'timestamp',
-            render: (val: number) => dayjs(val).format('YYYY-MM-DD HH:mm:ss')
+            render: (val: number) => dayjs(val).format('YYYY-MM-DD HH:mm:ss'),
+            width: 180,
         },
         {
             title: '状态',
@@ -791,12 +792,7 @@ const AuditResultView = ({result}: AuditResultViewProps) => {
                                                 dataSource={result.assetInventory.loginAssets.successfulLogins}
                                                 columns={loginRecordColumns}
                                                 rowKey={(record, index) => `success-${index}`}
-                                                pagination={{
-                                                    pageSize: 20,
-                                                    showSizeChanger: true,
-                                                    showTotal: (total) => `共 ${total} 条记录`,
-                                                    pageSizeOptions: ['10', '20', '50', '100']
-                                                }}
+                                                pagination={false}
                                             />
                                         ) : (
                                             <Empty description="无登录历史"/>
@@ -810,12 +806,7 @@ const AuditResultView = ({result}: AuditResultViewProps) => {
                                                 dataSource={result.assetInventory.loginAssets.failedLogins}
                                                 columns={loginRecordColumns}
                                                 rowKey={(record, index) => `failed-${index}`}
-                                                pagination={{
-                                                    pageSize: 20,
-                                                    showSizeChanger: true,
-                                                    showTotal: (total) => `共 ${total} 条记录`,
-                                                    pageSizeOptions: ['10', '20', '50', '100']
-                                                }}
+                                                pagination={false}
                                             />
                                         ) : (
                                             <Empty description="无失败登录记录"/>
