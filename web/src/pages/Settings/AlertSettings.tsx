@@ -1,9 +1,8 @@
 import {useEffect} from 'react';
 import {App, Button, Card, Form, InputNumber, Space, Switch} from 'antd';
-import {Save} from 'lucide-react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {getAlertConfig, saveAlertConfig} from '@/api/property';
 import type {AlertConfig} from '@/api/property';
+import {getAlertConfig, saveAlertConfig} from '@/api/property';
 import {getErrorMessage} from '@/lib/utils';
 
 const AlertSettings = () => {
@@ -201,7 +200,6 @@ const AlertSettings = () => {
 
                     <Button
                         type="primary"
-                        icon={<Save size={16}/>}
                         loading={saveMutation.isPending}
                         onClick={handleSubmit}
                     >
