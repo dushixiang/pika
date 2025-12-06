@@ -152,12 +152,13 @@ const DDNSPage = () => {
         {
             title: '操作',
             valueType: 'option',
-            width: 220,
+            width: 200,
             render: (_, record) => [
                 <Button
                     key="records"
                     type="link"
                     size="small"
+                    style={{margin: 0, padding: 0}}
                     onClick={() => handleViewRecords(record)}
                 >
                     记录
@@ -166,6 +167,7 @@ const DDNSPage = () => {
                     key="toggle"
                     type="link"
                     size="small"
+                    style={{margin: 0, padding: 0}}
                     onClick={() => handleToggleStatus(record)}
                 >
                     {record.enabled ? '禁用' : '启用'}
@@ -174,6 +176,7 @@ const DDNSPage = () => {
                     key="edit"
                     type="link"
                     size="small"
+                    style={{margin: 0, padding: 0}}
                     onClick={() => handleUpdate(record)}
                 >
                     编辑
@@ -182,6 +185,7 @@ const DDNSPage = () => {
                     key="delete"
                     type="link"
                     size="small"
+                    style={{margin: 0, padding: 0}}
                     danger
                     onClick={() => handleDelete(record)}
                 >

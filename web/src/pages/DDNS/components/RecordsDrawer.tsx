@@ -54,14 +54,27 @@ const RecordsDrawer = ({open, config, onClose}: RecordsDrawerProps) => {
         {
             title: 'IP 变化',
             key: 'ipChange',
-            width: 300,
-            render: (_, record) => (
-                <div className="flex items-center gap-2">
-                    <span className="font-mono text-gray-600">{record.oldIp || '(初始)'}</span>
-                    <ArrowRight className="h-4 w-4 text-gray-400"/>
-                    <span className="font-mono font-medium text-blue-600">{record.newIp}</span>
-                </div>
-            ),
+            width: 400,
+            render: (_, record) => {
+                const isIPv6 = record.recordType === 'AAAA' || record.newIp?.includes(':');
+                return (
+                    <div className={`flex ${isIPv6 ? 'flex-col gap-1' : 'items-center gap-2'}`}>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">旧:</span>
+                            <span className={`font-mono text-gray-600 ${isIPv6 ? 'text-xs' : ''}`}>
+                                {record.oldIp || '(初始)'}
+                            </span>
+                        </div>
+                        {!isIPv6 && <ArrowRight className="h-4 w-4 text-gray-400"/>}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">新:</span>
+                            <span className={`font-mono font-medium text-blue-600 ${isIPv6 ? 'text-xs break-all' : ''}`}>
+                                {record.newIp}
+                            </span>
+                        </div>
+                    </div>
+                );
+            },
         },
         {
             title: '状态',
