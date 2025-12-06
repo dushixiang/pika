@@ -32,7 +32,7 @@ func NewManager(cfg *config.Config) *Manager {
 	return &Manager{
 		cpuCollector:               NewCPUCollector(),
 		memoryCollector:            NewMemoryCollector(),
-		diskCollector:              NewDiskCollector(),
+		diskCollector:              NewDiskCollector(cfg),
 		diskIOCollector:            NewDiskIOCollector(),
 		networkCollector:           NewNetworkCollector(cfg),
 		networkConnectionCollector: NewNetworkConnectionCollector(),
