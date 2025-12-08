@@ -168,10 +168,10 @@ const AgentInstall = () => {
                 className="mt-2"
             />
             <Card type="inner" title="一键安装">
-                <Paragraph type="secondary" className="mb-3">
+                <Paragraph type="secondary" className="mb-3 text-gray-600 dark:text-slate-400">
                     脚本会自动检测系统架构并下载对应版本的探针，然后完成注册和安装。
                 </Paragraph>
-                <pre className="m-0 overflow-auto text-sm bg-gray-50 p-3 rounded">
+                <pre className="m-0 overflow-auto text-sm bg-gray-50 dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-slate-100">
                     <code>{installCommand}</code>
                 </pre>
                 <Button
@@ -217,10 +217,10 @@ ${agentCmd} version`;
     // 服务管理命令组件
     const ServiceHelper = useCallback(({os}: { os: string }) => (
         <Card type="inner" title="服务管理命令">
-            <Paragraph type="secondary" className="mb-3">
+            <Paragraph type="secondary" className="mb-3 text-gray-600 dark:text-slate-400">
                 注册完成后，您可以使用以下命令管理探针服务：
             </Paragraph>
-            <pre className="m-0 overflow-auto text-sm bg-gray-50 p-3 rounded">
+            <pre className="m-0 overflow-auto text-sm bg-gray-50 dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-slate-100">
                 <code>{getCommonCommands(os)}</code>
             </pre>
         </Card>
@@ -229,10 +229,10 @@ ${agentCmd} version`;
     // 配置文件说明组件
     const ConfigHelper = useCallback(() => (
         <Card type="inner" title="配置文件说明">
-            <Paragraph>
+            <Paragraph className="text-gray-900 dark:text-slate-100">
                 注册完成后，配置文件会保存在:
             </Paragraph>
-            <ul className="space-y-2">
+            <ul className="space-y-2 text-gray-600 dark:text-slate-400">
                 <li>
                     <Text code>{CONFIG_PATH}</Text> - 配置文件路径
                 </li>
@@ -319,8 +319,8 @@ curl -L ${serverUrl}${config.downloadUrl} -o ${AGENT_NAME}`
                                 <Space direction="vertical" className="w-full" size="middle">
                                     {getManualInstallSteps(key as OSType).map((step, index) => (
                                         <div key={index}>
-                                            <Text strong className="block mb-2">{step.title}</Text>
-                                            <pre className="m-0 overflow-auto text-sm bg-gray-50 p-3 rounded">
+                                            <Text strong className="block mb-2 text-gray-900 dark:text-slate-100">{step.title}</Text>
+                                            <pre className="m-0 overflow-auto text-sm bg-gray-50 dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-slate-100">
                                                 <code>{step.command}</code>
                                             </pre>
                                             <Button
@@ -365,7 +365,7 @@ curl -L ${serverUrl}${config.downloadUrl} -o ${AGENT_NAME}`
         <Space direction="vertical" className="w-full">
             <div className="flex gap-2 items-center">
                 <div
-                    className="text-sm cursor-pointer hover:underline"
+                    className="text-sm cursor-pointer hover:underline text-gray-600 dark:text-slate-300"
                     onClick={() => navigate(-1)}
                     role="button"
                     tabIndex={0}
@@ -373,7 +373,7 @@ curl -L ${serverUrl}${config.downloadUrl} -o ${AGENT_NAME}`
                 >
                     返回 |
                 </div>
-                <h1 className="text-2xl font-semibold text-gray-900">探针部署指南</h1>
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">探针部署指南</h1>
             </div>
 
             <Tabs
