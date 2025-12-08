@@ -146,7 +146,7 @@ func (h *PropertyHandler) GetLogo(c echo.Context) error {
 
 	// 设置响应头
 	c.Response().Header().Set("Content-Type", contentType)
-	c.Response().Header().Set("Cache-Control", "public, max-age=3600") // 缓存 1 小时
+	c.Response().Header().Set("Cache-Control", "public, max-age=600") // 缓存 10 分钟
 
 	return c.Blob(http.StatusOK, contentType, imageData)
 }
