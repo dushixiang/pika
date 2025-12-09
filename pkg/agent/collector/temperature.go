@@ -95,6 +95,11 @@ func guessSensorType(key string) string {
 			return "GPU"
 		}
 
+		// NPU 温度传感器
+		if strings.Contains(keyLower, "npu") {
+			return "NPU"
+		}
+
 		// 硬盘/SSD 温度传感器
 		if strings.Contains(keyLower, "nvme") || // NVMe SSD
 			strings.Contains(keyLower, "drivetemp") || // 硬盘温度
