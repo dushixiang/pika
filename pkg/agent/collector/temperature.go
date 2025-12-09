@@ -82,8 +82,7 @@ func guessSensorType(key string) string {
 			strings.Contains(keyLower, "package id") || // Intel 封装温度
 			strings.Contains(keyLower, "core ") || // CPU 核心温度
 			strings.Contains(keyLower, "scpi_sensors") || // ARM SCPI 温度传感器
-			strings.Contains(keyLower, "aml_thermal") || // Amlogic SoC 温度
-			strings.Contains(keyLower, "thermal") { // 通用热传感器（通常是 CPU/SoC）
+			strings.Contains(keyLower, "aml_thermal") { // Amlogic SoC 温度
 			return "CPU"
 		}
 
