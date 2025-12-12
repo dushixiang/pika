@@ -705,68 +705,36 @@ const (
 
 // MonitorStatsResult 监控统计结果（所有探针的聚合数据）
 type MonitorStatsResult struct {
-	CurrentResponse int64   // 所有探针平均响应时间(ms)
-	AvgResponse24h  int64   // 24小时平均响应时间(ms)
-	Uptime24h       float64 // 24小时在线率(百分比)
-	Uptime7d        float64 // 7天在线率(百分比)
-	CertExpiryDate  int64   // 最早过期的证书时间(毫秒时间戳)
-	CertExpiryDays  int     // 证书剩余天数
-	LastCheckTime   int64   // 最后检测时间(毫秒时间戳)
-	LastCheckStatus string  // 聚合状态（up/down/unknown）
-	LastCheckError  string  // 最后检测错误信息
-	AgentCount      int     // 探针数量
+	Status         string `json:"status"`                   // 聚合状态（up/down/unknown）
+	ResponseTime   int64  `json:"responseTime"`             // 当前平均响应时间(ms)
+	CertExpiryDate int64  `json:"certExpiryDate,omitempty"` // 最早过期的证书时间(毫秒时间戳)
+	CertExpiryDays int    `json:"certExpiryDays,omitempty"` // 证书剩余天数
+	AgentCount     int    `json:"agentCount"`               // 探针数量
+	LastCheckTime  int64  `json:"lastCheckTime"`            // 最后检测时间(毫秒时间戳)
 }
 
 // AgentMonitorStat 单个探针的监控统计
 type AgentMonitorStat struct {
-	AgentID          string  `json:"agentID,omitempty"`
-	CurrentResponse  int64   `json:"currentResponse,omitempty"`
-	AvgResponse24h   int64   `json:"avgResponse24H,omitempty"`
-	Uptime24h        float64 `json:"uptime24H,omitempty"`
-	Uptime7d         float64 `json:"uptime7D,omitempty"`
-	LastCheckStatus  string  `json:"lastCheckStatus,omitempty"`
-	LastCheckError   string  `json:"lastCheckError,omitempty"`
-	LastCheckTime    int64   `json:"lastCheckTime,omitempty"`
-	CertExpiryDate   int64   `json:"certExpiryDate,omitempty"`
-	CertExpiryDays   int     `json:"certExpiryDays,omitempty"`
-	TotalChecks24h   int64   `json:"totalChecks24H,omitempty"`
-	SuccessChecks24h int64   `json:"successChecks24H,omitempty"`
-	TotalChecks7d    int64   `json:"totalChecks7D,omitempty"`
-	SuccessChecks7d  int64   `json:"successChecks7D,omitempty"`
+	AgentID        string `json:"agentID,omitempty"`
+	Status         string `json:"status,omitempty"`         // up/down/unknown
+	ResponseTime   int64  `json:"responseTime,omitempty"`   // 当前响应时间(ms)
+	LastCheckTime  int64  `json:"lastCheckTime,omitempty"`  // 最后检测时间(毫秒时间戳)
+	CertExpiryDate int64  `json:"certExpiryDate,omitempty"` // 证书过期时间(毫秒时间戳)
+	CertExpiryDays int    `json:"certExpiryDays,omitempty"` // 证书剩余天数
 }
 
-// buildMonitorPromQLQueries 构建监控查询的 PromQL 语句
+// buildMonitorPromQLQueries 构建监控查询的 PromQL 语句（简化版：只查询当前状态）
 func (s *MetricService) buildMonitorPromQLQueries(monitorID string, queryType string) []QueryDefinition {
 	var queries []QueryDefinition
 
 	switch queryType {
 	case MonitorQueryTypeCurrent:
-		// 当前状态查询（即时查询）
+		// 当前状态查询（即时查询）- 简化为只查询必要的指标
 		queries = []QueryDefinition{
 			{Name: "response_time", Query: fmt.Sprintf(`pika_monitor_response_time_ms{monitor_id="%s"}`, monitorID)},
 			{Name: "status", Query: fmt.Sprintf(`pika_monitor_status{monitor_id="%s"}`, monitorID)},
 			{Name: "cert_days", Query: fmt.Sprintf(`pika_monitor_cert_days_left{monitor_id="%s"}`, monitorID)},
 			{Name: "cert_expiry", Query: fmt.Sprintf(`pika_monitor_cert_expiry_timestamp_ms{monitor_id="%s"}`, monitorID)},
-		}
-
-	case MonitorQueryTypeStats24h:
-		// 24小时统计查询
-		queries = []QueryDefinition{
-			// 24小时平均响应时间（按探针分组）
-			{Name: "avg_response_24h", Query: fmt.Sprintf(`avg_over_time(pika_monitor_response_time_ms{monitor_id="%s"}[24h])`, monitorID)},
-			// 24小时成功次数
-			{Name: "success_count_24h", Query: fmt.Sprintf(`count_over_time(pika_monitor_status{monitor_id="%s",status="up"}[24h:1m])`, monitorID)},
-			// 24小时总检测次数
-			{Name: "total_count_24h", Query: fmt.Sprintf(`count_over_time(pika_monitor_status{monitor_id="%s"}[24h:1m])`, monitorID)},
-		}
-
-	case MonitorQueryTypeStats7d:
-		// 7天统计查询
-		queries = []QueryDefinition{
-			// 7天成功次数
-			{Name: "success_count_7d", Query: fmt.Sprintf(`count_over_time(pika_monitor_status{monitor_id="%s",status="up"}[7d:5m])`, monitorID)},
-			// 7天总检测次数
-			{Name: "total_count_7d", Query: fmt.Sprintf(`count_over_time(pika_monitor_status{monitor_id="%s"}[7d:5m])`, monitorID)},
 		}
 
 	case MonitorQueryTypeHistory:
@@ -779,63 +747,29 @@ func (s *MetricService) buildMonitorPromQLQueries(monitorID string, queryType st
 	return queries
 }
 
-// GetMonitorStats 获取监控任务的聚合统计数据
+// GetMonitorStats 获取监控任务的聚合统计数据（简化版：只查询当前状态）
 func (s *MetricService) GetMonitorStats(ctx context.Context, monitorID string) (*MonitorStatsResult, error) {
-	// 1. 查询当前状态
-	currentQueries := s.buildMonitorPromQLQueries(monitorID, MonitorQueryTypeCurrent)
-	currentData := make(map[string]*vmclient.QueryResult)
-	for _, q := range currentQueries {
-		queryResult, err := s.vmClient.Query(ctx, q.Query)
-		if err != nil {
-			s.logger.Warn("查询当前状态失败", zap.String("query", q.Name), zap.Error(err))
-			continue
-		}
-		currentData[q.Name] = queryResult
-	}
-
-	// 2. 查询24小时统计
-	stats24hQueries := s.buildMonitorPromQLQueries(monitorID, MonitorQueryTypeStats24h)
-	stats24hData := make(map[string]*vmclient.QueryResult)
-	for _, q := range stats24hQueries {
-		queryResult, err := s.vmClient.Query(ctx, q.Query)
-		if err != nil {
-			s.logger.Warn("查询24小时统计失败", zap.String("query", q.Name), zap.Error(err))
-			continue
-		}
-		stats24hData[q.Name] = queryResult
-	}
-
-	// 3. 查询7天统计
-	stats7dQueries := s.buildMonitorPromQLQueries(monitorID, MonitorQueryTypeStats7d)
-	stats7dData := make(map[string]*vmclient.QueryResult)
-	for _, q := range stats7dQueries {
-		queryResult, err := s.vmClient.Query(ctx, q.Query)
-		if err != nil {
-			s.logger.Warn("查询7天统计失败", zap.String("query", q.Name), zap.Error(err))
-			continue
-		}
-		stats7dData[q.Name] = queryResult
-	}
-
-	// 4. 聚合计算
-	return s.aggregateMonitorQueryResults(currentData, stats24hData, stats7dData), nil
-}
-
-// aggregateMonitorQueryResults 聚合多个探针的查询结果
-func (s *MetricService) aggregateMonitorQueryResults(
-	currentData map[string]*vmclient.QueryResult,
-	stats24hData map[string]*vmclient.QueryResult,
-	stats7dData map[string]*vmclient.QueryResult,
-) *MonitorStatsResult {
 	result := &MonitorStatsResult{
-		LastCheckStatus: "unknown",
+		Status: "unknown",
 	}
 
-	// 解析当前状态数据
+	// 查询当前状态（只需4个查询）
+	queries := s.buildMonitorPromQLQueries(monitorID, MonitorQueryTypeCurrent)
+	queryData := make(map[string]*vmclient.QueryResult)
+	for _, q := range queries {
+		queryResult, err := s.vmClient.Query(ctx, q.Query)
+		if err != nil {
+			s.logger.Warn("查询监控状态失败", zap.String("query", q.Name), zap.Error(err))
+			continue
+		}
+		queryData[q.Name] = queryResult
+	}
+
+	// 聚合各探针的数据
 	agentStats := make(map[string]*AgentMonitorStat)
 
 	// 处理响应时间
-	if respResult, ok := currentData["response_time"]; ok && respResult != nil {
+	if respResult, ok := queryData["response_time"]; ok && respResult != nil {
 		for _, ts := range respResult.Data.Result {
 			agentID := ts.Metric["agent_id"]
 			if agentID == "" {
@@ -845,7 +779,6 @@ func (s *MetricService) aggregateMonitorQueryResults(
 				agentStats[agentID] = &AgentMonitorStat{AgentID: agentID}
 			}
 
-			// 获取最新值
 			if len(ts.Values) > 0 {
 				lastValue := ts.Values[len(ts.Values)-1]
 				if len(lastValue) >= 2 {
@@ -853,8 +786,7 @@ func (s *MetricService) aggregateMonitorQueryResults(
 					valueStr, _ := lastValue[1].(string)
 					var value float64
 					fmt.Sscanf(valueStr, "%f", &value)
-
-					agentStats[agentID].CurrentResponse = int64(value)
+					agentStats[agentID].ResponseTime = int64(value)
 					agentStats[agentID].LastCheckTime = int64(timestamp * 1000)
 				}
 			}
@@ -862,7 +794,7 @@ func (s *MetricService) aggregateMonitorQueryResults(
 	}
 
 	// 处理状态
-	if statusResult, ok := currentData["status"]; ok && statusResult != nil {
+	if statusResult, ok := queryData["status"]; ok && statusResult != nil {
 		for _, ts := range statusResult.Data.Result {
 			agentID := ts.Metric["agent_id"]
 			status := ts.Metric["status"]
@@ -873,30 +805,16 @@ func (s *MetricService) aggregateMonitorQueryResults(
 				agentStats[agentID] = &AgentMonitorStat{AgentID: agentID}
 			}
 
-			// 获取最新值
 			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-
-					if value > 0 {
-						agentStats[agentID].LastCheckStatus = "up"
-					} else {
-						agentStats[agentID].LastCheckStatus = "down"
-					}
-					// 状态标签中也包含了状态信息
-					if status != "" {
-						agentStats[agentID].LastCheckStatus = status
-					}
+				if status != "" {
+					agentStats[agentID].Status = status
 				}
 			}
 		}
 	}
 
 	// 处理证书信息
-	if certDaysResult, ok := currentData["cert_days"]; ok && certDaysResult != nil {
+	if certDaysResult, ok := queryData["cert_days"]; ok && certDaysResult != nil {
 		for _, ts := range certDaysResult.Data.Result {
 			agentID := ts.Metric["agent_id"]
 			if agentID == "" {
@@ -918,7 +836,7 @@ func (s *MetricService) aggregateMonitorQueryResults(
 		}
 	}
 
-	if certExpiryResult, ok := currentData["cert_expiry"]; ok && certExpiryResult != nil {
+	if certExpiryResult, ok := queryData["cert_expiry"]; ok && certExpiryResult != nil {
 		for _, ts := range certExpiryResult.Data.Result {
 			agentID := ts.Metric["agent_id"]
 			if agentID == "" {
@@ -940,137 +858,12 @@ func (s *MetricService) aggregateMonitorQueryResults(
 		}
 	}
 
-	// 处理24小时统计
-	if avgResp24h, ok := stats24hData["avg_response_24h"]; ok && avgResp24h != nil {
-		for _, ts := range avgResp24h.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStats[agentID]; !exists {
-				agentStats[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStats[agentID].AvgResponse24h = int64(value)
-				}
-			}
-		}
-	}
-
-	if successCount24h, ok := stats24hData["success_count_24h"]; ok && successCount24h != nil {
-		for _, ts := range successCount24h.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStats[agentID]; !exists {
-				agentStats[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStats[agentID].SuccessChecks24h = int64(value)
-				}
-			}
-		}
-	}
-
-	if totalCount24h, ok := stats24hData["total_count_24h"]; ok && totalCount24h != nil {
-		for _, ts := range totalCount24h.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStats[agentID]; !exists {
-				agentStats[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStats[agentID].TotalChecks24h = int64(value)
-				}
-			}
-		}
-	}
-
-	// 处理7天统计
-	if successCount7d, ok := stats7dData["success_count_7d"]; ok && successCount7d != nil {
-		for _, ts := range successCount7d.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStats[agentID]; !exists {
-				agentStats[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStats[agentID].SuccessChecks7d = int64(value)
-				}
-			}
-		}
-	}
-
-	if totalCount7d, ok := stats7dData["total_count_7d"]; ok && totalCount7d != nil {
-		for _, ts := range totalCount7d.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStats[agentID]; !exists {
-				agentStats[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStats[agentID].TotalChecks7d = int64(value)
-				}
-			}
-		}
-	}
-
-	// 计算在线率
-	for _, stat := range agentStats {
-		if stat.TotalChecks24h > 0 {
-			stat.Uptime24h = float64(stat.SuccessChecks24h) / float64(stat.TotalChecks24h) * 100
-		}
-		if stat.TotalChecks7d > 0 {
-			stat.Uptime7d = float64(stat.SuccessChecks7d) / float64(stat.TotalChecks7d) * 100
-		}
-	}
-
 	// 聚合所有探针的数据
 	if len(agentStats) == 0 {
-		return result
+		return result, nil
 	}
 
-	var totalCurrentResponse int64
-	var totalAvgResponse24h int64
-	var totalUptime24h float64
-	var totalUptime7d float64
+	var totalResponseTime int64
 	var lastCheckTime int64
 	hasUp := false
 	hasDown := false
@@ -1079,18 +872,15 @@ func (s *MetricService) aggregateMonitorQueryResults(
 	var minCertExpiryDays int
 
 	for _, stat := range agentStats {
-		totalCurrentResponse += stat.CurrentResponse
-		totalAvgResponse24h += stat.AvgResponse24h
-		totalUptime24h += stat.Uptime24h
-		totalUptime7d += stat.Uptime7d
+		totalResponseTime += stat.ResponseTime
 
 		if stat.LastCheckTime > lastCheckTime {
 			lastCheckTime = stat.LastCheckTime
 		}
 
-		if stat.LastCheckStatus == "up" {
+		if stat.Status == "up" {
 			hasUp = true
-		} else if stat.LastCheckStatus == "down" {
+		} else if stat.Status == "down" {
 			hasDown = true
 		}
 
@@ -1106,18 +896,15 @@ func (s *MetricService) aggregateMonitorQueryResults(
 	count := len(agentStats)
 	result.AgentCount = count
 	if count > 0 {
-		result.CurrentResponse = totalCurrentResponse / int64(count)
-		result.AvgResponse24h = totalAvgResponse24h / int64(count)
-		result.Uptime24h = totalUptime24h / float64(count)
-		result.Uptime7d = totalUptime7d / float64(count)
+		result.ResponseTime = totalResponseTime / int64(count)
 	}
 	result.LastCheckTime = lastCheckTime
 
 	// 聚合状态：只要有一个探针 up，整体就是 up
 	if hasUp {
-		result.LastCheckStatus = "up"
+		result.Status = "up"
 	} else if hasDown {
-		result.LastCheckStatus = "down"
+		result.Status = "down"
 	}
 
 	if hasCert {
@@ -1125,53 +912,28 @@ func (s *MetricService) aggregateMonitorQueryResults(
 		result.CertExpiryDays = minCertExpiryDays
 	}
 
-	return result
+	return result, nil
 }
 
-// GetMonitorAgentStats 获取监控任务各探针的统计数据
+// GetMonitorAgentStats 获取监控任务各探针的统计数据（简化版：只查询当前状态）
 func (s *MetricService) GetMonitorAgentStats(ctx context.Context, monitorID string) ([]AgentMonitorStat, error) {
-	// 复用 GetMonitorStats 的逻辑，但保留每个探针的独立数据
-	// 1. 查询当前状态
-	currentQueries := s.buildMonitorPromQLQueries(monitorID, MonitorQueryTypeCurrent)
-	currentData := make(map[string]*vmclient.QueryResult)
-	for _, q := range currentQueries {
+	// 查询当前状态（只需4个查询）
+	queries := s.buildMonitorPromQLQueries(monitorID, MonitorQueryTypeCurrent)
+	queryData := make(map[string]*vmclient.QueryResult)
+	for _, q := range queries {
 		queryResult, err := s.vmClient.Query(ctx, q.Query)
 		if err != nil {
-			s.logger.Warn("查询当前状态失败", zap.String("query", q.Name), zap.Error(err))
+			s.logger.Warn("查询监控状态失败", zap.String("query", q.Name), zap.Error(err))
 			continue
 		}
-		currentData[q.Name] = queryResult
+		queryData[q.Name] = queryResult
 	}
 
-	// 2. 查询24小时统计
-	stats24hQueries := s.buildMonitorPromQLQueries(monitorID, MonitorQueryTypeStats24h)
-	stats24hData := make(map[string]*vmclient.QueryResult)
-	for _, q := range stats24hQueries {
-		queryResult, err := s.vmClient.Query(ctx, q.Query)
-		if err != nil {
-			s.logger.Warn("查询24小时统计失败", zap.String("query", q.Name), zap.Error(err))
-			continue
-		}
-		stats24hData[q.Name] = queryResult
-	}
-
-	// 3. 查询7天统计
-	stats7dQueries := s.buildMonitorPromQLQueries(monitorID, MonitorQueryTypeStats7d)
-	stats7dData := make(map[string]*vmclient.QueryResult)
-	for _, q := range stats7dQueries {
-		queryResult, err := s.vmClient.Query(ctx, q.Query)
-		if err != nil {
-			s.logger.Warn("查询7天统计失败", zap.String("query", q.Name), zap.Error(err))
-			continue
-		}
-		stats7dData[q.Name] = queryResult
-	}
-
-	// 4. 提取每个探针的数据（参考 aggregateMonitorQueryResults，但不聚合）
+	// 提取每个探针的数据
 	agentStatsMap := make(map[string]*AgentMonitorStat)
 
 	// 处理响应时间
-	if respResult, ok := currentData["response_time"]; ok && respResult != nil {
+	if respResult, ok := queryData["response_time"]; ok && respResult != nil {
 		for _, ts := range respResult.Data.Result {
 			agentID := ts.Metric["agent_id"]
 			if agentID == "" {
@@ -1188,8 +950,7 @@ func (s *MetricService) GetMonitorAgentStats(ctx context.Context, monitorID stri
 					valueStr, _ := lastValue[1].(string)
 					var value float64
 					fmt.Sscanf(valueStr, "%f", &value)
-
-					agentStatsMap[agentID].CurrentResponse = int64(value)
+					agentStatsMap[agentID].ResponseTime = int64(value)
 					agentStatsMap[agentID].LastCheckTime = int64(timestamp * 1000)
 				}
 			}
@@ -1197,7 +958,7 @@ func (s *MetricService) GetMonitorAgentStats(ctx context.Context, monitorID stri
 	}
 
 	// 处理状态
-	if statusResult, ok := currentData["status"]; ok && statusResult != nil {
+	if statusResult, ok := queryData["status"]; ok && statusResult != nil {
 		for _, ts := range statusResult.Data.Result {
 			agentID := ts.Metric["agent_id"]
 			status := ts.Metric["status"]
@@ -1209,27 +970,15 @@ func (s *MetricService) GetMonitorAgentStats(ctx context.Context, monitorID stri
 			}
 
 			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-
-					if value > 0 {
-						agentStatsMap[agentID].LastCheckStatus = "up"
-					} else {
-						agentStatsMap[agentID].LastCheckStatus = "down"
-					}
-					if status != "" {
-						agentStatsMap[agentID].LastCheckStatus = status
-					}
+				if status != "" {
+					agentStatsMap[agentID].Status = status
 				}
 			}
 		}
 	}
 
 	// 处理证书信息
-	if certDaysResult, ok := currentData["cert_days"]; ok && certDaysResult != nil {
+	if certDaysResult, ok := queryData["cert_days"]; ok && certDaysResult != nil {
 		for _, ts := range certDaysResult.Data.Result {
 			agentID := ts.Metric["agent_id"]
 			if agentID == "" {
@@ -1251,7 +1000,7 @@ func (s *MetricService) GetMonitorAgentStats(ctx context.Context, monitorID stri
 		}
 	}
 
-	if certExpiryResult, ok := currentData["cert_expiry"]; ok && certExpiryResult != nil {
+	if certExpiryResult, ok := queryData["cert_expiry"]; ok && certExpiryResult != nil {
 		for _, ts := range certExpiryResult.Data.Result {
 			agentID := ts.Metric["agent_id"]
 			if agentID == "" {
@@ -1270,128 +1019,6 @@ func (s *MetricService) GetMonitorAgentStats(ctx context.Context, monitorID stri
 					agentStatsMap[agentID].CertExpiryDate = int64(value)
 				}
 			}
-		}
-	}
-
-	// 处理24小时统计
-	if avgResp24h, ok := stats24hData["avg_response_24h"]; ok && avgResp24h != nil {
-		for _, ts := range avgResp24h.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStatsMap[agentID]; !exists {
-				agentStatsMap[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStatsMap[agentID].AvgResponse24h = int64(value)
-				}
-			}
-		}
-	}
-
-	if successCount24h, ok := stats24hData["success_count_24h"]; ok && successCount24h != nil {
-		for _, ts := range successCount24h.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStatsMap[agentID]; !exists {
-				agentStatsMap[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStatsMap[agentID].SuccessChecks24h = int64(value)
-				}
-			}
-		}
-	}
-
-	if totalCount24h, ok := stats24hData["total_count_24h"]; ok && totalCount24h != nil {
-		for _, ts := range totalCount24h.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStatsMap[agentID]; !exists {
-				agentStatsMap[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStatsMap[agentID].TotalChecks24h = int64(value)
-				}
-			}
-		}
-	}
-
-	// 处理7天统计
-	if successCount7d, ok := stats7dData["success_count_7d"]; ok && successCount7d != nil {
-		for _, ts := range successCount7d.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStatsMap[agentID]; !exists {
-				agentStatsMap[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStatsMap[agentID].SuccessChecks7d = int64(value)
-				}
-			}
-		}
-	}
-
-	if totalCount7d, ok := stats7dData["total_count_7d"]; ok && totalCount7d != nil {
-		for _, ts := range totalCount7d.Data.Result {
-			agentID := ts.Metric["agent_id"]
-			if agentID == "" {
-				continue
-			}
-			if _, exists := agentStatsMap[agentID]; !exists {
-				agentStatsMap[agentID] = &AgentMonitorStat{AgentID: agentID}
-			}
-
-			if len(ts.Values) > 0 {
-				lastValue := ts.Values[len(ts.Values)-1]
-				if len(lastValue) >= 2 {
-					valueStr, _ := lastValue[1].(string)
-					var value float64
-					fmt.Sscanf(valueStr, "%f", &value)
-					agentStatsMap[agentID].TotalChecks7d = int64(value)
-				}
-			}
-		}
-	}
-
-	// 计算在线率
-	for _, stat := range agentStatsMap {
-		if stat.TotalChecks24h > 0 {
-			stat.Uptime24h = float64(stat.SuccessChecks24h) / float64(stat.TotalChecks24h) * 100
-		}
-		if stat.TotalChecks7d > 0 {
-			stat.Uptime7d = float64(stat.SuccessChecks7d) / float64(stat.TotalChecks7d) * 100
 		}
 	}
 

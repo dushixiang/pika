@@ -90,15 +90,11 @@ type PublicMonitorOverview struct {
 	Interval         int      `json:"interval"`
 	AgentIds         []string `json:"agentIds"`
 	AgentCount       int      `json:"agentCount"`
-	LastCheckStatus  string   `json:"lastCheckStatus"`
-	LastCheckError   string   `json:"lastCheckError"`
-	CurrentResponse  int64    `json:"currentResponse"`
-	AvgResponse24h   int64    `json:"avgResponse24h"`
-	Uptime24h        float64  `json:"uptime24h"`
-	Uptime7d         float64  `json:"uptime7d"`
-	CertExpiryDate   int64    `json:"certExpiryDate"`
-	CertExpiryDays   int      `json:"certExpiryDays"`
-	LastCheckTime    int64    `json:"lastCheckTime"`
+	Status           string   `json:"status"`         // up/down/unknown
+	ResponseTime     int64    `json:"responseTime"`   // 当前响应时间(ms)
+	CertExpiryDate   int64    `json:"certExpiryDate"` // 证书过期时间
+	CertExpiryDays   int      `json:"certExpiryDays"` // 证书剩余天数
+	LastCheckTime    int64    `json:"lastCheckTime"`  // 最后检测时间
 }
 
 func (s *MonitorService) CreateMonitor(ctx context.Context, req *MonitorTaskRequest) (*models.MonitorTask, error) {
@@ -289,16 +285,12 @@ func (s *MonitorService) ListByAuth(ctx context.Context, isAuthenticated bool) (
 
 		// 将 MonitorStatsResult 转换为 monitorOverviewSummary
 		summary := monitorOverviewSummary{
-			AgentCount:      stats.AgentCount,
-			CurrentResponse: stats.CurrentResponse,
-			AvgResponse24h:  stats.AvgResponse24h,
-			Uptime24h:       stats.Uptime24h,
-			Uptime7d:        stats.Uptime7d,
-			LastCheckStatus: stats.LastCheckStatus,
-			LastCheckError:  stats.LastCheckError,
-			LastCheckTime:   stats.LastCheckTime,
-			CertExpiryDate:  stats.CertExpiryDate,
-			CertExpiryDays:  stats.CertExpiryDays,
+			AgentCount:     stats.AgentCount,
+			Status:         stats.Status,
+			ResponseTime:   stats.ResponseTime,
+			LastCheckTime:  stats.LastCheckTime,
+			CertExpiryDate: stats.CertExpiryDate,
+			CertExpiryDays: stats.CertExpiryDays,
 		}
 
 		// 构建监控概览对象
@@ -331,12 +323,8 @@ func (s *MonitorService) buildMonitorOverview(monitor models.MonitorTask, summar
 		Interval:         monitor.Interval,
 		AgentIds:         cloneAgentIDs(monitor.AgentIds),
 		AgentCount:       summary.AgentCount,
-		LastCheckStatus:  summary.LastCheckStatus,
-		LastCheckError:   summary.LastCheckError,
-		CurrentResponse:  summary.CurrentResponse,
-		AvgResponse24h:   summary.AvgResponse24h,
-		Uptime24h:        summary.Uptime24h,
-		Uptime7d:         summary.Uptime7d,
+		Status:           summary.Status,
+		ResponseTime:     summary.ResponseTime,
 		CertExpiryDate:   summary.CertExpiryDate,
 		CertExpiryDays:   summary.CertExpiryDays,
 		LastCheckTime:    summary.LastCheckTime,
@@ -344,16 +332,12 @@ func (s *MonitorService) buildMonitorOverview(monitor models.MonitorTask, summar
 }
 
 type monitorOverviewSummary struct {
-	AgentCount      int
-	LastCheckStatus string
-	LastCheckError  string
-	CurrentResponse int64
-	AvgResponse24h  int64
-	Uptime24h       float64
-	Uptime7d        float64
-	CertExpiryDate  int64
-	CertExpiryDays  int
-	LastCheckTime   int64
+	AgentCount     int
+	Status         string // up/down/unknown
+	ResponseTime   int64  // 当前响应时间(ms)
+	CertExpiryDate int64  // 证书过期时间
+	CertExpiryDays int    // 证书剩余天数
+	LastCheckTime  int64  // 最后检测时间
 }
 
 func cloneAgentIDs(ids datatypes.JSONSlice[string]) []string {
@@ -516,16 +500,12 @@ func (s *MonitorService) GetMonitorStatsByID(ctx context.Context, monitorID stri
 
 	// 转换为 monitorOverviewSummary 格式
 	summary := monitorOverviewSummary{
-		AgentCount:      stats.AgentCount,
-		LastCheckStatus: stats.LastCheckStatus,
-		LastCheckError:  stats.LastCheckError,
-		CurrentResponse: stats.CurrentResponse,
-		AvgResponse24h:  stats.AvgResponse24h,
-		Uptime24h:       stats.Uptime24h,
-		Uptime7d:        stats.Uptime7d,
-		CertExpiryDate:  stats.CertExpiryDate,
-		CertExpiryDays:  stats.CertExpiryDays,
-		LastCheckTime:   stats.LastCheckTime,
+		AgentCount:     stats.AgentCount,
+		Status:         stats.Status,
+		ResponseTime:   stats.ResponseTime,
+		CertExpiryDate: stats.CertExpiryDate,
+		CertExpiryDays: stats.CertExpiryDays,
+		LastCheckTime:  stats.LastCheckTime,
 	}
 
 	// 构建监控概览对象
