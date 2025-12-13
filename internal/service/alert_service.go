@@ -571,7 +571,7 @@ func (s *AlertService) checkServiceDownAlerts(ctx context.Context, config *model
 
 		if monitor.Status == "down" {
 			if state.StartTime == 0 {
-				state.StartTime = monitor.Timestamp
+				state.StartTime = monitor.CheckedAt
 			}
 
 			elapsedSeconds := (now - state.StartTime) / 1000

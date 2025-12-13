@@ -1,5 +1,5 @@
-import {get, post, put, del} from './request';
-import type {MonitorListResponse, MonitorTask, MonitorTaskRequest, MonitorStats, PublicMonitor} from '../types';
+import {del, get, post, put} from './request';
+import type {MonitorListResponse, MonitorTask, MonitorTaskRequest, PublicMonitor} from '../types';
 
 export const listMonitors = (page: number = 1, pageSize: number = 10, keyword?: string) => {
     const params = new URLSearchParams();
@@ -65,22 +65,19 @@ export interface GetMetricsResponse {
     series: MetricSeries[];  // 时序数据系列（每个探针一个系列）
 }
 
-// 探针监控统计（直接从 VictoriaMetrics 查询）
+// 探针监控统计
 export interface AgentMonitorStat {
-    agentID: string;
-    currentResponse: number;
-    avgResponse24h: number;
-    uptime24h: number;
-    uptime7d: number;
-    lastCheckStatus: string;
-    lastCheckError: string;
-    lastCheckTime: number;
-    certExpiryDate: number;
-    certExpiryDays: number;
-    totalChecks24h: number;
-    successChecks24h: number;
-    totalChecks7d: number;
-    successChecks7d: number;
+    agentId: string;
+    monitorId: string;
+    type: string;
+    target: string;
+    status: string;
+    statusCode: number;
+    responseTime: number;
+    checkedAt: number;
+    message: string;
+    certExpiryTime: number;
+    certDaysLeft: number;
 }
 
 // 公开接口 - 获取指定监控的历史数据（VictoriaMetrics 原始时序数据）

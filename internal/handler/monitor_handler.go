@@ -11,13 +11,15 @@ import (
 type MonitorHandler struct {
 	logger         *zap.Logger
 	monitorService *service.MonitorService
+	metricService  *service.MetricService
 	agentService   *service.AgentService
 }
 
-func NewMonitorHandler(logger *zap.Logger, monitorService *service.MonitorService, agentService *service.AgentService) *MonitorHandler {
+func NewMonitorHandler(logger *zap.Logger, monitorService *service.MonitorService, metricService *service.MetricService, agentService *service.AgentService) *MonitorHandler {
 	return &MonitorHandler{
 		logger:         logger,
 		monitorService: monitorService,
+		metricService:  metricService,
 		agentService:   agentService,
 	}
 }
@@ -168,11 +170,7 @@ func (h *MonitorHandler) GetAgentStatsByID(c echo.Context) error {
 		return err
 	}
 
-	stats, ok := h.monitorService.GetMonitorAgentStats(ctx, id)
-	if !ok {
-		return orz.NewError(404, "监控任务不存在")
-	}
-
+	stats := h.metricService.GetMonitorAgentStats(id)
 	return orz.Ok(c, stats)
 }
 

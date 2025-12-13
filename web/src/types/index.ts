@@ -293,76 +293,18 @@ export interface PublicMonitor {
     interval: number;
     agentIds: string[];
     agentCount: number;
-    lastCheckStatus: string;
-    lastCheckError?: string;
-    currentResponse: number;
-    avgResponse24h: number;
-    uptime24h: number;
-    uptime7d: number;
-    certExpiryDate: number;
-    certExpiryDays: number;
+
+    status: string;
+    responseTime: number;
+    certExpiryTime: number;
+    certDaysLeft: number;
     lastCheckTime: number;
 }
 
 // 监控统计数据
-export interface MonitorStats {
-    id: number;
-    agentId: string;
-    agentName?: string;           // 探针名称
-    monitorId: string;            // 监控项ID
-    name: string;                 // 监控项名称
-    type: string;
-    target: string;
-    currentResponse: number;      // 当前响应时间(ms)
-    avgResponse24h: number;       // 24小时平均响应时间(ms)
-    uptime24h: number;            // 24小时在线率(百分比)
-    uptime7d: number;             // 7天在线率(百分比)
-    certExpiryDate: number;       // 证书过期时间(毫秒时间戳)
-    certExpiryDays: number;       // 证书剩余天数
-    totalChecks24h: number;       // 24小时总检测次数
-    successChecks24h: number;     // 24小时成功次数
-    totalChecks7d: number;        // 7天总检测次数
-    successChecks7d: number;      // 7天成功次数
-    lastCheckTime: number;        // 最后检测时间
-    lastCheckStatus: string;      // 最后检测状态: up/down
-    lastCheckError?: string;      // 最后检测错误信息
-    updatedAt: number;            // 更新时间
-}
-
-// 监控指标（原始数据，用于图表）
-export interface MonitorMetric {
-    id: number;
-    agentId: string;
-    name: string;
-    type: string;
-    target: string;
-    status: string;
-    statusCode: number;
-    responseTime: number;
-    error: string;
-    message: string;
-    contentMatch: boolean;
+export interface CertStats {
     certExpiryTime: number;
     certDaysLeft: number;
-    timestamp: number;
-}
-
-// 磁盘IO指标
-export interface DiskIOMetric {
-    id: number;
-    agentId: string;
-    device: string;
-    readCount: number;
-    writeCount: number;
-    readBytes: number;
-    writeBytes: number;
-    readBytesRate: number;
-    writeBytesRate: number;
-    readTime: number;
-    writeTime: number;
-    ioTime: number;
-    iopsInProgress: number;
-    timestamp: number;
 }
 
 // 网络连接统计
@@ -458,12 +400,6 @@ export interface AlertRecord {
     resolvedAt?: number;
     createdAt: number;
     updatedAt: number;
-}
-
-// 通用分页响应
-export interface PageResponse<T> {
-    items: T[];
-    total: number;
 }
 
 // 流量统计相关

@@ -6,24 +6,8 @@ import {getPublicMonitors} from '@/api/monitor.ts';
 import type {PublicMonitor} from '@/types';
 import {usePublicLayout} from '../PublicLayout';
 import {cn} from '@/lib/utils';
-
-const formatTime = (ms: number): string => {
-    if (!ms || ms <= 0) return '0 ms';
-    if (ms < 1000) return `${ms.toFixed(0)} ms`;
-    return `${(ms / 1000).toFixed(2)} s`;
-};
-
-const formatDate = (timestamp: number): string => {
-    if (!timestamp) return '-';
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-};
-
-const formatPercentValue = (value: number): string => (Number.isFinite(value) ? value.toFixed(2) : '0.00');
+import {renderCert} from "@/pages/Public/Monitor.tsx";
+import {formatTime,} from "@/utils/util.ts"
 
 const LoadingSpinner = () => (
     <div className="flex min-h-[400px] w-full items-center justify-center">
@@ -61,20 +45,6 @@ const StatusBadge = ({status}: { status: string }) => {
     );
 };
 
-const UptimeBar = ({uptime}: { uptime: number }) => {
-    const percentage = Math.min(Math.max(uptime, 0), 100);
-    const colorClass = percentage >= 99 ? 'bg-emerald-500' : percentage >= 95 ? 'bg-yellow-500' : 'bg-red-500';
-
-    return (
-        <div className="relative h-2 w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-            <div
-                className={cn("absolute inset-y-0 left-0 transition-all duration-500", colorClass)}
-                style={{width: `${percentage}%`}}
-            />
-        </div>
-    );
-};
-
 const EmptyState = () => (
     <div className="flex min-h-[400px] flex-col items-center justify-center text-slate-500 dark:text-slate-400">
         <Shield className="mb-4 h-16 w-16 opacity-20"/>
@@ -104,148 +74,6 @@ const MonitorList = () => {
 
     const monitorSummaries = monitors;
 
-    const renderGridView = () => (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {monitorSummaries.map((stats) => {
-                const hasCert = stats.certExpiryDate > 0;
-                const certExpired = hasCert && stats.certExpiryDays < 0;
-                const certExpiringSoon = hasCert && stats.certExpiryDays >= 0 && stats.certExpiryDays < 30;
-
-                return (
-                    <div
-                        key={stats.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => navigate(`/monitors/${encodeURIComponent(stats.id)}`)}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                navigate(`/monitors/${encodeURIComponent(stats.id)}`);
-                            }
-                        }}
-                        className="group relative flex h-full cursor-pointer flex-col gap-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-transparent p-5 transition duration-200 hover:border-slate-300 dark:hover:border-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200"
-                    >
-                        <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className="text-base font-semibold text-slate-900 dark:text-white truncate">
-                                        {stats.name}
-                                    </h3>
-                                    <StatusBadge status={stats.lastCheckStatus}/>
-                                </div>
-                                <p className="mt-1 text-sm text-blue-700 dark:text-blue-400 truncate" title={stats.showTargetPublic ? stats.target : '已隐藏'}>
-                                    {stats.target}
-                                </p>
-                                {stats.agentCount > 1 && (
-                                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                                        {stats.agentCount} 个探针
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div
-                                className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 px-3 py-2.5">
-                                <div className="flex items-center gap-2">
-                                    <div
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                        <Clock className="h-3.5 w-3.5"/>
-                                    </div>
-                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-300">当前响应</span>
-                                </div>
-                                <span className="text-sm font-bold text-slate-900 dark:text-white">
-                                    {formatTime(stats.currentResponse)}
-                                </span>
-                            </div>
-
-                            <div
-                                className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 px-3 py-2.5">
-                                <div className="flex items-center gap-2">
-                                    <div
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                        <Clock className="h-3.5 w-3.5"/>
-                                    </div>
-                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-300">24h 平均</span>
-                                </div>
-                                <span className="text-sm font-bold text-slate-900 dark:text-white">
-                                    {formatTime(stats.avgResponse24h)}
-                                </span>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="font-medium text-slate-600 dark:text-slate-300">24h 在线率</span>
-                                    <span
-                                        className="font-semibold text-slate-900 dark:text-white">{formatPercentValue(stats.uptime24h)}%</span>
-                                </div>
-                                <UptimeBar uptime={stats.uptime24h}/>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="font-medium text-slate-600 dark:text-slate-300">7d 在线率</span>
-                                    <span
-                                        className="font-semibold text-slate-900 dark:text-white">{formatPercentValue(stats.uptime7d)}%</span>
-                                </div>
-                                <UptimeBar uptime={stats.uptime7d}/>
-                            </div>
-
-                            {hasCert && (
-                                <div
-                                    className={cn(
-                                        "flex items-center justify-between rounded-lg border px-3 py-2.5",
-                                        certExpired
-                                            ? 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10'
-                                            : certExpiringSoon
-                                                ? 'border-yellow-200 dark:border-yellow-500/40 bg-yellow-50 dark:bg-yellow-500/10'
-                                                : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40'
-                                    )}>
-                                    <div className="flex items-center gap-2">
-                                        <Shield
-                                            className={cn(
-                                                "h-4 w-4",
-                                                certExpired
-                                                    ? 'text-red-600 dark:text-red-400'
-                                                    : certExpiringSoon
-                                                        ? 'text-yellow-600 dark:text-yellow-500'
-                                                        : 'text-slate-600 dark:text-slate-400'
-                                            )}/>
-                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300">证书到期</span>
-                                    </div>
-                                    <div className="text-right">
-                                        <div
-                                            className={cn(
-                                                "text-xs font-medium",
-                                                certExpired
-                                                    ? 'text-red-700 dark:text-red-300'
-                                                    : certExpiringSoon
-                                                        ? 'text-yellow-700 dark:text-yellow-300'
-                                                        : 'text-slate-700 dark:text-slate-200'
-                                            )}>
-                                            {formatDate(stats.certExpiryDate)}
-                                        </div>
-                                        <div
-                                            className={cn(
-                                                "text-xs",
-                                                certExpired
-                                                    ? 'text-red-600 dark:text-red-400'
-                                                    : certExpiringSoon
-                                                        ? 'text-yellow-600 dark:text-yellow-400'
-                                                        : 'text-slate-500 dark:text-slate-400'
-                                            )}>
-                                            {certExpired ? `已过期 ${Math.abs(stats.certExpiryDays)} 天` : `剩余 ${stats.certExpiryDays} 天`}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
-
     const renderListView = () => (
         <>
             {/* 桌面端：使用表格布局 */}
@@ -256,18 +84,12 @@ const MonitorList = () => {
                         <th className="px-5 py-3">监控项</th>
                         <th className="px-5 py-3">状态</th>
                         <th className="px-5 py-3">当前响应</th>
-                        <th className="px-5 py-3">24h 平均响应</th>
-                        <th className="px-5 py-3">24h 在线率</th>
-                        <th className="px-5 py-3">7d 在线率</th>
                         <th className="px-5 py-3">证书信息</th>
                     </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700 text-slate-700 dark:text-slate-200">
+                    <tbody
+                        className="divide-y divide-slate-200 dark:divide-slate-700 text-slate-700 dark:text-slate-200">
                     {monitorSummaries.map((stats) => {
-                        const hasCert = stats.certExpiryDate > 0;
-                        const certExpired = hasCert && stats.certExpiryDays < 0;
-                        const certExpiringSoon = hasCert && stats.certExpiryDays >= 0 && stats.certExpiryDays < 30;
-
                         return (
                             <tr
                                 key={stats.id}
@@ -297,84 +119,18 @@ const MonitorList = () => {
                                     </div>
                                 </td>
                                 <td className="px-5 py-4 align-center">
-                                    <StatusBadge status={stats.lastCheckStatus}/>
+                                    <StatusBadge status={stats.status}/>
                                 </td>
                                 <td className="px-5 py-4 align-center">
                                     <div className="flex items-center gap-2">
                                         <Clock className="h-4 w-4 text-slate-400 dark:text-slate-500"/>
                                         <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                {formatTime(stats.currentResponse)}
+                                                {formatTime(stats.responseTime)}
                                             </span>
                                     </div>
                                 </td>
                                 <td className="px-5 py-4 align-center">
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                            {formatTime(stats.avgResponse24h)}
-                                        </span>
-                                </td>
-                                <td className="px-5 py-4 align-center">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-24">
-                                                <UptimeBar uptime={stats.uptime24h}/>
-                                            </div>
-                                            <span className="text-xs font-semibold text-slate-900 dark:text-white w-14 text-right">
-                                                    {formatPercentValue(stats.uptime24h)}%
-                                                </span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-5 py-4 align-center">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-24">
-                                                <UptimeBar uptime={stats.uptime7d}/>
-                                            </div>
-                                            <span className="text-xs font-semibold text-slate-900 dark:text-white w-14 text-right">
-                                                    {formatPercentValue(stats.uptime7d)}%
-                                                </span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-5 py-4 align-center">
-                                    {hasCert ? (
-                                        <div className="flex items-center gap-2">
-                                            <Shield
-                                                className={cn(
-                                                    "h-4 w-4",
-                                                    certExpired
-                                                        ? 'text-red-600 dark:text-red-400'
-                                                        : certExpiringSoon
-                                                            ? 'text-yellow-600 dark:text-yellow-500'
-                                                            : 'text-slate-400 dark:text-slate-500'
-                                                )}/>
-                                            <div className="text-xs">
-                                                <div
-                                                    className={cn(
-                                                        "font-medium",
-                                                        certExpired
-                                                            ? 'text-red-700 dark:text-red-300'
-                                                            : certExpiringSoon
-                                                                ? 'text-yellow-700 dark:text-yellow-300'
-                                                                : 'text-slate-700 dark:text-slate-200'
-                                                    )}>
-                                                    {formatDate(stats.certExpiryDate)}
-                                                </div>
-                                                <div
-                                                    className={cn(
-                                                        certExpired
-                                                            ? 'text-red-600 dark:text-red-400'
-                                                            : certExpiringSoon
-                                                                ? 'text-yellow-600 dark:text-yellow-400'
-                                                                : 'text-slate-500 dark:text-slate-400'
-                                                    )}>
-                                                    {certExpired ? `已过期 ${Math.abs(stats.certExpiryDays)} 天` : `剩余 ${stats.certExpiryDays} 天`}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
-                                    )}
+                                    {renderCert(stats)}
                                 </td>
                             </tr>
                         );
@@ -397,11 +153,7 @@ const MonitorList = () => {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
             {monitorSummaries.length === 0 ? (
                 <EmptyState/>
-            ) : viewMode === 'grid' ? (
-                renderGridView()
-            ) : (
-                renderListView()
-            )}
+            ) : renderListView()}
         </div>
     );
 };

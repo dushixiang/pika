@@ -538,36 +538,37 @@ func (s *MetricService) GetMonitorHistory(ctx context.Context, monitorID string,
 }
 
 // GetMonitorAgentStats 获取监控任务各探针的统计数据（只从缓存读取）
-func (s *MetricService) GetMonitorAgentStats(ctx context.Context, monitorID string) ([]protocol.MonitorData, bool) {
+func (s *MetricService) GetMonitorAgentStats(monitorID string) []protocol.MonitorData {
 	// 从缓存读取监控数据
 	latestMetrics, ok := s.monitorLatestCache.Get(monitorID)
 	if !ok {
 		// 缓存不存在，返回空列表
-		return nil, false
+		return []protocol.MonitorData{}
 	}
 
 	// 转换为数组
 	result := make([]protocol.MonitorData, 0, len(latestMetrics.Agents))
 	for _, stat := range latestMetrics.Agents {
+		stat.Target = ""
 		result = append(result, *stat)
 	}
 
-	return result, true
+	return result
 }
 
 // GetMonitorStats 获取监控任务的聚合统计数据（只从缓存读取）
-func (s *MetricService) GetMonitorStats(ctx context.Context, monitorID string) (*metric.MonitorStatsResult, error) {
+func (s *MetricService) GetMonitorStats(monitorID string) *metric.MonitorStatsResult {
 	// 从缓存读取监控数据
 	latestMetrics, ok := s.monitorLatestCache.Get(monitorID)
 	if !ok {
 		// 缓存不存在，返回默认值
 		return &metric.MonitorStatsResult{
 			Status: "unknown",
-		}, nil
+		}
 	}
 
 	// 聚合各探针数据
-	return s.aggregateMonitorStats(latestMetrics), nil
+	return s.aggregateMonitorStats(latestMetrics)
 }
 
 // aggregateMonitorStats 聚合各探针的监控数据
@@ -585,14 +586,14 @@ func (s *MetricService) aggregateMonitorStats(latestMetrics *metric.LatestMonito
 	hasUp := false
 	hasDown := false
 	hasCert := false
-	var minCertExpiryDate int64
-	var minCertExpiryDays int
+	var minCertExpiryTime int64
+	var minCertDaysLeft int
 
 	for _, stat := range latestMetrics.Agents {
 		totalResponseTime += stat.ResponseTime
 
-		if stat.Timestamp > lastCheckTime {
-			lastCheckTime = stat.Timestamp
+		if stat.CheckedAt > lastCheckTime {
+			lastCheckTime = stat.CheckedAt
 		}
 
 		if stat.Status == "up" {
@@ -602,9 +603,9 @@ func (s *MetricService) aggregateMonitorStats(latestMetrics *metric.LatestMonito
 		}
 
 		if stat.CertExpiryTime > 0 {
-			if !hasCert || stat.CertExpiryTime < minCertExpiryDate {
-				minCertExpiryDate = stat.CertExpiryTime
-				minCertExpiryDays = stat.CertDaysLeft
+			if !hasCert || stat.CertExpiryTime < minCertExpiryTime {
+				minCertExpiryTime = stat.CertExpiryTime
+				minCertDaysLeft = stat.CertDaysLeft
 				hasCert = true
 			}
 		}
@@ -625,8 +626,8 @@ func (s *MetricService) aggregateMonitorStats(latestMetrics *metric.LatestMonito
 	}
 
 	if hasCert {
-		result.CertExpiryDate = minCertExpiryDate
-		result.CertExpiryDays = minCertExpiryDays
+		result.CertExpiryTime = minCertExpiryTime
+		result.CertDaysLeft = minCertDaysLeft
 	}
 
 	return result

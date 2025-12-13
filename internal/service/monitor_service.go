@@ -30,7 +30,7 @@ type MonitorService struct {
 	wsManager     *ws.Manager
 
 	// 监控概览缓存：缓存监控任务列表（使用不同的 key 区分 public 和 private）
-	overviewCache cache.Cache[string, []PublicMonitorOverview]
+	overviewCache cache.Cache[string, []metric.PublicMonitorOverview]
 
 	// 调度器引用（用于动态管理任务）
 	scheduler MonitorScheduler
@@ -54,7 +54,7 @@ func NewMonitorService(logger *zap.Logger, db *gorm.DB, metricService *MetricSer
 		wsManager:     wsManager,
 
 		// 缓存 5 分钟，避免频繁查询
-		overviewCache: cache.New[string, []PublicMonitorOverview](5 * time.Minute),
+		overviewCache: cache.New[string, []metric.PublicMonitorOverview](5 * time.Minute),
 	}
 }
 
@@ -77,25 +77,6 @@ type MonitorTaskRequest struct {
 	ICMPConfig       protocol.ICMPMonitorConfig `json:"icmpConfig,omitempty"`
 	AgentIds         []string                   `json:"agentIds,omitempty"`
 	Tags             []string                   `json:"tags"`
-}
-
-// PublicMonitorOverview 用于公开展示的监控配置及汇总数据
-type PublicMonitorOverview struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	Type             string   `json:"type"`
-	Target           string   `json:"target"`
-	ShowTargetPublic bool     `json:"showTargetPublic"` // 在公开页面是否显示目标地址
-	Description      string   `json:"description"`
-	Enabled          bool     `json:"enabled"`
-	Interval         int      `json:"interval"`
-	AgentIds         []string `json:"agentIds"`
-	AgentCount       int      `json:"agentCount"`
-	Status           string   `json:"status"`         // up/down/unknown
-	ResponseTime     int64    `json:"responseTime"`   // 当前响应时间(ms)
-	CertExpiryDate   int64    `json:"certExpiryDate"` // 证书过期时间
-	CertExpiryDays   int      `json:"certExpiryDays"` // 证书剩余天数
-	LastCheckTime    int64    `json:"lastCheckTime"`  // 最后检测时间
 }
 
 func (s *MonitorService) CreateMonitor(ctx context.Context, req *MonitorTaskRequest) (*models.MonitorTask, error) {
@@ -245,7 +226,7 @@ func (s *MonitorService) DeleteMonitor(ctx context.Context, id string) error {
 }
 
 // ListByAuth 返回公开展示所需的监控配置和汇总统计
-func (s *MonitorService) ListByAuth(ctx context.Context, isAuthenticated bool) ([]PublicMonitorOverview, error) {
+func (s *MonitorService) ListByAuth(ctx context.Context, isAuthenticated bool) ([]metric.PublicMonitorOverview, error) {
 	// 构建缓存键：根据认证状态使用不同的 key
 	cacheKey := "overview:public"
 	if isAuthenticated {
@@ -265,37 +246,19 @@ func (s *MonitorService) ListByAuth(ctx context.Context, isAuthenticated bool) (
 	}
 
 	if len(monitors) == 0 {
-		var emptyResult []PublicMonitorOverview
+		var emptyResult []metric.PublicMonitorOverview
 		// 缓存空结果
 		s.overviewCache.Set(cacheKey, emptyResult, 5*time.Minute)
 		return emptyResult, nil
 	}
 
 	// 构建监控概览列表
-	items := make([]PublicMonitorOverview, 0, len(monitors))
+	items := make([]metric.PublicMonitorOverview, 0, len(monitors))
 	for _, monitor := range monitors {
-		// 从 VictoriaMetrics 查询统计数据
-		stats, err := s.metricService.GetMonitorStats(ctx, monitor.ID)
-		if err != nil {
-			// 查询失败时使用默认值
-			s.logger.Error("查询 VictoriaMetrics 失败",
-				zap.String("monitorID", monitor.ID),
-				zap.Error(err))
-			stats = &metric.MonitorStatsResult{}
-		}
-
-		// 将 MonitorStatsResult 转换为 monitorOverviewSummary
-		summary := monitorOverviewSummary{
-			AgentCount:     stats.AgentCount,
-			Status:         stats.Status,
-			ResponseTime:   stats.ResponseTime,
-			LastCheckTime:  stats.LastCheckTime,
-			CertExpiryDate: stats.CertExpiryDate,
-			CertExpiryDays: stats.CertExpiryDays,
-		}
-
+		// 查询统计数据
+		stats := s.metricService.GetMonitorStats(monitor.ID)
 		// 构建监控概览对象
-		item := s.buildMonitorOverview(monitor, summary)
+		item := s.buildMonitorOverview(monitor, stats)
 		items = append(items, item)
 	}
 
@@ -306,14 +269,14 @@ func (s *MonitorService) ListByAuth(ctx context.Context, isAuthenticated bool) (
 }
 
 // buildMonitorOverview 构建监控概览对象
-func (s *MonitorService) buildMonitorOverview(monitor models.MonitorTask, summary monitorOverviewSummary) PublicMonitorOverview {
+func (s *MonitorService) buildMonitorOverview(monitor models.MonitorTask, stats *metric.MonitorStatsResult) metric.PublicMonitorOverview {
 	// 根据 ShowTargetPublic 字段决定是否返回真实的 Target
 	target := monitor.Target
 	if !monitor.ShowTargetPublic {
 		target = "******"
 	}
 
-	return PublicMonitorOverview{
+	return metric.PublicMonitorOverview{
 		ID:               monitor.ID,
 		Name:             monitor.Name,
 		Type:             monitor.Type,
@@ -322,33 +285,13 @@ func (s *MonitorService) buildMonitorOverview(monitor models.MonitorTask, summar
 		Description:      monitor.Description,
 		Enabled:          monitor.Enabled,
 		Interval:         monitor.Interval,
-		AgentIds:         cloneAgentIDs(monitor.AgentIds),
-		AgentCount:       summary.AgentCount,
-		Status:           summary.Status,
-		ResponseTime:     summary.ResponseTime,
-		CertExpiryDate:   summary.CertExpiryDate,
-		CertExpiryDays:   summary.CertExpiryDays,
-		LastCheckTime:    summary.LastCheckTime,
+		AgentCount:       stats.AgentCount,
+		Status:           stats.Status,
+		ResponseTime:     stats.ResponseTime,
+		CertExpiryTime:   stats.CertExpiryTime,
+		CertDaysLeft:     stats.CertDaysLeft,
+		LastCheckTime:    stats.LastCheckTime,
 	}
-}
-
-type monitorOverviewSummary struct {
-	AgentCount     int
-	Status         string // up/down/unknown
-	ResponseTime   int64  // 当前响应时间(ms)
-	CertExpiryDate int64  // 证书过期时间
-	CertExpiryDays int    // 证书剩余天数
-	LastCheckTime  int64  // 最后检测时间
-}
-
-func cloneAgentIDs(ids datatypes.JSONSlice[string]) []string {
-	if len(ids) == 0 {
-		return []string{}
-	}
-
-	copied := make([]string, len(ids))
-	copy(copied, []string(ids))
-	return copied
 }
 
 // resolveTargetAgents 计算监控任务对应的目标探针范围
@@ -484,42 +427,19 @@ func (s *MonitorService) SendMonitorTaskToAgents(ctx context.Context, monitor mo
 }
 
 // GetMonitorStatsByID 获取监控任务的统计数据（聚合后的单个监控详情）
-func (s *MonitorService) GetMonitorStatsByID(ctx context.Context, monitorID string) (*PublicMonitorOverview, error) {
+func (s *MonitorService) GetMonitorStatsByID(ctx context.Context, monitorID string) (*metric.PublicMonitorOverview, error) {
 	// 查询监控任务
 	monitor, err := s.MonitorRepo.FindById(ctx, monitorID)
 	if err != nil {
 		return nil, err
 	}
 
-	// 从 VictoriaMetrics 查询统计数据
-	stats, err := s.metricService.GetMonitorStats(ctx, monitorID)
-	if err != nil {
-		s.logger.Error("查询 VictoriaMetrics 失败", zap.String("monitorID", monitorID), zap.Error(err))
-		// 失败时返回默认值，不中断
-		stats = &metric.MonitorStatsResult{}
-	}
-
-	// 转换为 monitorOverviewSummary 格式
-	summary := monitorOverviewSummary{
-		AgentCount:     stats.AgentCount,
-		Status:         stats.Status,
-		ResponseTime:   stats.ResponseTime,
-		CertExpiryDate: stats.CertExpiryDate,
-		CertExpiryDays: stats.CertExpiryDays,
-		LastCheckTime:  stats.LastCheckTime,
-	}
-
+	// 查询统计数据
+	stats := s.metricService.GetMonitorStats(monitorID)
 	// 构建监控概览对象
-	overview := s.buildMonitorOverview(monitor, summary)
+	overview := s.buildMonitorOverview(monitor, stats)
 
 	return &overview, nil
-}
-
-// GetMonitorAgentStats 获取监控任务各探针的统计数据（详细列表）
-// 直接返回 VictoriaMetrics 查询结果，无需额外转换
-func (s *MonitorService) GetMonitorAgentStats(ctx context.Context, monitorID string) ([]protocol.MonitorData, bool) {
-	// 直接返回 VictoriaMetrics 查询结果
-	return s.metricService.GetMonitorAgentStats(ctx, monitorID)
 }
 
 // GetMonitorHistory 获取监控任务的历史时序数据
@@ -599,10 +519,8 @@ func (s *MonitorService) GetLatestMonitorMetricsByType(ctx context.Context, moni
 	// 在缓存中查询最新的监控数据
 	var result []protocol.MonitorData
 	for _, task := range monitorTasks {
-		monitorData, ok := s.metricService.GetMonitorAgentStats(ctx, task.ID)
-		if ok {
-			result = append(result, monitorData...)
-		}
+		monitorData := s.metricService.GetMonitorAgentStats(task.ID)
+		result = append(result, monitorData...)
 	}
 
 	return result, nil
@@ -619,10 +537,8 @@ func (s *MonitorService) GetAllLatestMonitorMetrics(ctx context.Context) ([]prot
 	// 在缓存中查询最新的监控数据
 	var result []protocol.MonitorData
 	for _, task := range monitorTasks {
-		monitorData, ok := s.metricService.GetMonitorAgentStats(ctx, task.ID)
-		if ok {
-			result = append(result, monitorData...)
-		}
+		monitorData := s.metricService.GetMonitorAgentStats(task.ID)
+		result = append(result, monitorData...)
 	}
 	return result, nil
 }

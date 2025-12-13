@@ -24,35 +24,9 @@ import {
 } from '@/api/monitor.ts';
 import type {PublicMonitor} from '@/types';
 import {cn} from '@/lib/utils';
+import {formatDate, formatDateTime, formatTime} from "@/utils/util.ts";
+import {renderCert} from "@/pages/Public/Monitor.tsx";
 
-const formatTime = (ms: number): string => {
-    if (!ms || ms <= 0) return '0 ms';
-    if (ms < 1000) return `${ms.toFixed(0)} ms`;
-    return `${(ms / 1000).toFixed(2)} s`;
-};
-
-const formatDate = (timestamp: number): string => {
-    if (!timestamp) return '-';
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-};
-
-const formatDateTime = (timestamp: number): string => {
-    if (!timestamp) return '-';
-    const date = new Date(timestamp);
-    return date.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-};
 
 const formatPercentValue = (value: number): string => (Number.isFinite(value) ? value.toFixed(2) : '0.00');
 
@@ -385,8 +359,8 @@ const MonitorDetail = () => {
     const availableAgents = useMemo(() => {
         if (monitorStats.length === 0) return [];
         return monitorStats.map(stat => ({
-            id: stat.agentID,
-            label: stat.agentID.substring(0, 8),
+            id: stat.agentId,
+            label: stat.agentId.substring(0, 8),
         }));
     }, [monitorStats]);
 
@@ -449,15 +423,13 @@ const MonitorDetail = () => {
     }
 
     const monitorTitle = monitorDetail.name ?? '监控详情';
-    const hasCert = monitorDetail.certExpiryDate > 0;
-    const certExpired = hasCert && monitorDetail.certExpiryDays < 0;
-    const certExpiringSoon = hasCert && monitorDetail.certExpiryDays >= 0 && monitorDetail.certExpiryDays < 30;
+    const hasCert = monitorDetail.certExpiryTime > 0;
+    const certExpired = hasCert && monitorDetail.certDaysLeft < 0;
+    const certExpiringSoon = hasCert && monitorDetail.certDaysLeft >= 0 && monitorDetail.certDaysLeft < 30;
 
     const heroStats = [
         {label: '监控类型', value: monitorDetail.type.toUpperCase()},
         {label: '探针数量', value: `${monitorDetail.agentCount} 个`},
-        {label: '24h在线率', value: `${formatPercentValue(monitorDetail.uptime24h)}%`},
-        {label: '7d在线率', value: `${formatPercentValue(monitorDetail.uptime7d)}%`},
     ];
 
     return (
@@ -529,52 +501,10 @@ const MonitorDetail = () => {
                             <StatCard
                                 icon={<Clock className="h-6 w-6"/>}
                                 label="当前响应"
-                                value={formatTime(monitorDetail.currentResponse)}
+                                value={formatTime(monitorDetail.responseTime)}
                                 color="blue"
-                            />
-                            <StatCard
-                                icon={<Clock className="h-6 w-6"/>}
-                                label="24h 平均响应"
-                                value={formatTime(monitorDetail.avgResponse24h)}
-                                color="blue"
-                            />
-                            <StatCard
-                                icon={<CheckCircle2 className="h-6 w-6"/>}
-                                label="24h 在线率"
-                                value={`${formatPercentValue(monitorDetail.uptime24h)}%`}
-                                color={monitorDetail.uptime24h >= 99 ? 'emerald' : monitorDetail.uptime24h >= 95 ? 'amber' : 'rose'}
-                            />
-                            <StatCard
-                                icon={<CheckCircle2 className="h-6 w-6"/>}
-                                label="7d 在线率"
-                                value={`${formatPercentValue(monitorDetail.uptime7d)}%`}
-                                color={monitorDetail.uptime7d >= 99 ? 'emerald' : monitorDetail.uptime7d >= 95 ? 'amber' : 'rose'}
                             />
                         </div>
-
-                        {/* 当前错误信息 */}
-                        {monitorDetail.lastCheckStatus === 'down' && monitorDetail.lastCheckError && (
-                            <div
-                                className="mt-6 rounded-2xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 p-6">
-                                <div className="flex items-start gap-3">
-                                    <AlertCircle
-                                        className="h-6 w-6 text-red-600 dark:text-red-200 flex-shrink-0 mt-0.5"/>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-lg font-semibold text-red-900 dark:text-red-100">
-                                            监控异常
-                                        </h3>
-                                        <p className="mt-2 text-sm text-red-700 dark:text-red-200 break-words">
-                                            {monitorDetail.lastCheckError}
-                                        </p>
-                                        {monitorDetail.lastCheckTime && (
-                                            <p className="mt-2 text-xs text-red-600 dark:text-red-300">
-                                                检测时间: {formatDateTime(monitorDetail.lastCheckTime)}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
                         {/* 证书信息 */}
                         {hasCert && (
@@ -614,12 +544,12 @@ const MonitorDetail = () => {
                                                     ? 'text-amber-700 dark:text-amber-200'
                                                     : 'text-slate-600 dark:text-slate-400'
                                         )}>
-                                            证书到期时间: {formatDate(monitorDetail.certExpiryDate)}
+                                            证书到期时间: {formatDate(monitorDetail.certExpiryTime)}
                                             {certExpired ? (
                                                 <span
-                                                    className="ml-1">(已过期 {Math.abs(monitorDetail.certExpiryDays)} 天)</span>
+                                                    className="ml-1">(已过期 {Math.abs(monitorDetail.certDaysLeft)} 天)</span>
                                             ) : (
-                                                <span className="ml-1">(剩余 {monitorDetail.certExpiryDays} 天)</span>
+                                                <span className="ml-1">(剩余 {monitorDetail.certDaysLeft} 天)</span>
                                             )}
                                         </p>
                                         {certExpired && (
@@ -668,7 +598,7 @@ const MonitorDetail = () => {
                                 <AreaChart data={chartData}>
                                     <defs>
                                         {monitorStats.map((stat, index) => {
-                                            const agentKey = `agent_${stat.agentID}`;
+                                            const agentKey = `agent_${stat.agentId}`;
                                             const color = AGENT_COLORS[index % AGENT_COLORS.length];
                                             return (
                                                 <linearGradient key={agentKey} id={`gradient_${agentKey}`} x1="0" y1="0"
@@ -703,13 +633,13 @@ const MonitorDetail = () => {
                                         className="hidden sm:block"
                                     />
                                     {monitorStats
-                                        .filter(stat => selectedAgent === 'all' || stat.agentID === selectedAgent)
+                                        .filter(stat => selectedAgent === 'all' || stat.agentId === selectedAgent)
                                         .map((stat) => {
                                             // 使用原始索引保持颜色一致性
-                                            const originalIndex = monitorStats.findIndex(s => s.agentID === stat.agentID);
-                                            const agentKey = `agent_${stat.agentID}`;
+                                            const originalIndex = monitorStats.findIndex(s => s.agentId === stat.agentId);
+                                            const agentKey = `agent_${stat.agentId}`;
                                             const color = AGENT_COLORS[originalIndex % AGENT_COLORS.length];
-                                            const agentLabel = stat.agentID.substring(0, 8);
+                                            const agentLabel = stat.agentId.substring(0, 8);
                                             return (
                                                 <Area
                                                     key={agentKey}
@@ -750,17 +680,11 @@ const MonitorDetail = () => {
                                             <th className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
                                                 当前响应
                                             </th>
-                                            <th className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                                24h 在线率
-                                            </th>
-                                            <th className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hidden lg:table-cell">
-                                                7d 在线率
-                                            </th>
-                                            <th className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hidden md:table-cell">
-                                                24h 检测
-                                            </th>
                                             <th className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hidden xl:table-cell">
                                                 最后检测
+                                            </th>
+                                            <th className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hidden 2xl:table-cell">
+                                                证书信息
                                             </th>
                                             <th className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hidden 2xl:table-cell">
                                                 错误信息
@@ -772,7 +696,7 @@ const MonitorDetail = () => {
                                         {monitorStats.map((stats, index) => {
                                             const color = AGENT_COLORS[index % AGENT_COLORS.length];
                                             return (
-                                                <tr key={stats.agentID}
+                                                <tr key={stats.agentId}
                                                     className="transition-colors">
                                                     <td className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4">
                                                         <div className="flex items-center gap-2">
@@ -783,13 +707,13 @@ const MonitorDetail = () => {
                                                             <div className="flex flex-col min-w-0">
                                                                 <span
                                                                     className="font-mono text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                                                                    {stats.agentID.substring(0, 8)}...
+                                                                    {stats.agentId.substring(0, 8)}...
                                                                 </span>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4">
-                                                        <StatusBadge status={stats.lastCheckStatus}/>
+                                                        <StatusBadge status={stats.status}/>
                                                     </td>
                                                     <td className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4">
                                                         <div className="flex items-center gap-1 sm:gap-2">
@@ -797,41 +721,25 @@ const MonitorDetail = () => {
                                                                 className="h-3 w-3 sm:h-4 sm:w-4 text-slate-400 dark:text-slate-500 flex-shrink-0"/>
                                                             <span
                                                                 className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white">
-                                                            {formatTime(stats.currentResponse)}
+                                                            {formatTime(stats.responseTime)}
                                                         </span>
                                                         </div>
                                                     </td>
-                                                    <td className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4">
-                                                        <div className="w-24 sm:w-32">
-                                                            <UptimeBar uptime={stats.uptime24h}/>
-                                                        </div>
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 hidden lg:table-cell">
-                                                        <div className="w-24 sm:w-32">
-                                                            <UptimeBar uptime={stats.uptime7d}/>
-                                                        </div>
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
-                                                        <div
-                                                            className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                                                            {stats.successChecks24h} / {stats.totalChecks24h}
-                                                        </div>
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-4 sm:px-6 py-3 sm:py-4 hidden xl:table-cell">
-                                                        <div
-                                                            className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
-                                                            {formatDateTime(stats.lastCheckTime)}
-                                                        </div>
+                                                    <td className="px-4 sm:px-6 py-3 sm:py-4 hidden 2xl:table-cell">
+                                                        {formatDateTime(stats.checkedAt)}
                                                     </td>
                                                     <td className="px-4 sm:px-6 py-3 sm:py-4 hidden 2xl:table-cell">
-                                                        {stats.lastCheckStatus === 'down' && stats.lastCheckError ? (
+                                                        {renderCert(stats)}
+                                                    </td>
+                                                    <td className="px-4 sm:px-6 py-3 sm:py-4 hidden 2xl:table-cell">
+                                                        {stats.status === 'down' ? (
                                                             <div className="max-w-xs">
                                                                 <div className="flex items-start gap-2">
                                                                     <AlertCircle
                                                                         className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5"/>
                                                                     <span
                                                                         className="text-xs sm:text-sm text-red-700 dark:text-red-300 break-words">
-                                                                        {stats.lastCheckError}
+                                                                        {stats.message}
                                                                     </span>
                                                                 </div>
                                                             </div>
