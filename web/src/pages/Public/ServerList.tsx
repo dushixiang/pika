@@ -1,59 +1,37 @@
-import {type ReactNode, useEffect, useState} from 'react';
-import {Link, useNavigate} from 'react-router-dom';
+import {type ReactNode, useMemo, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
 import {useQuery} from '@tanstack/react-query';
-import {Cpu, EthernetPortIcon, HardDrive, Loader2, MemoryStick, Network, Database} from 'lucide-react';
-import {listAgents, getPublicTags} from '@/api/agent.ts';
+import {
+    AlertTriangle,
+    ArrowDown,
+    ArrowUp,
+    Calendar,
+    CheckCircle2,
+    Cpu,
+    Filter,
+    HardDrive,
+    Loader2,
+    MemoryStick,
+    Network,
+    Server,
+    XCircle
+} from 'lucide-react';
+import {getPublicTags, listAgents} from '@/api/agent.ts';
 import type {Agent, LatestMetrics} from '@/types';
-import {usePublicLayout} from '../PublicLayout';
 import {cn} from '@/lib/utils';
+import CompactResourceBar from "@/components/CompactResourceBar.tsx";
+import StatCard from "@/components/StatCard.tsx";
+import {formatBytes, formatSpeed} from "@/utils/util.ts";
 
 interface AgentWithMetrics extends Agent {
     metrics?: LatestMetrics;
 }
 
-const formatSpeed = (bytesPerSecond: number): string => {
-    if (!bytesPerSecond || bytesPerSecond <= 0) return '0 B/s';
-    const k = 1024;
-    const sizes = ['B/s', 'K/s', 'M/s', 'G/s', 'T/s'];
-    const i = Math.min(Math.floor(Math.log(bytesPerSecond) / Math.log(k)), sizes.length - 1);
-    const value = bytesPerSecond / Math.pow(k, i);
-    // 根据数值大小调整精度，避免过长
-    const decimals = value >= 100 ? 0 : value >= 10 ? 1 : 2;
-    return `${value.toFixed(decimals)} ${sizes[i]}`;
-};
-
-const formatTraffic = (bytesPerSecond: number): string => {
-    if (!bytesPerSecond || bytesPerSecond <= 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.min(Math.floor(Math.log(bytesPerSecond) / Math.log(k)), sizes.length - 1);
-    return `${(bytesPerSecond / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-};
-
-const formatBytes = (bytes: number): string => {
-    if (!bytes || bytes <= 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-};
-
-const formatPercentValue = (value: number): string => (Number.isFinite(value) ? value.toFixed(1) : '0.0');
-
-const ProgressBar = ({percent, colorClass}: { percent: number; colorClass: string }) => (
-    <div className="relative h-2 w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-        <div
-            className={`absolute inset-y-0 left-0 ${colorClass} transition-all duration-500`}
-            style={{width: `${Math.min(Math.max(percent, 0), 100)}%`}}
-        />
-    </div>
-);
-
 const LoadingSpinner = () => (
-    <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#141414]">
+    <div className="flex min-h-screen items-center justify-center bg-[#05050a]">
         <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400"/>
-            <p className="text-sm text-slate-500 dark:text-slate-400">数据加载中，请稍候...</p>
+            <Loader2 className="h-8 w-8 animate-spin text-cyan-400"/>
+            <p className="text-sm text-cyan-500 font-mono">数据加载中...</p>
         </div>
     </div>
 );
@@ -66,12 +44,12 @@ interface EmptyStateProps {
 
 const EmptyState = ({title, description, extra}: EmptyStateProps) => (
     <div
-        className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-[#141414] p-12 text-center backdrop-blur">
-        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300">
+        className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-cyan-500/30 bg-[#0a0b10]/90 p-12 text-center backdrop-blur">
+        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
             <HardDrive className="h-7 w-7"/>
         </div>
-        <h3 className="mt-4 text-base font-semibold text-slate-900 dark:text-white">{title}</h3>
-        <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">{description}</p>
+        <h3 className="mt-4 text-base font-semibold text-cyan-100 font-mono">{title}</h3>
+        <p className="mt-2 max-w-sm text-sm text-cyan-600">{description}</p>
         {extra ? <div className="mt-4">{extra}</div> : null}
     </div>
 );
@@ -80,23 +58,9 @@ const calculateNetworkSpeed = (metrics?: LatestMetrics) => {
     if (!metrics?.network) {
         return {upload: 0, download: 0};
     }
-
-    // 后端返回的已经是每秒速率(字节/秒),直接使用
     return {
         upload: metrics.network.totalBytesSentRate,
         download: metrics.network.totalBytesRecvRate
-    };
-};
-
-const calculateNetworkTraffic = (metrics?: LatestMetrics) => {
-    if (!metrics?.network) {
-        return {totalUpload: 0, totalDownload: 0};
-    }
-
-    // 后端返回的累计流量,直接使用
-    return {
-        totalUpload: metrics.network.totalBytesSentTotal,
-        totalDownload: metrics.network.totalBytesRecvTotal
     };
 };
 
@@ -104,51 +68,17 @@ const calculateDiskUsage = (metrics?: LatestMetrics) => {
     if (!metrics?.disk) {
         return 0;
     }
-
-    // 后端已经计算好平均使用率,直接返回
     return metrics.disk.usagePercent;
-};
-
-const getProgressColor = (percent: number) => {
-    if (percent >= 85) return 'bg-rose-500';
-    if (percent >= 65) return 'bg-amber-500';
-    return 'bg-emerald-500';
-};
-
-// 获取状态显示信息
-const getStatusDisplay = (status: number) => {
-    if (status === 1) {
-        return {
-            text: '在线',
-            bgColor: 'bg-emerald-50 dark:bg-emerald-500/15',
-            textColor: 'text-emerald-700 dark:text-emerald-200',
-            dotColor: 'bg-emerald-500 dark:bg-emerald-400',
-        };
-    }
-    return {
-        text: '离线',
-        bgColor: 'bg-slate-50 dark:bg-slate-800/80',
-        textColor: 'text-slate-600 dark:text-slate-400',
-        dotColor: 'bg-slate-400 dark:bg-slate-500',
-    };
 };
 
 const ServerList = () => {
     const navigate = useNavigate();
-    const {viewMode, setShowViewToggle} = usePublicLayout();
     const [selectedTag, setSelectedTag] = useState<string>('');
 
-    // 挂载时启用视图切换，卸载时禁用
-    useEffect(() => {
-        setShowViewToggle(true);
-        return () => setShowViewToggle(false);
-    }, [setShowViewToggle]);
-
-    const {data: agents = [], isLoading, dataUpdatedAt} = useQuery<AgentWithMetrics[]>({
+    const {data: agents = [], isLoading} = useQuery<AgentWithMetrics[]>({
         queryKey: ['agents', 'online'],
         queryFn: async () => {
             const response = await listAgents();
-            // 后端已经在列表中包含了 metrics 数据,直接使用即可
             return (response.data.items || []) as AgentWithMetrics[];
         },
         refetchInterval: 5000,
@@ -161,7 +91,7 @@ const ServerList = () => {
             const response = await getPublicTags();
             return response.data.tags || [];
         },
-        refetchInterval: 30000, // 每30秒刷新一次标签
+        refetchInterval: 30000,
     });
 
     // 根据选中的标签过滤服务器
@@ -169,450 +99,304 @@ const ServerList = () => {
         ? agents.filter(agent => agent.tags?.includes(selectedTag))
         : agents;
 
+    // 计算统计数据
+    const stats = useMemo(() => {
+        const total = agents.length;
+        const online = agents.filter(a => a.status === 1).length;
+        const offline = total - online;
+
+        // 计算网络统计
+        let totalUploadRate = 0;
+        let totalDownloadRate = 0;
+        let totalUploadTotal = 0;
+        let totalDownloadTotal = 0;
+
+        agents.forEach(agent => {
+            if (agent.status === 1 && agent.metrics?.network) {
+                totalUploadRate += agent.metrics.network.totalBytesSentRate || 0;
+                totalDownloadRate += agent.metrics.network.totalBytesRecvRate || 0;
+                totalUploadTotal += agent.metrics.network.totalBytesSentTotal || 0;
+                totalDownloadTotal += agent.metrics.network.totalBytesRecvTotal || 0;
+            }
+        });
+
+        return {
+            total,
+            online,
+            offline,
+            uploadRate: totalUploadRate,
+            downloadRate: totalDownloadRate,
+            uploadTotal: totalUploadTotal,
+            downloadTotal: totalDownloadTotal
+        };
+    }, [agents]);
+
     const handleNavigate = (agentId: string) => {
         navigate(`/servers/${agentId}`);
     };
-
-    const renderGridView = () => (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredAgents.map((agent) => {
-                const cpuUsage = agent.metrics?.cpu?.usagePercent ?? 0;
-                const memoryUsage = agent.metrics?.memory?.usagePercent ?? 0;
-                const diskUsage = calculateDiskUsage(agent.metrics);
-                const {upload, download} = calculateNetworkSpeed(agent.metrics);
-                const {totalUpload, totalDownload} = calculateNetworkTraffic(agent.metrics);
-                const statusDisplay = getStatusDisplay(agent.status);
-
-                return (
-                    <Link
-                        key={agent.id}
-                        tabIndex={0}
-                        to={`/servers/${agent.id}`}
-                        className={cn(
-                            "group relative flex h-full cursor-pointer flex-col gap-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-transparent p-5 transition duration-200 hover:border-slate-300 dark:hover:border-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200",
-                            agent.status !== 1 && "filter grayscale"
-                        )}
-                    >
-                        <div className="flex flex-1 flex-col gap-4">
-                            <div className="flex flex-col gap-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                                            {agent.name || agent.hostname}
-                                        </h3>
-                                        <span
-                                            className={cn(
-                                                "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium",
-                                                statusDisplay.bgColor,
-                                                statusDisplay.textColor
-                                            )}>
-                                            <span className={cn("flex h-1.5 w-1.5 rounded-lg", statusDisplay.dotColor)}/>
-                                            {statusDisplay.text}
-                                        </span>
-                                    </div>
-                                    <span
-                                        className="inline-flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300">
-                                        {agent.os} · {agent.arch}
-                                    </span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                    {agent.tags && agent.tags.length > 0 && (
-                                        agent.tags?.map((tag, index) => (
-                                            <span
-                                                key={index}
-                                                className="inline-flex items-center gap-1 rounded bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 text-blue-700 dark:text-blue-400">
-                                                {tag}
-                                            </span>
-                                        ))
-                                    )}
-                                    {agent.expireTime > 0 && (
-                                        <span
-                                            className="inline-flex items-center gap-1 rounded bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-200">
-                                            <span
-                                                className="font-medium">到期:</span> {new Date(agent.expireTime).toLocaleDateString('zh-CN')}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-3">
-                            <div className="grid grid-cols-3 gap-3">
-                                <div
-                                    className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 p-3">
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                            <Cpu className="h-3.5 w-3.5"/>
-                                        </div>
-                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-200">CPU</span>
-                                    </div>
-                                    <div className="text-sm font-bold text-slate-900 dark:text-white">
-                                        {formatPercentValue(cpuUsage)}%
-                                    </div>
-                                    <ProgressBar percent={cpuUsage} colorClass={getProgressColor(cpuUsage)}/>
-                                </div>
-
-                                <div
-                                    className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 p-3">
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                            <MemoryStick className="h-3.5 w-3.5"/>
-                                        </div>
-                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-200">内存</span>
-                                    </div>
-                                    <div className="text-sm font-bold text-slate-900 dark:text-white">
-                                        {formatPercentValue(memoryUsage)}%
-                                    </div>
-                                    <ProgressBar percent={memoryUsage} colorClass={getProgressColor(memoryUsage)}/>
-                                </div>
-
-                                <div
-                                    className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 p-3">
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                            <HardDrive className="h-3.5 w-3.5"/>
-                                        </div>
-                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-200">磁盘</span>
-                                    </div>
-                                    <div className="text-sm font-bold text-slate-900 dark:text-white">
-                                        {formatPercentValue(diskUsage)}%
-                                    </div>
-                                    <ProgressBar percent={diskUsage} colorClass={getProgressColor(diskUsage)}/>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div
-                                    className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 px-3 py-2.5">
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                            <Network className="h-3.5 w-3.5"/>
-                                        </div>
-                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-200">实时速率</span>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1 text-xs font-medium text-slate-700 dark:text-slate-100">
-                                        <span className="flex items-center gap-1">
-                                            <span className="text-slate-500 dark:text-slate-400">↑</span>
-                                            {formatSpeed(upload)}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <span className="text-slate-500 dark:text-slate-400">↓</span>
-                                            {formatSpeed(download)}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div
-                                    className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 px-3 py-2.5">
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                            <EthernetPortIcon className="h-3.5 w-3.5"/>
-                                        </div>
-                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-200">累计流量</span>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1 text-xs font-medium text-slate-700 dark:text-slate-100">
-                                        <span className="flex items-center gap-1">
-                                            <span className="text-slate-500 dark:text-slate-400">↑</span>
-                                            {formatTraffic(totalUpload)}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <span className="text-slate-500 dark:text-slate-400">↓</span>
-                                            {formatTraffic(totalDownload)}
-                                        </span>
-                                    </div>
-                                </div>
-                                {agent.trafficLimit > 0 && (
-                                    <div
-                                        className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 px-3 py-2.5">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                                    <Database className="h-3.5 w-3.5"/>
-                                                </div>
-                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-200">流量统计</span>
-                                            </div>
-                                            <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                                                {formatPercentValue((agent.trafficUsed || 0) / agent.trafficLimit * 100)}%
-                                            </span>
-                                        </div>
-                                        <ProgressBar
-                                            percent={(agent.trafficUsed || 0) / agent.trafficLimit * 100}
-                                            colorClass={getProgressColor((agent.trafficUsed || 0) / agent.trafficLimit * 100)}
-                                        />
-                                        <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                                            <span>{formatBytes(agent.trafficUsed || 0)} / {formatBytes(agent.trafficLimit)}</span>
-                                            {agent.trafficResetDay && agent.trafficResetDay > 0 && (
-                                                <span className="text-slate-500 dark:text-slate-400">每月{agent.trafficResetDay}号重置</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </Link>
-                );
-            })}
-        </div>
-    );
-
-    const renderListView = () => (
-        <>
-            {/* 桌面端：使用表格布局 */}
-            <div className="hidden overflow-hidden rounded-md border border-slate-200 dark:border-slate-700 lg:block">
-                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-sm">
-                    <thead className="bg-slate-50 dark:bg-slate-800">
-                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
-                        <th className="px-5 py-3">服务器</th>
-                        <th className="px-5 py-3">系统</th>
-                        <th className="px-5 py-3">CPU</th>
-                        <th className="px-5 py-3">内存</th>
-                        <th className="px-5 py-3">磁盘</th>
-                        <th className="px-5 py-3">网络</th>
-                    </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700 text-slate-700 dark:text-slate-200">
-                    {filteredAgents.map((agent) => {
-                        const cpuUsage = agent.metrics?.cpu?.usagePercent ?? 0;
-                        const cpuModel = agent.metrics?.cpu?.modelName || '未知';
-                        const cpuPhysicalCores = agent.metrics?.cpu?.physicalCores ?? 0;
-                        const cpuLogicalCores = agent.metrics?.cpu?.logicalCores ?? 0;
-
-                        const memoryUsage = agent.metrics?.memory?.usagePercent ?? 0;
-                        const memoryTotal = agent.metrics?.memory?.total ?? 0;
-                        const memoryUsed = agent.metrics?.memory?.used ?? 0;
-                        const memoryAvailable = agent.metrics?.memory?.available ?? 0;
-
-                        const diskUsage = calculateDiskUsage(agent.metrics);
-                        const diskTotal = agent.metrics?.disk?.total ?? 0;
-                        const diskUsed = agent.metrics?.disk?.used ?? 0;
-                        const diskFree = agent.metrics?.disk?.free ?? 0;
-
-                        const {upload, download} = calculateNetworkSpeed(agent.metrics);
-                        const statusDisplay = getStatusDisplay(agent.status);
-
-                        return (
-                            <tr
-                                key={agent.id}
-                                tabIndex={0}
-                                onClick={() => handleNavigate(agent.id)}
-                                onKeyDown={(event) => {
-                                    if (event.key === 'Enter' || event.key === ' ') {
-                                        event.preventDefault();
-                                        handleNavigate(agent.id);
-                                    }
-                                }}
-                                className={cn(
-                                    "cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-800/50 focus-within:bg-slate-50 dark:focus-within:bg-slate-800/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-200",
-                                    agent.status !== 1 && "filter grayscale"
-                                )}
-                            >
-
-                                <td className="px-5 py-4 align-center">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                {agent.name || agent.hostname}
-                                            </span>
-                                            <span
-                                                className={cn(
-                                                    "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-medium",
-                                                    statusDisplay.bgColor,
-                                                    statusDisplay.textColor
-                                                )}>
-                                                <span className={cn("h-1.5 w-1.5 rounded-lg", statusDisplay.dotColor)}/>
-                                                {statusDisplay.text}
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                            {agent.tags && agent.tags.length > 0 && (
-                                                agent.tags?.map((tag, index) => (
-                                                    <span key={index} className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-400">
-                                                        {tag}
-                                                    </span>
-                                                ))
-                                            )}
-                                            {agent.expireTime > 0 && (
-                                                <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-200">
-                                                    <span
-                                                        className="font-medium">到期:</span> {new Date(agent.expireTime).toLocaleDateString('zh-CN')}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-5 py-4 align-center text-xs text-slate-500 dark:text-slate-300">
-                                    <div>{agent.os}</div>
-                                    <div className="text-slate-400 dark:text-slate-400">{agent.arch}</div>
-                                </td>
-                                <td className="px-5 py-4 align-center">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-24">
-                                                <ProgressBar percent={cpuUsage}
-                                                             colorClass={getProgressColor(cpuUsage)}/>
-                                            </div>
-                                            <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                                                {formatPercentValue(cpuUsage)}%
-                                            </span>
-                                        </div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                                            <div className="truncate" style={{maxWidth: '200px'}}
-                                                 title={cpuModel}>{cpuModel}</div>
-                                            <div>{cpuPhysicalCores}核{cpuLogicalCores}线程</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-5 py-4 align-center">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-24">
-                                                <ProgressBar percent={memoryUsage}
-                                                             colorClass={getProgressColor(memoryUsage)}/>
-                                            </div>
-                                            <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                                                {formatPercentValue(memoryUsage)}%
-                                            </span>
-                                        </div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                                            <div>总计:{formatBytes(memoryTotal)}</div>
-                                            <div>已用:{formatBytes(memoryUsed)} / 剩余:{formatBytes(memoryAvailable)}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-5 py-4 align-center">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-24">
-                                                <ProgressBar percent={diskUsage}
-                                                             colorClass={getProgressColor(diskUsage)}/>
-                                            </div>
-                                            <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                                                {formatPercentValue(diskUsage)}%
-                                            </span>
-                                        </div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                                            <div>总计:{formatBytes(diskTotal)}</div>
-                                            <div>已用:{formatBytes(diskUsed)} / 剩余:{formatBytes(diskFree)}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-5 py-4 align-center">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex flex-col gap-1 text-xs text-slate-600 dark:text-slate-300">
-                                            <div className="flex items-center gap-1 whitespace-nowrap">
-                                                <span className="text-slate-400 dark:text-slate-500">↑</span>
-                                                <span className="font-medium tabular-nums">{formatSpeed(upload)}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 whitespace-nowrap">
-                                                <span className="text-slate-400 dark:text-slate-500">↓</span>
-                                                <span className="font-medium tabular-nums">{formatSpeed(download)}</span>
-                                            </div>
-                                        </div>
-                                        {agent.trafficLimit > 0 && (
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-16">
-                                                        <ProgressBar
-                                                            percent={(agent.trafficUsed || 0) / agent.trafficLimit * 100}
-                                                            colorClass={getProgressColor((agent.trafficUsed || 0) / agent.trafficLimit * 100)}
-                                                        />
-                                                    </div>
-                                                    <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                                                        {formatPercentValue((agent.trafficUsed || 0) / agent.trafficLimit * 100)}%
-                                                    </span>
-                                                </div>
-                                                <div className="text-xs text-slate-500 dark:text-slate-400">
-                                                    {formatBytes(agent.trafficUsed || 0)} / {formatBytes(agent.trafficLimit)}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                    </tbody>
-                </table>
-            </div>
-        </>
-    );
 
     if (isLoading) {
         return <LoadingSpinner/>;
     }
 
-    return (
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-4">
-            {/* 标签过滤器 */}
-            {tagsData && tagsData.length > 0 && (
-                <div className="relative">
-                    <div className="tag-filter-scrollbar flex items-center gap-3 overflow-x-auto pb-2">
-                        <button
-                            onClick={() => setSelectedTag('')}
-                            className={cn(
-                                "cursor-pointer inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
-                                selectedTag === ''
-                                    ? 'bg-blue-500 dark:bg-blue-500 text-white shadow-md shadow-blue-500/30 dark:shadow-blue-500/30'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                            )}
-                        >
-                            <span>全部</span>
-                            <span className={cn(
-                                "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold",
-                                selectedTag === ''
-                                    ? 'bg-blue-400 dark:bg-blue-400 text-white'
-                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
-                            )}>
-                                {agents.length}
-                            </span>
-                        </button>
-                        {tagsData.map((tag) => {
-                            const count = agents.filter(agent => agent.tags?.includes(tag)).length;
-                            if (count === 0) return null;
+    // 计算所有标签（包括ALL和ONLINE/OFFLINE）
+    const allTags = ['ALL', 'ONLINE', 'OFFLINE'];
+    if (tagsData && tagsData.length > 0) {
+        tagsData.forEach((tag: string) => {
+            if (!allTags.includes(tag.toUpperCase())) {
+                allTags.push(tag.toUpperCase());
+            }
+        });
+    }
 
-                            return (
-                                <button
-                                    key={tag}
-                                    onClick={() => setSelectedTag(tag)}
-                                    className={cn(
-                                        "cursor-pointer inline-flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
-                                        selectedTag === tag
-                                            ? 'bg-blue-500 dark:bg-blue-500 text-white shadow-md shadow-blue-500/30 dark:shadow-blue-500/30'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                                    )}
-                                >
-                                    <span>{tag}</span>
-                                    <span className={cn(
-                                        "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold",
-                                        selectedTag === tag
-                                            ? 'bg-blue-400 dark:bg-blue-400 text-white'
-                                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
-                                    )}>
-                                        {count}
-                                    </span>
-                                </button>
-                            );
-                        })}
+    // 过滤逻辑
+    let displayAgents = agents;
+    if (selectedTag === 'ONLINE') {
+        displayAgents = agents.filter(a => a.status === 1);
+    } else if (selectedTag === 'OFFLINE') {
+        displayAgents = agents.filter(a => a.status !== 1);
+    } else if (selectedTag && selectedTag !== 'ALL') {
+        displayAgents = agents.filter(a => a.tags?.map(t => t.toUpperCase()).includes(selectedTag));
+    }
+
+    return (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            {/* 统计卡片 */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <StatCard
+                    title="设备总数"
+                    value={stats.total}
+                    icon={Server}
+                    color="gray"
+                />
+                <StatCard
+                    title="在线设备"
+                    value={stats.online}
+                    icon={CheckCircle2}
+                    color="emerald"
+                />
+                <StatCard
+                    title="离线设备"
+                    value={stats.offline}
+                    icon={XCircle}
+                    color="rose"
+                />
+                <div
+                    className="relative overflow-hidden rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 text-blue-400">
+                    <div className="absolute -right-4 -bottom-4 opacity-10 rotate-[-15deg]">
+                        <Network className="w-24 h-24"/>
                     </div>
-                    {/* 右侧渐变提示 */}
-                    <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-white dark:from-[#141414]" />
+                    <div className="relative z-10 flex justify-between items-start">
+                        <div>
+                            <div className="text-[10px] font-mono uppercase tracking-widest opacity-70 mb-1">网络统计
+                            </div>
+                            <div className="space-y-1 text-xs font-mono">
+                                <div className="flex items-center gap-2">
+                                    <ArrowUp className="w-3 h-3 text-blue-400"/>
+                                    <span className="text-cyan-300">{formatSpeed(stats.uploadRate)}</span>
+                                    <span className="text-cyan-600">({formatBytes(stats.uploadTotal)})</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <ArrowDown className="w-3 h-3 text-emerald-400"/>
+                                    <span className="text-cyan-300">{formatSpeed(stats.downloadRate)}</span>
+                                    <span className="text-cyan-600">({formatBytes(stats.downloadTotal)})</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-black/20 backdrop-blur-sm border border-white/5">
+                            <Network className="w-5 h-5"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 标签过滤器 */}
+            {allTags.length > 1 && (
+                <div className="flex flex-wrap gap-2 items-center">
+                    <div className="text-xs font-mono text-cyan-600 flex items-center gap-2 mr-2">
+                        <Filter className="w-3 h-3"/>
+                        FILTERS:
+                    </div>
+                    {allTags.map(tag => {
+                        const tagKey = tag === 'ALL' ? '' : tag;
+                        let count = 0;
+                        if (tag === 'ALL') count = agents.length;
+                        else if (tag === 'ONLINE') count = agents.filter(a => a.status === 1).length;
+                        else if (tag === 'OFFLINE') count = agents.filter(a => a.status !== 1).length;
+                        else count = agents.filter(a => a.tags?.map(t => t.toUpperCase()).includes(tag)).length;
+
+                        if (count === 0 && tag !== 'ALL') return null;
+
+                        return (
+                            <button
+                                key={tag}
+                                onClick={() => setSelectedTag(tagKey)}
+                                className={cn(
+                                    "px-3 py-1 rounded-full text-[10px] font-bold font-mono tracking-wider transition-all border cursor-pointer",
+                                    selectedTag === tagKey
+                                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]'
+                                        : 'bg-black/30 text-cyan-700 border-cyan-900/30 hover:text-cyan-400 hover:border-cyan-700'
+                                )}
+                            >
+                                {tag} ({count})
+                            </button>
+                        );
+                    })}
                 </div>
             )}
 
-            {filteredAgents.length === 0 ? (
+            {/* 服务器表格 */}
+            {displayAgents.length === 0 ? (
                 <EmptyState
                     title={selectedTag ? '没有匹配的服务器' : '暂无在线服务器'}
                     description={selectedTag ? `标签 "${selectedTag}" 下暂无服务器` : '当前没有任何探针在线，请稍后再试。'}
                 />
-            ) : viewMode === 'grid' ? (
-                renderGridView()
             ) : (
-                renderListView()
+                <div
+                    className="bg-[#0a0b10]/90 border border-cyan-900/50 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                        <tr className="bg-black/40 text-[10px] font-mono uppercase tracking-widest text-cyan-600 border-b border-cyan-900/50">
+                            <th className="p-4 font-normal w-[300px]">System Identity</th>
+                            <th className="p-4 font-normal">Resource Telemetry</th>
+                            <th className="p-4 font-normal w-[200px]">Network I/O</th>
+                            <th className="p-4 font-normal w-[180px]">Meta / Status</th>
+                        </tr>
+                        </thead>
+                        <tbody className="divide-y divide-cyan-900/30">
+                        {displayAgents.map(server => {
+                            const isOnline = server.status === 1;
+                            const cpuUsage = server.metrics?.cpu?.usagePercent ?? 0;
+                            const memoryUsage = server.metrics?.memory?.usagePercent ?? 0;
+                            const memoryTotal = server.metrics?.memory?.total ?? 0;
+                            const memoryUsed = server.metrics?.memory?.used ?? 0;
+                            const diskUsage = calculateDiskUsage(server.metrics);
+                            const diskTotal = server.metrics?.disk?.total ?? 0;
+                            const diskUsed = server.metrics?.disk?.used ?? 0;
+                            const {upload, download} = calculateNetworkSpeed(server.metrics);
+
+                            return (
+                                <tr
+                                    key={server.id}
+                                    tabIndex={0}
+                                    onClick={() => handleNavigate(server.id)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            handleNavigate(server.id);
+                                        }
+                                    }}
+                                    className="group hover:bg-cyan-500/5 transition-colors cursor-pointer"
+                                >
+                                    {/* Identity */}
+                                    <td className="p-4 align-top">
+                                        <div className="flex items-center gap-4">
+                                            <div>
+                                                <div
+                                                    className="font-bold text-cyan-100 font-mono text-sm group-hover:text-cyan-400 transition-colors">
+                                                    {server.name || server.hostname}
+                                                </div>
+                                                <div
+                                                    className="flex items-center gap-2 text-[10px] text-cyan-600 mt-1 font-mono uppercase">
+                                                    <span>{server.os}</span>
+                                                    <span className="w-px h-2 bg-cyan-800"></span>
+                                                    <span>{server.arch}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    {/* Resources */}
+                                    <td className="p-4 align-top">
+                                        {isOnline ? (
+                                            <div className="flex flex-col justify-center h-full gap-0.5">
+                                                <CompactResourceBar
+                                                    value={cpuUsage}
+                                                    label="CPU"
+                                                    icon={Cpu}
+                                                    subtext={null}
+                                                    color="bg-blue-500"
+                                                />
+                                                <CompactResourceBar
+                                                    value={memoryUsage}
+                                                    label="RAM"
+                                                    icon={MemoryStick}
+                                                    subtext={`${formatBytes(memoryUsed)}/${formatBytes(memoryTotal)}`}
+                                                    color="bg-purple-500"
+                                                />
+                                                <CompactResourceBar
+                                                    value={diskUsage}
+                                                    label="DSK"
+                                                    icon={HardDrive}
+                                                    subtext={`${formatBytes(diskUsed)}/${formatBytes(diskTotal)}`}
+                                                    color="bg-emerald-500"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div
+                                                className="text-xs text-rose-500 font-mono flex items-center gap-2 py-4">
+                                                <AlertTriangle className="w-4 h-4"/>
+                                                <span>CONNECTION_LOST // RECONNECTING...</span>
+                                            </div>
+                                        )}
+                                    </td>
+
+                                    {/* Network */}
+                                    <td className="p-4 font-mono align-top">
+                                        <div className="flex flex-col gap-1.5 text-[10px] text-cyan-500 mb-3">
+                                            <span className="flex items-center gap-2 text-emerald-400/80">
+                                                <ArrowDown className="w-3 h-3"/>
+                                                <span>IN: {formatSpeed(download)}</span>
+                                            </span>
+                                            <span className="flex items-center gap-2 text-blue-400/80">
+                                                <ArrowUp className="w-3 h-3"/>
+                                                <span>OUT: {formatSpeed(upload)}</span>
+                                            </span>
+                                        </div>
+                                        {server.trafficLimit > 0 ? (
+                                            <div className="w-32">
+                                                <div
+                                                    className="flex justify-between text-[9px] text-cyan-700 mb-0.5">
+                                                    <span>TRAFFIC</span>
+                                                    <span>{Math.round((server.trafficUsed || 0) / server.trafficLimit * 100)}%</span>
+                                                </div>
+                                                <div className="h-1 bg-cyan-900/50 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-cyan-400"
+                                                         style={{width: `${((server.trafficUsed || 0) / server.trafficLimit) * 100}%`}}></div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-[10px] text-cyan-800 italic">-- NO METERING --</div>
+                                        )}
+                                    </td>
+
+                                    {/* Meta */}
+                                    <td className="p-4 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex gap-1 flex-wrap">
+                                                {server.tags && server.tags.length > 0 && server.tags.map(tag => (
+                                                    <span key={tag}
+                                                          className="px-1.5 py-0.5 bg-cyan-900/40 text-cyan-400 border border-cyan-700/50 text-[10px] font-mono rounded-sm">
+                                                        #{tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div
+                                                className={`text-[10px] font-mono flex items-center gap-1 ${server.expireTime && server.expireTime > 0 ? 'text-cyan-600' : 'text-emerald-500/60'}`}>
+                                                <Calendar className="w-3 h-3"/>
+                                                {server.expireTime && server.expireTime > 0
+                                                    ? `EXP: ${new Date(server.expireTime).toLocaleDateString('zh-CN')}`
+                                                    : 'PERMANENT_NODE'
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     );

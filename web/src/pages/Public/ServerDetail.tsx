@@ -959,42 +959,39 @@ const ServerDetail = () => {
     return (
         <div className="dark:bg-[#141414]">
             <div className="mx-auto flex max-w-7xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-                <section
-                    className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-700 via-slate-600 to-slate-700 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 p-6 text-white">
-                    <div
-                        className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_top,rgba(255,255,255,0.35),transparent_55%)]"/>
-                    <div className="relative flex flex-col gap-6">
+                <section className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+                    <div className="flex flex-col gap-6">
                         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                             <div className="space-y-4">
                                 <button
                                     type="button"
                                     onClick={() => navigate('/')}
-                                    className="group inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 dark:text-white/70 transition hover:text-white dark:hover:text-white"
+                                    className="group inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-600 dark:text-slate-400 transition hover:text-slate-900 dark:hover:text-white"
                                 >
                                     <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-0.5"/>
                                     返回概览
                                 </button>
                                 <div className="flex items-start gap-4">
                                     <div
-                                        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 dark:bg-white/10 text-white">
+                                        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400">
                                         <Server className="h-7 w-7"/>
                                     </div>
                                     <div>
                                         <div className="flex flex-wrap items-center gap-3">
-                                            <h1 className="text-3xl font-semibold text-white">{displayName}</h1>
+                                            <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">{displayName}</h1>
                                             <span
                                                 className={cn(
                                                     "inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-medium",
                                                     isOnline
-                                                        ? 'bg-emerald-400/30 text-white'
-                                                        : 'bg-white/20 text-white/80'
+                                                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
                                                 )}
                                             >
                                                 <span className={cn("h-1.5 w-1.5 rounded-full", statusDotStyles)}/>
                                                 {statusText}
                                             </span>
                                         </div>
-                                        <p className="mt-2 text-sm text-white/80">
+                                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                                             {[agent.hostname, agent.ip].filter(Boolean).join(' · ') || '-'}
                                         </p>
                                     </div>
@@ -1005,19 +1002,19 @@ const ServerDetail = () => {
                                 {heroStats.map((stat) => (
                                     <div
                                         key={stat.label}
-                                        className="rounded-2xl bg-white/10 dark:bg-white/10 p-4 text-left backdrop-blur"
+                                        className="rounded-2xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 p-4 text-left"
                                     >
-                                        <p className="text-[11px] uppercase tracking-[0.3em] text-white/70">{stat.label}</p>
-                                        <p className="mt-2 text-base font-semibold text-white">{stat.value}</p>
+                                        <p className="text-[11px] uppercase tracking-[0.3em] text-slate-600 dark:text-slate-400">{stat.label}</p>
+                                        <p className="mt-2 text-base font-semibold text-slate-900 dark:text-white">{stat.value}</p>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-white/70">
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-400 pt-4 border-t border-slate-200 dark:border-slate-700">
                             <span>探针 ID：{agent.id}</span>
-                            <span className="hidden h-1 w-1 rounded-full bg-white/30 sm:inline-block"/>
+                            <span className="hidden h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600 sm:inline-block"/>
                             <span>版本：{agent.version || '-'}</span>
-                            <span className="hidden h-1 w-1 rounded-full bg-white/30 sm:inline-block"/>
+                            <span className="hidden h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600 sm:inline-block"/>
                             <span>网络累计：{networkSummary}</span>
                         </div>
                     </div>

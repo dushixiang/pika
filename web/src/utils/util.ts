@@ -26,3 +26,21 @@ export const formatDateTime = (timestamp: number): string => {
         second: '2-digit'
     });
 };
+
+export const formatSpeed = (bytesPerSecond: number): string => {
+    if (!bytesPerSecond || bytesPerSecond <= 0) return '0 B/s';
+    const k = 1024;
+    const sizes = ['B/s', 'K/s', 'M/s', 'G/s', 'T/s'];
+    const i = Math.min(Math.floor(Math.log(bytesPerSecond) / Math.log(k)), sizes.length - 1);
+    const value = bytesPerSecond / Math.pow(k, i);
+    const decimals = value >= 100 ? 0 : value >= 10 ? 1 : 2;
+    return `${value.toFixed(decimals)} ${sizes[i]}`;
+};
+
+export const formatBytes = (bytes: number): string => {
+    if (!bytes || bytes <= 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+};
