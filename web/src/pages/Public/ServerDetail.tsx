@@ -99,22 +99,22 @@ const INTERFACE_COLORS = [
 ];
 
 const LoadingSpinner = () => (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#141414]">
+    <div className="flex min-h-screen items-center justify-center bg-[#05050a]">
         <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400 dark:text-slate-400"/>
-            <p className="text-sm text-slate-500 dark:text-slate-400">数据加载中，请稍候...</p>
+            <Loader2 className="h-8 w-8 animate-spin text-cyan-400"/>
+            <p className="text-sm text-cyan-500 font-mono">数据加载中...</p>
         </div>
     </div>
 );
 
 const EmptyState = ({message = '服务器不存在或已离线'}: { message?: string }) => (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#141414]">
+    <div className="flex min-h-screen items-center justify-center bg-[#05050a]">
         <div className="flex flex-col items-center gap-3 text-center">
             <div
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-300">
+                className="flex h-16 w-16 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
                 <Server className="h-8 w-8"/>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{message}</p>
+            <p className="text-sm text-cyan-600 font-mono">{message}</p>
         </div>
     </div>
 );
@@ -132,14 +132,14 @@ const ChartPlaceholder = ({
 }) => (
     <div
         className={cn(
-            "flex items-center justify-center rounded-lg border border-dashed border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 ",
+            "flex items-center justify-center rounded-lg border border-dashed border-cyan-500/30 bg-[#0a0b10]/50 text-sm text-cyan-600 font-mono",
             heightClass
         )}
     >
         <div className="text-center">
-            <Icon className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-slate-600"/>
-            <p>{title}</p>
-            {subtitle ? <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{subtitle}</p> : null}
+            <Icon className="mx-auto mb-3 h-10 w-10 text-cyan-900/50"/>
+            <p className="uppercase tracking-wider">{title}</p>
+            {subtitle ? <p className="mt-1 text-xs text-cyan-800">{subtitle}</p> : null}
         </div>
     </div>
 );
@@ -156,15 +156,15 @@ const Card = ({
     children: ReactNode;
 }) => (
     <section
-        className="rounded-3xl border border-slate-200 dark:border-slate-700  p-6 ">
+        className="rounded-2xl border border-cyan-900/50 bg-[#0a0b10]/90 p-6 shadow-2xl backdrop-blur-sm">
         {(title || description || action) && (
             <div
-                className="flex flex-col gap-3 border-b border-slate-100 dark:border-slate-700 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                className="flex flex-col gap-3 border-b border-cyan-900/30 pb-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     {title ?
-                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h2> : null}
+                        <h2 className="text-sm font-bold font-mono uppercase tracking-widest text-cyan-400">{title}</h2> : null}
                     {description ?
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p> : null}
+                        <p className="mt-1 text-xs text-cyan-600">{description}</p> : null}
                 </div>
                 {action ? <div className="shrink-0">{action}</div> : null}
             </div>
@@ -177,24 +177,24 @@ type AccentVariant = 'blue' | 'emerald' | 'purple' | 'amber';
 
 const accentThemes: Record<AccentVariant, { icon: string; badge: string; highlight: string }> = {
     blue: {
-        icon: ' text-slate-700 dark:text-slate-300',
-        badge: ' text-slate-700 dark:text-slate-300',
-        highlight: 'text-slate-700 dark:text-slate-300',
+        icon: 'text-blue-400',
+        badge: 'text-blue-400',
+        highlight: 'text-blue-400',
     },
     emerald: {
-        icon: ' text-slate-700 dark:text-slate-300',
-        badge: ' text-slate-700 dark:text-slate-300',
-        highlight: 'text-slate-700 dark:text-slate-300',
+        icon: 'text-emerald-400',
+        badge: 'text-emerald-400',
+        highlight: 'text-emerald-400',
     },
     purple: {
-        icon: ' text-slate-700 dark:text-slate-300',
-        badge: ' text-slate-700 dark:text-slate-300',
-        highlight: 'text-slate-700 dark:text-slate-300',
+        icon: 'text-purple-400',
+        badge: 'text-purple-400',
+        highlight: 'text-purple-400',
     },
     amber: {
-        icon: ' text-slate-700 dark:text-slate-300',
-        badge: ' text-slate-700 dark:text-slate-300',
-        highlight: 'text-slate-700 dark:text-slate-300',
+        icon: 'text-amber-400',
+        badge: 'text-amber-400',
+        highlight: 'text-amber-400',
     },
 };
 
@@ -202,8 +202,8 @@ const InfoGrid = ({items}: { items: Array<{ label: string; value: ReactNode }> }
     <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
         {items.map((item) => (
             <div key={item.label}>
-                <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">{item.label}</dt>
-                <dd className="mt-1 font-medium text-slate-900 dark:text-white">{item.value}</dd>
+                <dt className="text-[10px] font-mono uppercase tracking-widest text-cyan-600">{item.label}</dt>
+                <dd className="mt-1 font-medium text-cyan-100">{item.value}</dd>
             </div>
         ))}
     </dl>
@@ -227,10 +227,10 @@ const TimeRangeSelector = ({
                     type="button"
                     onClick={() => onChange(option.value)}
                     className={cn(
-                        "rounded-lg border px-3 py-1.5 text-xs sm:text-sm font-medium transition whitespace-nowrap",
+                        "rounded-lg border px-3 py-1.5 text-xs font-bold font-mono tracking-wider uppercase transition whitespace-nowrap",
                         isActive
-                            ? 'border-blue-200 dark:border-blue-400 bg-blue-600 dark:bg-blue-500 text-white'
-                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-blue-200 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-200'
+                            ? 'border-cyan-500/50 bg-cyan-500/20 text-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.3)]'
+                            : 'border-cyan-900/30 bg-black/30 text-cyan-700 hover:text-cyan-400 hover:border-cyan-700'
                     )}
                 >
                     {option.label}
@@ -402,23 +402,23 @@ const SnapshotGrid = ({cards}: { cards: SnapshotCardData[] }) => (
             return (
                 <div
                     key={card.key}
-                    className="rounded-2xl border border-slate-200 dark:border-slate-700  p-4  transition hover:-translate-y-0.5"
+                    className="rounded-xl border border-cyan-900/50 bg-black/40 p-4 transition hover:-translate-y-0.5 hover:border-cyan-700/50"
                 >
                     <div className="mb-3 flex items-start justify-between">
                         <div className="flex items-center gap-2">
-                            <span className={cn("flex h-9 w-9 items-center justify-center rounded-lg", theme.icon)}>
+                            <span className={cn("flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10", theme.icon)}>
                                 <card.icon className="h-4 w-4"/>
                             </span>
-                            <p className="text-sm font-semibold text-slate-900 dark:text-white">{card.title}</p>
+                            <p className="text-xs font-bold font-mono uppercase tracking-wider text-cyan-300">{card.title}</p>
                         </div>
                         <span className={cn("text-xl font-bold", theme.highlight)}>{card.usagePercent}</span>
                     </div>
                     <div className="space-y-2">
                         {card.metrics.map((metric) => (
                             <div key={metric.label} className="flex items-center justify-between text-xs">
-                                <span className="text-slate-500 dark:text-slate-400">{metric.label}</span>
+                                <span className="text-cyan-600 font-mono text-[10px] uppercase tracking-wider">{metric.label}</span>
                                 <span
-                                    className="ml-2 text-right font-medium text-slate-900 dark:text-white">{metric.value}</span>
+                                    className="ml-2 text-right font-medium text-cyan-200">{metric.value}</span>
                             </div>
                         ))}
                     </div>
@@ -435,7 +435,7 @@ const SnapshotSection = ({cards}: { cards: SnapshotCardData[] }) => {
     return (
         <div className="space-y-4">
             <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">资源快照</h3>
+                <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-cyan-500">资源快照</h3>
             </div>
             <SnapshotGrid cards={cards}/>
         </div>
@@ -455,8 +455,8 @@ const CustomTooltip = ({active, payload, label, unit = '%'}: MetricsTooltipProps
 
     return (
         <div
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs">
-            <p className="font-semibold text-slate-700 dark:text-white">{displayLabel}</p>
+            className="rounded-lg border border-cyan-700/50 bg-[#0a0b10]/95 backdrop-blur-sm px-3 py-2 text-xs shadow-xl">
+            <p className="font-semibold font-mono text-cyan-300 text-[10px] tracking-wider uppercase">{displayLabel}</p>
             <div className="mt-1 space-y-1">
                 {payload.map((entry, index) => {
                     if (!entry) {
@@ -474,7 +474,7 @@ const CustomTooltip = ({active, payload, label, unit = '%'}: MetricsTooltipProps
 
                     return (
                         <p key={`${entry.dataKey ?? index}`}
-                           className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                           className="flex items-center gap-2 text-cyan-400">
                         <span
                             className="inline-block h-2 w-2 rounded-full"
                             style={{backgroundColor: dotColor}}
@@ -915,7 +915,7 @@ const ServerDetail = () => {
     const lastSeenDisplay = agent ? formatDateTime(agent.lastSeenAt) : '-';
     const displayName = agent?.name?.trim() ? agent.name : '未命名探针';
     const isOnline = agent?.status === 1;
-    const statusDotStyles = isOnline ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400 dark:bg-slate-500';
+    const statusDotStyles = isOnline ? 'bg-emerald-500' : 'bg-rose-500';
     const statusText = isOnline ? '在线' : '离线';
 
     const networkSummary = latestMetrics?.network
@@ -957,41 +957,41 @@ const ServerDetail = () => {
     }
 
     return (
-        <div className="dark:bg-[#141414]">
+        <div className="bg-[#05050a] min-h-screen">
             <div className="mx-auto flex max-w-7xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-                <section className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+                <section className="rounded-2xl border border-cyan-900/50 bg-[#0a0b10]/90 p-6 shadow-2xl backdrop-blur-sm">
                     <div className="flex flex-col gap-6">
                         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                             <div className="space-y-4">
                                 <button
                                     type="button"
                                     onClick={() => navigate('/')}
-                                    className="group inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-600 dark:text-slate-400 transition hover:text-slate-900 dark:hover:text-white"
+                                    className="group inline-flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-[0.3em] text-cyan-600 transition hover:text-cyan-400"
                                 >
                                     <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-0.5"/>
                                     返回概览
                                 </button>
                                 <div className="flex items-start gap-4">
                                     <div
-                                        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400">
+                                        className="flex h-14 w-14 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
                                         <Server className="h-7 w-7"/>
                                     </div>
                                     <div>
                                         <div className="flex flex-wrap items-center gap-3">
-                                            <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">{displayName}</h1>
+                                            <h1 className="text-3xl font-bold text-cyan-100">{displayName}</h1>
                                             <span
                                                 className={cn(
-                                                    "inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-medium",
+                                                    "inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-bold font-mono uppercase tracking-wider",
                                                     isOnline
-                                                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
+                                                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/50'
                                                 )}
                                             >
                                                 <span className={cn("h-1.5 w-1.5 rounded-full", statusDotStyles)}/>
                                                 {statusText}
                                             </span>
                                         </div>
-                                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                                        <p className="mt-2 text-sm text-cyan-600 font-mono">
                                             {[agent.hostname, agent.ip].filter(Boolean).join(' · ') || '-'}
                                         </p>
                                     </div>
@@ -1002,19 +1002,19 @@ const ServerDetail = () => {
                                 {heroStats.map((stat) => (
                                     <div
                                         key={stat.label}
-                                        className="rounded-2xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 p-4 text-left"
+                                        className="rounded-xl bg-black/40 border border-cyan-900/50 p-4 text-left hover:border-cyan-700/50 transition"
                                     >
-                                        <p className="text-[11px] uppercase tracking-[0.3em] text-slate-600 dark:text-slate-400">{stat.label}</p>
-                                        <p className="mt-2 text-base font-semibold text-slate-900 dark:text-white">{stat.value}</p>
+                                        <p className="text-[10px] uppercase tracking-[0.3em] text-cyan-600 font-mono font-bold">{stat.label}</p>
+                                        <p className="mt-2 text-base font-semibold text-cyan-100">{stat.value}</p>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-400 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-cyan-600 font-mono pt-4 border-t border-cyan-900/30">
                             <span>探针 ID：{agent.id}</span>
-                            <span className="hidden h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600 sm:inline-block"/>
+                            <span className="hidden h-1 w-1 rounded-full bg-cyan-900 sm:inline-block"/>
                             <span>版本：{agent.version || '-'}</span>
-                            <span className="hidden h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600 sm:inline-block"/>
+                            <span className="hidden h-1 w-1 rounded-full bg-cyan-900 sm:inline-block"/>
                             <span>网络累计：{networkSummary}</span>
                         </div>
                     </div>
@@ -1025,17 +1025,17 @@ const ServerDetail = () => {
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                                 <div
-                                    className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-4">
-                                    <h3 className="text-sm font-semibold text-slate-700 dark:text-white">运行环境</h3>
-                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">来自最近一次探针上报的硬件与系统信息</p>
+                                    className="rounded-xl border border-cyan-900/50 bg-black/30 p-4 backdrop-blur-sm">
+                                    <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">运行环境</h3>
+                                    <p className="mt-1 text-[10px] text-cyan-700">来自最近一次探针上报的硬件与系统信息</p>
                                     <div className="mt-4">
                                         <InfoGrid items={environmentInfo}/>
                                     </div>
                                 </div>
                                 <div
-                                    className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-4">
-                                    <h3 className="text-sm font-semibold text-slate-700 dark:text-white">运行状态</h3>
-                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">关键时间与网络指标，帮助快速判断主机健康状况</p>
+                                    className="rounded-xl border border-cyan-900/50 bg-black/30 p-4 backdrop-blur-sm">
+                                    <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">运行状态</h3>
+                                    <p className="mt-1 text-[10px] text-cyan-700">关键时间与网络指标，帮助快速判断主机健康状况</p>
                                     <div className="mt-4">
                                         <InfoGrid items={statusInfo}/>
                                     </div>
@@ -1043,41 +1043,40 @@ const ServerDetail = () => {
                             </div>
                             {latestMetrics?.networkConnection && (
                                 <div
-                                    className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-4">
-                                    <h3 className="text-sm font-semibold text-slate-700 dark:text-white">网络连接统计</h3>
-                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">TCP
-                                        连接各状态的实时统计数据</p>
+                                    className="rounded-xl border border-cyan-900/50 bg-black/30 p-4 backdrop-blur-sm">
+                                    <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">网络连接统计</h3>
+                                    <p className="mt-1 text-[10px] text-cyan-700">TCP 连接各状态的实时统计数据</p>
                                     <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
                                         <div className="text-center">
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">Total</div>
+                                            <div className="text-[10px] text-cyan-600 font-mono uppercase tracking-wider">Total</div>
                                             <div
-                                                className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{latestMetrics.networkConnection.total}</div>
+                                                className="mt-1 text-lg font-semibold text-cyan-100">{latestMetrics.networkConnection.total}</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">ESTABLISHED
+                                            <div className="text-[10px] text-cyan-600 font-mono uppercase tracking-wider">ESTABLISHED
                                             </div>
                                             <div
-                                                className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-400">{latestMetrics.networkConnection.established}</div>
+                                                className="mt-1 text-lg font-semibold text-emerald-400">{latestMetrics.networkConnection.established}</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">TIME_WAIT</div>
+                                            <div className="text-[10px] text-cyan-600 font-mono uppercase tracking-wider">TIME_WAIT</div>
                                             <div
-                                                className="mt-1 text-lg font-semibold text-amber-600 dark:text-amber-400">{latestMetrics.networkConnection.timeWait}</div>
+                                                className="mt-1 text-lg font-semibold text-amber-400">{latestMetrics.networkConnection.timeWait}</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">LISTEN</div>
+                                            <div className="text-[10px] text-cyan-600 font-mono uppercase tracking-wider">LISTEN</div>
                                             <div
-                                                className="mt-1 text-lg font-semibold text-blue-600 dark:text-blue-400">{latestMetrics.networkConnection.listen}</div>
+                                                className="mt-1 text-lg font-semibold text-blue-400">{latestMetrics.networkConnection.listen}</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">CLOSE_WAIT</div>
+                                            <div className="text-[10px] text-cyan-600 font-mono uppercase tracking-wider">CLOSE_WAIT</div>
                                             <div
-                                                className="mt-1 text-lg font-semibold text-rose-600 dark:text-rose-400">{latestMetrics.networkConnection.closeWait}</div>
+                                                className="mt-1 text-lg font-semibold text-rose-400">{latestMetrics.networkConnection.closeWait}</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">OTHER</div>
+                                            <div className="text-[10px] text-cyan-600 font-mono uppercase tracking-wider">OTHER</div>
                                             <div
-                                                className="mt-1 text-lg font-semibold text-slate-600 dark:text-slate-400">
+                                                className="mt-1 text-lg font-semibold text-cyan-500">
                                                 {latestMetrics.networkConnection.synSent +
                                                     latestMetrics.networkConnection.synRecv +
                                                     latestMetrics.networkConnection.finWait1 +
@@ -1102,9 +1101,9 @@ const ServerDetail = () => {
                     >
                         <div className="grid gap-6 md:grid-cols-2">
                             <section>
-                                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-white">
+                                <h3 className="mb-3 flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">
                                     <span
-                                        className="flex h-8 w-8 items-center justify-center rounded-lg  text-slate-700 dark:text-slate-300">
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
                                         <Cpu className="h-4 w-4"/>
                                     </span>
                                     CPU 使用率
@@ -1119,17 +1118,17 @@ const ServerDetail = () => {
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid stroke="currentColor" strokeDasharray="4 4"
-                                                           className="stroke-slate-200 dark:stroke-slate-600"/>
+                                                           className="stroke-cyan-900/30"/>
                                             <XAxis
                                                 dataKey="time"
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                             />
                                             <YAxis
                                                 domain={[0, 100]}
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                                 tickFormatter={(value) => `${value}%`}
                                             />
@@ -1151,9 +1150,9 @@ const ServerDetail = () => {
                             </section>
 
                             <section>
-                                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-white">
+                                <h3 className="mb-3 flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">
                                     <span
-                                        className="flex h-8 w-8 items-center justify-center rounded-lg  text-slate-700 dark:text-slate-300">
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
                                         <MemoryStick className="h-4 w-4"/>
                                     </span>
                                     内存使用率
@@ -1168,17 +1167,17 @@ const ServerDetail = () => {
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid stroke="currentColor" strokeDasharray="4 4"
-                                                           className="stroke-slate-200 dark:stroke-slate-600"/>
+                                                           className="stroke-cyan-900/30"/>
                                             <XAxis
                                                 dataKey="time"
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                             />
                                             <YAxis
                                                 domain={[0, 100]}
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                                 tickFormatter={(value) => `${value}%`}
                                             />
@@ -1201,9 +1200,9 @@ const ServerDetail = () => {
 
                             <section>
                                 <div className="mb-3 flex items-center justify-between">
-                                    <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-white">
+                                    <h3 className="flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">
                                         <span
-                                            className="flex h-8 w-8 items-center justify-center rounded-lg  text-slate-700 dark:text-slate-300">
+                                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
                                             <Network className="h-4 w-4"/>
                                         </span>
                                         网络流量（MB/s）
@@ -1212,7 +1211,7 @@ const ServerDetail = () => {
                                         <select
                                             value={selectedInterface}
                                             onChange={(e) => setSelectedInterface(e.target.value)}
-                                            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 focus:border-slate-500 dark:focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-600/40"
+                                            className="rounded-lg border border-cyan-900/50 bg-black/40 px-3 py-1.5 text-xs font-mono text-cyan-300 hover:border-cyan-700 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                                         >
                                             {/*<option value="all">所有网卡（聚合）</option>*/}
                                             {availableInterfaces.map((iface) => (
@@ -1241,16 +1240,16 @@ const ServerDetail = () => {
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid stroke="currentColor" strokeDasharray="4 4"
-                                                           className="stroke-slate-200 dark:stroke-slate-600"/>
+                                                           className="stroke-cyan-900/30"/>
                                             <XAxis
                                                 dataKey="time"
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                             />
                                             <YAxis
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                                 tickFormatter={(value) => `${value} MB`}
                                             />
@@ -1283,9 +1282,9 @@ const ServerDetail = () => {
                             </section>
 
                             <section>
-                                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-white">
+                                <h3 className="mb-3 flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">
                                     <span
-                                        className="flex h-8 w-8 items-center justify-center rounded-lg  text-slate-700 dark:text-slate-300">
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
                                         <HardDrive className="h-4 w-4"/>
                                     </span>
                                     磁盘 I/O (MB/s)
@@ -1304,16 +1303,16 @@ const ServerDetail = () => {
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid stroke="currentColor" strokeDasharray="4 4"
-                                                           className="stroke-slate-200 dark:stroke-slate-600"/>
+                                                           className="stroke-cyan-900/30"/>
                                             <XAxis
                                                 dataKey="time"
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                             />
                                             <YAxis
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                                 tickFormatter={(value) => `${value} MB`}
                                             />
@@ -1345,9 +1344,9 @@ const ServerDetail = () => {
                             </section>
 
                             <section>
-                                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-white">
+                                <h3 className="mb-3 flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">
                                     <span
-                                        className="flex h-8 w-8 items-center justify-center rounded-lg  text-slate-700 dark:text-slate-300">
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
                                         <Network className="h-4 w-4"/>
                                     </span>
                                     网络连接统计
@@ -1356,16 +1355,16 @@ const ServerDetail = () => {
                                     <ResponsiveContainer width="100%" height={220}>
                                         <LineChart data={networkConnectionChartData}>
                                             <CartesianGrid stroke="currentColor" strokeDasharray="4 4"
-                                                           className="stroke-slate-200 dark:stroke-slate-600"/>
+                                                           className="stroke-cyan-900/30"/>
                                             <XAxis
                                                 dataKey="time"
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                             />
                                             <YAxis
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                             />
                                             <Tooltip content={<CustomTooltip unit=""/>}/>
@@ -1415,9 +1414,9 @@ const ServerDetail = () => {
 
                             {gpuChartData.length > 0 && (
                                 <section>
-                                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-white">
+                                    <h3 className="mb-3 flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">
                                         <span
-                                            className="flex h-8 w-8 items-center justify-center rounded-lg  text-slate-700 dark:text-slate-300">
+                                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
                                             <Zap className="h-4 w-4"/>
                                         </span>
                                         GPU 使用率与温度
@@ -1425,17 +1424,17 @@ const ServerDetail = () => {
                                     <ResponsiveContainer width="100%" height={220}>
                                         <LineChart data={gpuChartData}>
                                             <CartesianGrid stroke="currentColor" strokeDasharray="4 4"
-                                                           className="stroke-slate-200 dark:stroke-slate-600"/>
+                                                           className="stroke-cyan-900/30"/>
                                             <XAxis
                                                 dataKey="time"
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                             />
                                             <YAxis
                                                 yAxisId="left"
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                                 tickFormatter={(value) => `${value}%`}
                                             />
@@ -1443,7 +1442,7 @@ const ServerDetail = () => {
                                                 yAxisId="right"
                                                 orientation="right"
                                                 stroke="currentColor"
-                                                className="stroke-slate-400 dark:stroke-slate-500"
+                                                className="stroke-cyan-600"
                                                 style={{fontSize: '12px'}}
                                                 tickFormatter={(value) => `${value}°C`}
                                             />
@@ -1477,9 +1476,9 @@ const ServerDetail = () => {
                             {temperatureChartData.length > 0 && temperatureTypes.length > 0 && (
                                 <section>
                                     <div className="mb-3 flex items-center justify-between">
-                                        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-white">
+                                        <h3 className="flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">
                                             <span
-                                                className="flex h-8 w-8 items-center justify-center rounded-lg  text-slate-700 dark:text-slate-300">
+                                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
                                                 <Thermometer className="h-4 w-4"/>
                                             </span>
                                             系统温度
@@ -1488,7 +1487,7 @@ const ServerDetail = () => {
                                             <select
                                                 value={selectedTempType}
                                                 onChange={(e) => setSelectedTempType(e.target.value)}
-                                                className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 focus:border-slate-500 dark:focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-600/40"
+                                                className="rounded-lg border border-cyan-900/50 bg-black/40 px-3 py-1.5 text-xs font-mono text-cyan-300 hover:border-cyan-700 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                                             >
                                                 <option value="all">所有类型</option>
                                                 {temperatureTypes.map((type) => (
@@ -1550,44 +1549,44 @@ const ServerDetail = () => {
                                 {latestMetrics.gpu.map((gpu) => (
                                     <div
                                         key={gpu.index}
-                                        className="rounded-2xl border border-slate-200 dark:border-slate-700  p-4"
+                                        className="rounded-xl border border-cyan-900/50 bg-black/30 p-4 backdrop-blur-sm hover:border-cyan-700/50 transition"
                                     >
                                         <div className="mb-3 flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <span
-                                                    className="flex h-9 w-9 items-center justify-center rounded-lg  text-slate-700 dark:text-slate-300">
+                                                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
                                                     <Zap className="h-4 w-4"/>
                                                 </span>
                                                 <div>
-                                                    <p className="text-sm font-semibold text-slate-900 dark:text-white">GPU {gpu.index}</p>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400">{gpu.name}</p>
+                                                    <p className="text-sm font-bold font-mono text-cyan-100">GPU {gpu.index}</p>
+                                                    <p className="text-[10px] text-cyan-600">{gpu.name}</p>
                                                 </div>
                                             </div>
-                                            <span className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                                            <span className="text-2xl font-bold text-purple-400">
                                                 {gpu.utilization.toFixed(1)}%
                                             </span>
                                         </div>
                                         <div className="space-y-2 text-xs">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-slate-500 dark:text-slate-400">温度</span>
+                                                <span className="text-cyan-600 font-mono text-[10px] uppercase tracking-wider">温度</span>
                                                 <span
-                                                    className="font-medium text-slate-900 dark:text-white">{gpu.temperature.toFixed(1)}°C</span>
+                                                    className="font-medium text-cyan-200">{gpu.temperature.toFixed(1)}°C</span>
                                             </div>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-slate-500 dark:text-slate-400">显存</span>
-                                                <span className="font-medium text-slate-900 dark:text-white">
+                                                <span className="text-cyan-600 font-mono text-[10px] uppercase tracking-wider">显存</span>
+                                                <span className="font-medium text-cyan-200">
                                                     {formatBytes(gpu.memoryUsed)} / {formatBytes(gpu.memoryTotal)}
                                                 </span>
                                             </div>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-slate-500 dark:text-slate-400">功耗</span>
+                                                <span className="text-cyan-600 font-mono text-[10px] uppercase tracking-wider">功耗</span>
                                                 <span
-                                                    className="font-medium text-slate-900 dark:text-white">{gpu.powerDraw.toFixed(1)}W</span>
+                                                    className="font-medium text-cyan-200">{gpu.powerDraw.toFixed(1)}W</span>
                                             </div>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-slate-500 dark:text-slate-400">风扇转速</span>
+                                                <span className="text-cyan-600 font-mono text-[10px] uppercase tracking-wider">风扇转速</span>
                                                 <span
-                                                    className="font-medium text-slate-900 dark:text-white">{gpu.fanSpeed.toFixed(0)}%</span>
+                                                    className="font-medium text-cyan-200">{gpu.fanSpeed.toFixed(0)}%</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1603,13 +1602,13 @@ const ServerDetail = () => {
                                 {latestMetrics.temperature.sort((a, b) => a.sensorKey.localeCompare(b.sensorKey)).map((temp) => (
                                     <div
                                         key={temp.sensorKey}
-                                        className="rounded-xl border border-slate-200 dark:border-slate-700 p-4"
+                                        className="rounded-xl border border-cyan-900/50 bg-black/30 p-4 backdrop-blur-sm hover:border-cyan-700/50 transition"
                                     >
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Thermometer className="h-4 w-4 text-slate-600 dark:text-slate-400"/>
-                                            <p className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate">{temp.sensorLabel}</p>
+                                            <Thermometer className="h-4 w-4 text-cyan-600"/>
+                                            <p className="text-[10px] font-bold font-mono uppercase tracking-wider text-cyan-400 truncate">{temp.sensorLabel}</p>
                                         </div>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{temp.temperature.toFixed(1)}°C</p>
+                                        <p className="text-2xl font-bold text-orange-400">{temp.temperature.toFixed(1)}°C</p>
                                     </div>
                                 ))}
                             </div>
