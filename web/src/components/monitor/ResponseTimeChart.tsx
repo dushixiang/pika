@@ -1,78 +1,17 @@
 import {useEffect, useMemo, useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
-import {Shield} from 'lucide-react';
 import {Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import {type GetMetricsResponse, getMonitorHistory} from '@/api/monitor';
 import {AGENT_COLORS} from '@/constants/colors';
 import {MONITOR_TIME_RANGE_OPTIONS} from '@/constants/time';
-import {cn} from '@/lib/utils';
 import type {AgentMonitorStat} from '@/types';
+import CyberCard from "@/components/CyberCard.tsx";
+import {ChartPlaceholder, CustomTooltip, TimeRangeSelector} from "@/components/common";
 
 interface ResponseTimeChartProps {
     monitorId: string;
     monitorStats: AgentMonitorStat[];
 }
-
-// 自定义 Tooltip 组件
-const CustomTooltip = ({active, payload, label}: any) => {
-    if (!active || !payload || payload.length === 0) return null;
-
-    return (
-        <div
-            className="bg-[#0a0b10]/95 backdrop-blur-xl border border-cyan-500/30 rounded-lg p-3 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
-            <p className="text-xs text-cyan-400 mb-2 font-mono">{label}</p>
-            <div className="space-y-1">
-                {payload.map((entry: any, index: number) => (
-                    <div key={index} className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full" style={{backgroundColor: entry.color}}></span>
-                        <span className="text-xs text-cyan-100 font-mono">
-                            {entry.name}: <span className="font-bold">{entry.value} ms</span>
-                        </span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-// 图表占位符组件
-const ChartPlaceholder = ({subtitle, heightClass}: { subtitle: string; heightClass: string }) => (
-    <div
-        className={cn("flex items-center justify-center border-2 border-dashed border-cyan-900/50 rounded-lg", heightClass)}>
-        <div className="text-center text-cyan-600">
-            <Shield className="h-12 w-12 mx-auto mb-3 opacity-20"/>
-            <p className="text-sm font-mono">{subtitle}</p>
-        </div>
-    </div>
-);
-
-// 时间范围选择器组件
-const TimeRangeSelector = ({
-                               value,
-                               onChange,
-                               options
-                           }: {
-    value: string;
-    onChange: (value: string) => void;
-    options: Array<{ value: string; label: string }>;
-}) => (
-    <div className="flex gap-1 bg-black/40 p-1 rounded-lg border border-cyan-900/50">
-        {options.map(option => (
-            <button
-                key={option.value}
-                onClick={() => onChange(option.value)}
-                className={cn(
-                    "px-3 py-1.5 text-xs font-medium rounded transition-all font-mono cursor-pointer",
-                    value === option.value
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                        : 'text-cyan-600 hover:text-cyan-400'
-                )}
-            >
-                {option.label}
-            </button>
-        ))}
-    </div>
-);
 
 /**
  * 响应时间趋势图表组件
@@ -80,7 +19,7 @@ const TimeRangeSelector = ({
  */
 export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartProps) => {
     const [selectedAgent, setSelectedAgent] = useState<string>('all');
-    const [timeRange, setTimeRange] = useState<string>('1d');
+    const [timeRange, setTimeRange] = useState<string>('12h');
 
     // 获取历史数据
     const {data: historyData} = useQuery<GetMetricsResponse>({
@@ -156,94 +95,40 @@ export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartPr
     }, [historyData, selectedAgent]);
 
     return (
-        <div
-            className="group bg-[#0f1016]/80 backdrop-blur-md border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.05)] hover:border-cyan-500/30 hover:shadow-[0_0_25px_rgba(6,182,212,0.1)] transition-all duration-300 overflow-hidden relative">
-            {/* 装饰性边框 */}
-            <div
-                className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-500/30 group-hover:border-cyan-400/50 transition-colors"></div>
-            <div
-                className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-500/30 group-hover:border-cyan-400/50 transition-colors"></div>
-            <div
-                className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-500/30 group-hover:border-cyan-400/50 transition-colors"></div>
-            <div
-                className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-500/30 group-hover:border-cyan-400/50 transition-colors"></div>
-
-            <div className="relative z-10 p-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                    <div>
-                        <h3 className="text-lg font-bold tracking-wide text-cyan-100 uppercase">响应时间趋势</h3>
-                        <p className="text-xs text-cyan-600 mt-1 font-mono">监控各探针的响应时间变化</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
-                        <TimeRangeSelector
-                            value={timeRange}
-                            onChange={setTimeRange}
-                            options={MONITOR_TIME_RANGE_OPTIONS}
-                        />
-                        {availableAgents.length > 0 && (
-                            <select
-                                value={selectedAgent}
-                                onChange={(e) => setSelectedAgent(e.target.value)}
-                                className="rounded-lg border border-cyan-900/50 bg-black/40 px-3 py-2 text-xs font-medium text-cyan-300 hover:border-cyan-500/50 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-colors font-mono"
-                            >
-                                <option value="all">所有探针</option>
-                                {availableAgents.map((agent) => (
-                                    <option key={agent.id} value={agent.name}>
-                                        {agent.name}
-                                    </option>
-                                ))}
-                            </select>
-                        )}
-                    </div>
+        <CyberCard className={'p-6'}>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                    <h3 className="text-lg font-bold tracking-wide text-cyan-100 uppercase">响应时间趋势</h3>
+                    <p className="text-xs text-cyan-600 mt-1 font-mono">监控各探针的响应时间变化</p>
                 </div>
+                <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
+                    <TimeRangeSelector
+                        value={timeRange}
+                        onChange={setTimeRange}
+                        options={MONITOR_TIME_RANGE_OPTIONS}
+                        variant={'dark'}
+                    />
+                    {availableAgents.length > 0 && (
+                        <select
+                            value={selectedAgent}
+                            onChange={(e) => setSelectedAgent(e.target.value)}
+                            className="rounded-lg border border-cyan-900/50 bg-black/40 px-3 py-2 text-xs font-medium text-cyan-300 hover:border-cyan-500/50 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-colors font-mono"
+                        >
+                            <option value="all">所有探针</option>
+                            {availableAgents.map((agent) => (
+                                <option key={agent.id} value={agent.name}>
+                                    {agent.name}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+            </div>
 
-                {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={360}>
-                        <AreaChart data={chartData}>
-                            <defs>
-                                {monitorStats
-                                    .filter(stat => {
-                                        const agentIdentifier = stat.agentName || stat.agentId;
-                                        return selectedAgent === 'all' || agentIdentifier === selectedAgent;
-                                    })
-                                    .map((stat) => {
-                                        const originalIndex = monitorStats.findIndex(s => s.agentId === stat.agentId);
-                                        const agentIdentifier = stat.agentName || stat.agentId;
-                                        const agentKey = `agent_${agentIdentifier}`;
-                                        const color = AGENT_COLORS[originalIndex % AGENT_COLORS.length];
-                                        return (
-                                            <linearGradient key={agentKey} id={`gradient_${agentKey}`} x1="0" y1="0"
-                                                            x2="0" y2="1">
-                                                <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor={color} stopOpacity={0}/>
-                                            </linearGradient>
-                                        );
-                                    })}
-                            </defs>
-                            <CartesianGrid
-                                strokeDasharray="3 3"
-                                className="stroke-cyan-900/30"
-                                vertical={false}
-                            />
-                            <XAxis
-                                dataKey="time"
-                                className="text-xs text-cyan-600 font-mono"
-                                stroke="#164e63"
-                                tickLine={false}
-                                axisLine={false}
-                            />
-                            <YAxis
-                                className="text-xs text-cyan-600 font-mono"
-                                stroke="#164e63"
-                                tickLine={false}
-                                axisLine={false}
-                                tickFormatter={(value) => `${value}ms`}
-                            />
-                            <Tooltip content={<CustomTooltip/>}/>
-                            <Legend
-                                wrapperStyle={{paddingTop: '20px'}}
-                                iconType="circle"
-                            />
+            {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={360}>
+                    <AreaChart data={chartData}>
+                        <defs>
                             {monitorStats
                                 .filter(stat => {
                                     const agentIdentifier = stat.agentName || stat.agentId;
@@ -254,30 +139,73 @@ export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartPr
                                     const agentIdentifier = stat.agentName || stat.agentId;
                                     const agentKey = `agent_${agentIdentifier}`;
                                     const color = AGENT_COLORS[originalIndex % AGENT_COLORS.length];
-                                    const agentLabel = stat.agentName || stat.agentId.substring(0, 8);
                                     return (
-                                        <Area
-                                            key={agentKey}
-                                            type="monotone"
-                                            dataKey={agentKey}
-                                            name={agentLabel}
-                                            stroke={color}
-                                            strokeWidth={2}
-                                            fill={`url(#gradient_${agentKey})`}
-                                            activeDot={{r: 5, strokeWidth: 0}}
-                                            dot={false}
-                                        />
+                                        <linearGradient key={agentKey} id={`gradient_${agentKey}`} x1="0" y1="0"
+                                                        x2="0" y2="1">
+                                            <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                                        </linearGradient>
                                     );
                                 })}
-                        </AreaChart>
-                    </ResponsiveContainer>
-                ) : (
-                    <ChartPlaceholder
-                        subtitle="正在收集数据，请稍后查看历史趋势"
-                        heightClass="h-80"
-                    />
-                )}
-            </div>
-        </div>
+                        </defs>
+                        <CartesianGrid
+                            strokeDasharray="3 3"
+                            className="stroke-cyan-900/30"
+                            vertical={false}
+                        />
+                        <XAxis
+                            dataKey="time"
+                            className="text-xs text-cyan-600 font-mono"
+                            stroke="#164e63"
+                            tickLine={false}
+                            axisLine={false}
+                        />
+                        <YAxis
+                            className="text-xs text-cyan-600 font-mono"
+                            stroke="#164e63"
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(value) => `${value}ms`}
+                        />
+                        <Tooltip content={<CustomTooltip variant={'dark'}/>}/>
+                        <Legend
+                            wrapperStyle={{paddingTop: '20px'}}
+                            iconType="circle"
+                        />
+                        {monitorStats
+                            .filter(stat => {
+                                const agentIdentifier = stat.agentName || stat.agentId;
+                                return selectedAgent === 'all' || agentIdentifier === selectedAgent;
+                            })
+                            .map((stat) => {
+                                const originalIndex = monitorStats.findIndex(s => s.agentId === stat.agentId);
+                                const agentIdentifier = stat.agentName || stat.agentId;
+                                const agentKey = `agent_${agentIdentifier}`;
+                                const color = AGENT_COLORS[originalIndex % AGENT_COLORS.length];
+                                const agentLabel = stat.agentName || stat.agentId.substring(0, 8);
+                                return (
+                                    <Area
+                                        key={agentKey}
+                                        type="monotone"
+                                        dataKey={agentKey}
+                                        name={agentLabel}
+                                        stroke={color}
+                                        strokeWidth={2}
+                                        fill={`url(#gradient_${agentKey})`}
+                                        activeDot={{r: 5, strokeWidth: 0}}
+                                        dot={false}
+                                    />
+                                );
+                            })}
+                    </AreaChart>
+                </ResponsiveContainer>
+            ) : (
+                <ChartPlaceholder
+                    variant={'dark'}
+                    subtitle="正在收集数据，请稍后查看历史趋势"
+                    heightClass="h-80"
+                />
+            )}
+        </CyberCard>
     );
 };

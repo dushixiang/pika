@@ -33,7 +33,7 @@ export const CustomTooltip = ({active, payload, label, variant = 'light', unit =
 
     return (
         <div className={cn(
-            "rounded-lg border px-3 py-2 text-xs shadow-xl",
+            "rounded-md border px-3 py-2 text-xs shadow-xl",
             isDark
                 ? "border-cyan-700/50 bg-[#0a0b10]/95 backdrop-blur-sm"
                 : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg"

@@ -1,5 +1,6 @@
 import type {ReactNode} from 'react';
 import {cn} from '@/lib/utils';
+import CyberCard from "@/components/CyberCard.tsx";
 
 interface CardProps {
     title?: string;
@@ -19,12 +20,7 @@ export const Card = ({
     const isDark = variant === 'dark';
 
     return (
-        <section className={cn(
-            "rounded-2xl border p-6",
-            isDark
-                ? "border-cyan-900/50 bg-[#0a0b10]/90 shadow-2xl backdrop-blur-sm"
-                : "rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-        )}>
+        <CyberCard className={'p-6'}>
             {(title || description || action) && (
                 <div className={cn(
                     "flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between",
@@ -54,6 +50,6 @@ export const Card = ({
                 </div>
             )}
             <div className="pt-4">{children}</div>
-        </section>
+        </CyberCard>
     );
 };

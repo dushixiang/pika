@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
 import {useQuery} from '@tanstack/react-query';
 import {
     Activity,
@@ -24,6 +24,7 @@ import {StatusBadge} from '@/components/monitor/StatusBadge';
 import {CertBadge} from '@/components/monitor/CertBadge';
 import {MiniChart} from '@/components/monitor/MiniChart';
 import StatCard from "@/components/StatCard.tsx";
+import CyberCard from "@/components/CyberCard.tsx";
 
 const LoadingSpinner = () => (
     <div className="flex min-h-[400px] w-full items-center justify-center">
@@ -62,10 +63,9 @@ const TypeIcon = ({type}: { type: string }) => {
 };
 
 // 监控卡片组件
-const MonitorCard = ({monitor, displayMode, onClick}: {
+const MonitorCard = ({monitor, displayMode}: {
     monitor: PublicMonitor;
     displayMode: DisplayMode;
-    onClick: () => void;
 }) => {
     // 为每个监控卡片查询历史数据
     const {data: historyData} = useQuery<GetMetricsResponse>({
@@ -119,91 +119,74 @@ const MonitorCard = ({monitor, displayMode, onClick}: {
     const displayLabel = displayMode === 'avg' ? '平均延迟' : '最差节点延迟';
 
     return (
-        <div
-            onClick={onClick}
-            className="group bg-[#0f1016]/80 backdrop-blur-md border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.05)] hover:border-cyan-500/50 hover:shadow-[0_0_25px_rgba(6,182,212,0.15)] hover:bg-[#0f1016]/90 transition-all duration-300 cursor-pointer overflow-hidden relative"
-        >
-            {/* 装饰性边框 */}
-            <div
-                className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyan-500/30 group-hover:border-cyan-400 transition-colors"></div>
-            <div
-                className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyan-500/30 group-hover:border-cyan-400 transition-colors"></div>
-            <div
-                className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyan-500/30 group-hover:border-cyan-400 transition-colors"></div>
-            <div
-                className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyan-500/30 group-hover:border-cyan-400 transition-colors"></div>
-            <div
-                className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent -translate-y-full group-hover:translate-y-full transition-transform duration-1000 ease-in-out pointer-events-none"/>
-
-            <div className="relative z-10 p-5">
-                {/* 头部 */}
-                <div className="flex justify-between items-start mb-4">
-                    <div className="flex gap-3 flex-1 min-w-0">
-                        <div
-                            className="p-2.5 bg-cyan-950/30 border border-cyan-500/20 rounded-lg flex-shrink-0">
-                            <TypeIcon type={monitor.type}/>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="text-xs font-mono text-cyan-500/60 mb-0.5 tracking-wider">
-                                TARGET_ID: {monitor.id.toString().substring(0, 8)}
-                            </div>
-                            <h3 className="font-bold text-sm text-cyan-100 tracking-wide truncate group-hover:text-cyan-400 transition-colors">
-                                {monitor.name}
-                            </h3>
-                        </div>
+        <CyberCard className={'p-5'} animation={true} hover={true}>
+            {/* 头部 */}
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex gap-3 flex-1 min-w-0">
+                    <div
+                        className="p-2.5 bg-cyan-950/30 border border-cyan-500/20 rounded-lg flex-shrink-0">
+                        <TypeIcon type={monitor.type}/>
                     </div>
-                    <div className="flex-shrink-0 ml-2">
-                        <StatusBadge status={monitor.status}/>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-xs font-mono text-cyan-500/60 mb-0.5 tracking-wider">
+                            TARGET_ID: {monitor.id.toString().substring(0, 8)}
+                        </div>
+                        <h3 className="font-bold text-sm text-cyan-100 tracking-wide truncate group-hover:text-cyan-400 transition-colors">
+                            {monitor.name}
+                        </h3>
                     </div>
                 </div>
+                <div className="flex-shrink-0 ml-2">
+                    <StatusBadge status={monitor.status}/>
+                </div>
+            </div>
 
-                {/* 指标信息 */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <p className="text-xs text-cyan-500/60 mb-1 flex items-center gap-1">
-                            {displayLabel}
-                            {monitor.agentCount > 0 && (
-                                <span
-                                    className="bg-slate-700 text-[10px] px-1.5 rounded-full text-cyan-300">
+            {/* 指标信息 */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <p className="text-xs text-cyan-500/60 mb-1 flex items-center gap-1">
+                        {displayLabel}
+                        {monitor.agentCount > 0 && (
+                            <span
+                                className="bg-slate-700 text-[10px] px-1.5 rounded-full text-cyan-300">
                                     {monitor.agentCount} 节点
                                 </span>
-                            )}
-                        </p>
-                        <p className={cn(
-                            "text-xl font-bold flex items-end gap-1 font-mono",
-                            displayValue > 200 ? 'text-amber-400' : 'text-cyan-100'
-                        )}>
-                            {displayValue} <span className="text-xs font-normal text-cyan-600 mb-1">ms</span>
-                        </p>
-                    </div>
-                    <div>
-                        {monitor.type === 'https' && monitor.certExpiryTime ? (
-                            <>
-                                <p className="text-xs text-cyan-500/60 mb-1">SSL 证书</p>
-                                <CertBadge
-                                    expiryTime={monitor.certExpiryTime}
-                                    daysLeft={monitor.certDaysLeft}
-                                />
-                            </>
-                        ) : (
-                            <>
-                                <p className="text-xs text-cyan-500/60 mb-1">上次检测</p>
-                                <p className="text-sm font-medium text-cyan-300 font-mono">
-                                    {formatDateTime(monitor.lastCheckTime)}
-                                </p>
-                            </>
                         )}
-                    </div>
+                    </p>
+                    <p className={cn(
+                        "text-xl font-bold flex items-end gap-1 font-mono",
+                        displayValue > 200 ? 'text-amber-400' : 'text-cyan-100'
+                    )}>
+                        {displayValue} <span className="text-xs font-normal text-cyan-600 mb-1">ms</span>
+                    </p>
                 </div>
-
-                {/* 迷你走势图 */}
-                <MiniChart
-                    data={chartData}
-                    status={monitor.status}
-                    id={monitor.id}
-                />
+                <div>
+                    {monitor.type === 'https' && monitor.certExpiryTime ? (
+                        <>
+                            <p className="text-xs text-cyan-500/60 mb-1">SSL 证书</p>
+                            <CertBadge
+                                expiryTime={monitor.certExpiryTime}
+                                daysLeft={monitor.certDaysLeft}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-xs text-cyan-500/60 mb-1">上次检测</p>
+                            <p className="text-sm font-medium text-cyan-300 font-mono">
+                                {formatDateTime(monitor.lastCheckTime)}
+                            </p>
+                        </>
+                    )}
+                </div>
             </div>
-        </div>
+
+            {/* 迷你走势图 */}
+            <MiniChart
+                data={chartData}
+                status={monitor.status}
+                id={monitor.id}
+            />
+        </CyberCard>
     );
 };
 
@@ -382,12 +365,13 @@ const MonitorList = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredMonitors.map(monitor => (
-                        <MonitorCard
-                            key={monitor.id}
-                            monitor={monitor}
-                            displayMode={displayMode}
-                            onClick={() => navigate(`/monitors/${encodeURIComponent(monitor.id)}`)}
-                        />
+                        <Link to={`/monitors/${monitor.id}`}>
+                            <MonitorCard
+                                key={monitor.id}
+                                monitor={monitor}
+                                displayMode={displayMode}
+                            />
+                        </Link>
                     ))}
                 </div>
             )}

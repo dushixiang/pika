@@ -12,7 +12,6 @@ import {
     HardDrive,
     Loader2,
     MemoryStick,
-    Network,
     Server,
     XCircle
 } from 'lucide-react';
@@ -21,6 +20,8 @@ import type {Agent, LatestMetrics} from '@/types';
 import {cn} from '@/lib/utils';
 import CompactResourceBar from "@/components/CompactResourceBar.tsx";
 import StatCard from "@/components/StatCard.tsx";
+import ServerCard from "@/components/ServerCard.tsx";
+import NetworkStatCard from "@/components/NetworkStatCard.tsx";
 import {formatBytes, formatSpeed} from "@/utils/util.ts";
 
 interface AgentWithMetrics extends Agent {
@@ -160,9 +161,9 @@ const ServerList = () => {
     }
 
     return (
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6">
             {/* 统计卡片 */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
                 <StatCard
                     title="设备总数"
                     value={stats.total}
@@ -181,41 +182,20 @@ const ServerList = () => {
                     icon={XCircle}
                     color="rose"
                 />
-                <div
-                    className="relative overflow-hidden rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 text-blue-400">
-                    <div className="absolute -right-4 -bottom-4 opacity-10 rotate-[-15deg]">
-                        <Network className="w-24 h-24"/>
-                    </div>
-                    <div className="relative z-10 flex justify-between items-start">
-                        <div>
-                            <div className="text-[10px] font-mono uppercase tracking-widest opacity-70 mb-1">网络统计
-                            </div>
-                            <div className="space-y-1 text-xs font-mono">
-                                <div className="flex items-center gap-2">
-                                    <ArrowUp className="w-3 h-3 text-blue-400"/>
-                                    <span className="text-cyan-300">{formatSpeed(stats.uploadRate)}</span>
-                                    <span className="text-cyan-600">({formatBytes(stats.uploadTotal)})</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <ArrowDown className="w-3 h-3 text-emerald-400"/>
-                                    <span className="text-cyan-300">{formatSpeed(stats.downloadRate)}</span>
-                                    <span className="text-cyan-600">({formatBytes(stats.downloadTotal)})</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-2 rounded-lg bg-black/20 backdrop-blur-sm border border-white/5">
-                            <Network className="w-5 h-5"/>
-                        </div>
-                    </div>
-                </div>
+                <NetworkStatCard
+                    uploadRate={stats.uploadRate}
+                    downloadRate={stats.downloadRate}
+                    uploadTotal={stats.uploadTotal}
+                    downloadTotal={stats.downloadTotal}
+                />
             </div>
 
             {/* 标签过滤器 */}
             {allTags.length > 1 && (
-                <div className="flex flex-wrap gap-2 items-center">
-                    <div className="text-xs font-mono text-cyan-600 flex items-center gap-2 mr-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center">
+                    <div className="text-[10px] sm:text-xs font-mono text-cyan-600 flex items-center gap-1.5 sm:gap-2 mr-1 sm:mr-2">
                         <Filter className="w-3 h-3"/>
-                        FILTERS:
+                        <span className="hidden sm:inline">FILTERS:</span>
                     </div>
                     {allTags.map(tag => {
                         const tagKey = tag === 'ALL' ? '' : tag;
@@ -245,158 +225,171 @@ const ServerList = () => {
                 </div>
             )}
 
-            {/* 服务器表格 */}
+            {/* 服务器列表 */}
             {displayAgents.length === 0 ? (
                 <EmptyState
                     title={selectedTag ? '没有匹配的服务器' : '暂无在线服务器'}
                     description={selectedTag ? `标签 "${selectedTag}" 下暂无服务器` : '当前没有任何探针在线，请稍后再试。'}
                 />
             ) : (
-                <div
-                    className="bg-[#0a0b10]/90 border border-cyan-900/50 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                        <tr className="bg-black/40 text-[10px] font-mono uppercase tracking-widest text-cyan-600 border-b border-cyan-900/50">
-                            <th className="p-4 font-normal w-[300px]">System Identity</th>
-                            <th className="p-4 font-normal">Resource Telemetry</th>
-                            <th className="p-4 font-normal w-[200px]">Network I/O</th>
-                            <th className="p-4 font-normal w-[180px]">Meta / Status</th>
-                        </tr>
-                        </thead>
-                        <tbody className="divide-y divide-cyan-900/30">
-                        {displayAgents.map(server => {
-                            const isOnline = server.status === 1;
-                            const cpuUsage = server.metrics?.cpu?.usagePercent ?? 0;
-                            const memoryUsage = server.metrics?.memory?.usagePercent ?? 0;
-                            const memoryTotal = server.metrics?.memory?.total ?? 0;
-                            const memoryUsed = server.metrics?.memory?.used ?? 0;
-                            const diskUsage = calculateDiskUsage(server.metrics);
-                            const diskTotal = server.metrics?.disk?.total ?? 0;
-                            const diskUsed = server.metrics?.disk?.used ?? 0;
-                            const {upload, download} = calculateNetworkSpeed(server.metrics);
+                <>
+                    {/* 桌面端表格布局 */}
+                    <div className="hidden md:block bg-[#0a0b10]/90 border border-cyan-900/50 rounded-md overflow-hidden shadow-2xl backdrop-blur-sm">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                            <tr className="bg-black/40 text-[10px] font-mono uppercase tracking-widest text-cyan-600 border-b border-cyan-900/50">
+                                <th className="p-4 font-normal w-[300px]">System Identity</th>
+                                <th className="p-4 font-normal">Resource Telemetry</th>
+                                <th className="p-4 font-normal w-[200px]">Network I/O</th>
+                                <th className="p-4 font-normal w-[180px]">Meta / Status</th>
+                            </tr>
+                            </thead>
+                            <tbody className="divide-y divide-cyan-900/30">
+                            {displayAgents.map(server => {
+                                const isOnline = server.status === 1;
+                                const cpuUsage = server.metrics?.cpu?.usagePercent ?? 0;
+                                const memoryUsage = server.metrics?.memory?.usagePercent ?? 0;
+                                const memoryTotal = server.metrics?.memory?.total ?? 0;
+                                const memoryUsed = server.metrics?.memory?.used ?? 0;
+                                const diskUsage = calculateDiskUsage(server.metrics);
+                                const diskTotal = server.metrics?.disk?.total ?? 0;
+                                const diskUsed = server.metrics?.disk?.used ?? 0;
+                                const {upload, download} = calculateNetworkSpeed(server.metrics);
 
-                            return (
-                                <tr
-                                    key={server.id}
-                                    tabIndex={0}
-                                    onClick={() => handleNavigate(server.id)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault();
-                                            handleNavigate(server.id);
-                                        }
-                                    }}
-                                    className="group hover:bg-cyan-500/5 transition-colors cursor-pointer"
-                                >
-                                    {/* Identity */}
-                                    <td className="p-4 align-top">
-                                        <div className="flex items-center gap-4">
-                                            <div>
+                                return (
+                                    <tr
+                                        key={server.id}
+                                        tabIndex={0}
+                                        onClick={() => handleNavigate(server.id)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault();
+                                                handleNavigate(server.id);
+                                            }
+                                        }}
+                                        className="group hover:bg-cyan-500/5 transition-colors cursor-pointer"
+                                    >
+                                        {/* Identity */}
+                                        <td className="p-4 align-top">
+                                            <div className="flex items-center gap-4">
+                                                <div>
+                                                    <div
+                                                        className="font-bold text-cyan-100 font-mono text-sm group-hover:text-cyan-400 transition-colors">
+                                                        {server.name || server.hostname}
+                                                    </div>
+                                                    <div
+                                                        className="flex items-center gap-2 text-[10px] text-cyan-600 mt-1 font-mono uppercase">
+                                                        <span>{server.os}</span>
+                                                        <span className="w-px h-2 bg-cyan-800"></span>
+                                                        <span>{server.arch}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {/* Resources */}
+                                        <td className="p-4 align-top">
+                                            {isOnline ? (
+                                                <div className="flex flex-col justify-center h-full gap-0.5">
+                                                    <CompactResourceBar
+                                                        value={cpuUsage}
+                                                        label="CPU"
+                                                        icon={Cpu}
+                                                        subtext={null}
+                                                        color="bg-blue-500"
+                                                    />
+                                                    <CompactResourceBar
+                                                        value={memoryUsage}
+                                                        label="RAM"
+                                                        icon={MemoryStick}
+                                                        subtext={`${formatBytes(memoryUsed)}/${formatBytes(memoryTotal)}`}
+                                                        color="bg-purple-500"
+                                                    />
+                                                    <CompactResourceBar
+                                                        value={diskUsage}
+                                                        label="DSK"
+                                                        icon={HardDrive}
+                                                        subtext={`${formatBytes(diskUsed)}/${formatBytes(diskTotal)}`}
+                                                        color="bg-emerald-500"
+                                                    />
+                                                </div>
+                                            ) : (
                                                 <div
-                                                    className="font-bold text-cyan-100 font-mono text-sm group-hover:text-cyan-400 transition-colors">
-                                                    {server.name || server.hostname}
+                                                    className="text-xs text-rose-500 font-mono flex items-center gap-2 py-4">
+                                                    <AlertTriangle className="w-4 h-4"/>
+                                                    <span>CONNECTION_LOST // RECONNECTING...</span>
+                                                </div>
+                                            )}
+                                        </td>
+
+                                        {/* Network */}
+                                        <td className="p-4 font-mono align-top">
+                                            <div className="flex flex-col gap-1.5 text-[10px] text-cyan-500 mb-3">
+                                                <span className="flex items-center gap-2 text-emerald-400/80">
+                                                    <ArrowDown className="w-3 h-3"/>
+                                                    <span>IN: {formatSpeed(download)}</span>
+                                                </span>
+                                                <span className="flex items-center gap-2 text-blue-400/80">
+                                                    <ArrowUp className="w-3 h-3"/>
+                                                    <span>OUT: {formatSpeed(upload)}</span>
+                                                </span>
+                                            </div>
+                                            {server.trafficLimit > 0 ? (
+                                                <div className="w-32">
+                                                    <div
+                                                        className="flex justify-between text-[9px] text-cyan-700 mb-0.5">
+                                                        <span>流量使用</span>
+                                                        <span>{Math.round((server.trafficUsed || 0) / server.trafficLimit * 100)}%</span>
+                                                    </div>
+                                                    <div className="h-1 bg-cyan-900/50 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-cyan-400"
+                                                             style={{width: `${((server.trafficUsed || 0) / server.trafficLimit) * 100}%`}}></div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-[10px] text-cyan-800 italic">-- NO METERING --</div>
+                                            )}
+                                        </td>
+
+                                        {/* Meta */}
+                                        <td className="p-4 align-top">
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex gap-1 flex-wrap">
+                                                    {server.tags && server.tags.length > 0 && server.tags.map(tag => (
+                                                        <span key={tag}
+                                                              className="px-1.5 py-0.5 bg-cyan-900/40 text-cyan-400 border border-cyan-700/50 text-[10px] font-mono rounded-sm">
+                                                            #{tag}
+                                                        </span>
+                                                    ))}
                                                 </div>
                                                 <div
-                                                    className="flex items-center gap-2 text-[10px] text-cyan-600 mt-1 font-mono uppercase">
-                                                    <span>{server.os}</span>
-                                                    <span className="w-px h-2 bg-cyan-800"></span>
-                                                    <span>{server.arch}</span>
+                                                    className={`text-[10px] font-mono flex items-center gap-1 ${server.expireTime && server.expireTime > 0 ? 'text-cyan-600' : 'text-emerald-500/60'}`}>
+                                                    <Calendar className="w-3 h-3"/>
+                                                    {server.expireTime > 0
+                                                        ? `EXP: ${new Date(server.expireTime).toLocaleDateString('zh-CN')}`
+                                                        : ''
+                                                    }
                                                 </div>
                                             </div>
-                                        </div>
-                                    </td>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            </tbody>
+                        </table>
+                    </div>
 
-                                    {/* Resources */}
-                                    <td className="p-4 align-top">
-                                        {isOnline ? (
-                                            <div className="flex flex-col justify-center h-full gap-0.5">
-                                                <CompactResourceBar
-                                                    value={cpuUsage}
-                                                    label="CPU"
-                                                    icon={Cpu}
-                                                    subtext={null}
-                                                    color="bg-blue-500"
-                                                />
-                                                <CompactResourceBar
-                                                    value={memoryUsage}
-                                                    label="RAM"
-                                                    icon={MemoryStick}
-                                                    subtext={`${formatBytes(memoryUsed)}/${formatBytes(memoryTotal)}`}
-                                                    color="bg-purple-500"
-                                                />
-                                                <CompactResourceBar
-                                                    value={diskUsage}
-                                                    label="DSK"
-                                                    icon={HardDrive}
-                                                    subtext={`${formatBytes(diskUsed)}/${formatBytes(diskTotal)}`}
-                                                    color="bg-emerald-500"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div
-                                                className="text-xs text-rose-500 font-mono flex items-center gap-2 py-4">
-                                                <AlertTriangle className="w-4 h-4"/>
-                                                <span>CONNECTION_LOST // RECONNECTING...</span>
-                                            </div>
-                                        )}
-                                    </td>
-
-                                    {/* Network */}
-                                    <td className="p-4 font-mono align-top">
-                                        <div className="flex flex-col gap-1.5 text-[10px] text-cyan-500 mb-3">
-                                            <span className="flex items-center gap-2 text-emerald-400/80">
-                                                <ArrowDown className="w-3 h-3"/>
-                                                <span>IN: {formatSpeed(download)}</span>
-                                            </span>
-                                            <span className="flex items-center gap-2 text-blue-400/80">
-                                                <ArrowUp className="w-3 h-3"/>
-                                                <span>OUT: {formatSpeed(upload)}</span>
-                                            </span>
-                                        </div>
-                                        {server.trafficLimit > 0 ? (
-                                            <div className="w-32">
-                                                <div
-                                                    className="flex justify-between text-[9px] text-cyan-700 mb-0.5">
-                                                    <span>TRAFFIC</span>
-                                                    <span>{Math.round((server.trafficUsed || 0) / server.trafficLimit * 100)}%</span>
-                                                </div>
-                                                <div className="h-1 bg-cyan-900/50 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-cyan-400"
-                                                         style={{width: `${((server.trafficUsed || 0) / server.trafficLimit) * 100}%`}}></div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="text-[10px] text-cyan-800 italic">-- NO METERING --</div>
-                                        )}
-                                    </td>
-
-                                    {/* Meta */}
-                                    <td className="p-4 align-top">
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex gap-1 flex-wrap">
-                                                {server.tags && server.tags.length > 0 && server.tags.map(tag => (
-                                                    <span key={tag}
-                                                          className="px-1.5 py-0.5 bg-cyan-900/40 text-cyan-400 border border-cyan-700/50 text-[10px] font-mono rounded-sm">
-                                                        #{tag}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                            <div
-                                                className={`text-[10px] font-mono flex items-center gap-1 ${server.expireTime && server.expireTime > 0 ? 'text-cyan-600' : 'text-emerald-500/60'}`}>
-                                                <Calendar className="w-3 h-3"/>
-                                                {server.expireTime && server.expireTime > 0
-                                                    ? `EXP: ${new Date(server.expireTime).toLocaleDateString('zh-CN')}`
-                                                    : 'PERMANENT_NODE'
-                                                }
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                        </tbody>
-                    </table>
-                </div>
+                    {/* 移动端卡片布局 */}
+                    <div className="md:hidden space-y-3">
+                        {displayAgents.map(server => (
+                            <ServerCard
+                                key={server.id}
+                                server={server}
+                                onClick={handleNavigate}
+                            />
+                        ))}
+                    </div>
+                </>
             )}
         </div>
     );

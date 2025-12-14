@@ -190,28 +190,40 @@ func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
 		a.setActiveConn(nil)
 	}()
 
-	// 创建完成通道
+	// 创建完成通道和错误通道
 	done := make(chan struct{})
-	errChan := make(chan error, 3)
+	errChan := make(chan error, 1) // 只需要接收第一个错误
 
+	// 创建 WaitGroup 用于等待所有 goroutine 退出
 	var wg conc.WaitGroup
+
 	// 启动读取循环（处理服务端的 Ping/Pong 等控制消息）
 	wg.Go(func() {
 		if err := a.readLoop(rawConn, done); err != nil {
-			errChan <- fmt.Errorf("读取失败: %w", err)
+			select {
+			case errChan <- fmt.Errorf("读取失败: %w", err):
+			default:
+			}
 		}
 	})
 
 	// 启动心跳和数据发送
 	wg.Go(func() {
 		if err := a.heartbeatLoop(ctx, conn, done); err != nil {
-			errChan <- fmt.Errorf("心跳失败: %w", err)
+			select {
+			case errChan <- fmt.Errorf("心跳失败: %w", err):
+			default:
+			}
 		}
 	})
 
+	// 启动指标采集循环
 	wg.Go(func() {
 		if err := a.metricsLoop(ctx, conn, collectorManager, done); err != nil {
-			errChan <- fmt.Errorf("数据采集失败: %w", err)
+			select {
+			case errChan <- fmt.Errorf("数据采集失败: %w", err):
+			default:
+			}
 		}
 	})
 
@@ -225,23 +237,32 @@ func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
 		a.tamperAlertLoop(ctx, conn, done)
 	})
 
-	// 等待错误或上下文取消
+	// 等待第一个错误或上下文取消
+	var returnErr error
 	select {
 	case err := <-errChan:
-		close(done)
 		// 连接已建立，无论什么原因断开都标记为已建立状态
 		log.Printf("连接断开: %v", err)
-		return ErrConnectionEstablished
+		returnErr = ErrConnectionEstablished
 	case <-ctx.Done():
-		close(done)
-		// 优雅关闭连接
-		closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
-		if err := conn.WriteMessage(websocket.CloseMessage, closeMsg); err != nil {
-			log.Printf("⚠️  关闭连接失败: %v", err)
-		}
-		time.Sleep(time.Second)
-		return ctx.Err() // 返回上下文错误
+		// 收到取消信号
+		log.Println("收到停止信号，准备关闭连接")
+		returnErr = ctx.Err()
 	}
+
+	// 关闭 done channel，通知所有 goroutine 退出
+	close(done)
+
+	// 发送 WebSocket 关闭消息
+	closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
+	if err := conn.WriteMessage(websocket.CloseMessage, closeMsg); err != nil {
+		log.Printf("⚠️  发送关闭消息失败: %v", err)
+	}
+
+	// 等待所有 goroutine 优雅退出
+	wg.Wait()
+
+	return returnErr
 }
 
 // readLoop 读取服务端消息（主要用于处理 Ping/Pong 和指令）

@@ -1,8 +1,9 @@
-import {ArrowLeft, Server} from 'lucide-react';
+import {ArrowLeft} from 'lucide-react';
 import {cn} from '@/lib/utils';
 import {formatBytes, formatDateTime, formatUptime} from '@/utils/util';
 import type {Agent, LatestMetrics} from '@/types';
 import LittleStatCard from '@/components/common/LittleStatCard';
+import CyberCard from "@/components/CyberCard.tsx";
 
 interface ServerHeroProps {
     agent: Agent;
@@ -41,7 +42,7 @@ export const ServerHero = ({agent, latestMetrics, onBack}: ServerHeroProps) => {
     ];
 
     return (
-        <section className="rounded-2xl border border-cyan-900/50 bg-[#0a0b10]/90 p-6 shadow-2xl backdrop-blur-sm">
+        <CyberCard className={'p-6'}>
             <div className="flex flex-col gap-6">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="space-y-4">
@@ -91,6 +92,6 @@ export const ServerHero = ({agent, latestMetrics, onBack}: ServerHeroProps) => {
                     <span>网络累计：{networkSummary}</span>
                 </div>
             </div>
-        </section>
+        </CyberCard>
     );
 };

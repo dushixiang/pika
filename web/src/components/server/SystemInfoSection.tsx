@@ -4,6 +4,7 @@ import {Card} from '@/components/common';
 import {InfoGrid, SnapshotSection, type SnapshotCardData} from '@/components/server';
 import {formatBytes, formatDateTime, formatPercentValue, formatUptime} from '@/utils/util';
 import type {Agent, LatestMetrics} from '@/types';
+import CyberCard from "@/components/CyberCard.tsx";
 
 type AccentVariant = 'blue' | 'emerald' | 'purple' | 'amber';
 
@@ -154,26 +155,26 @@ export const SystemInfoSection = ({agent, latestMetrics}: SystemInfoSectionProps
     }
 
     return (
-        <Card title="系统信息" description="探针基础属性、运行状态与资源概览" variant="dark">
+        <div>
             <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div className="rounded-xl border border-cyan-900/50 bg-black/30 p-4 backdrop-blur-sm">
+                    <CyberCard className={'p-6'}>
                         <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">运行环境</h3>
                         <p className="mt-1 text-[10px] text-cyan-700">来自最近一次探针上报的硬件与系统信息</p>
                         <div className="mt-4">
                             <InfoGrid items={environmentInfo}/>
                         </div>
-                    </div>
-                    <div className="rounded-xl border border-cyan-900/50 bg-black/30 p-4 backdrop-blur-sm">
+                    </CyberCard>
+                    <CyberCard className={'p-6'}>
                         <h3 className="text-xs font-bold font-mono uppercase tracking-widest text-cyan-400">运行状态</h3>
                         <p className="mt-1 text-[10px] text-cyan-700">关键时间与网络指标，帮助快速判断主机健康状况</p>
                         <div className="mt-4">
                             <InfoGrid items={statusInfo}/>
                         </div>
-                    </div>
+                    </CyberCard>
                 </div>
                 <SnapshotSection cards={snapshotCards}/>
             </div>
-        </Card>
+        </div>
     );
 };
