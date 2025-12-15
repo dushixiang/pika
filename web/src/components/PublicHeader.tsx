@@ -61,7 +61,7 @@ const PublicHeader = () => {
 
     return (
         <>
-            <header className="border-b border-cyan-900/50 bg-[#05050a]/80 backdrop-blur-xl sticky top-0  z-40">
+            <header className="border-b border-cyan-900/50 bg-[#05050a]/80 backdrop-blur-xl fixed top-0 left-0 right-0 z-40">
                 <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-8">
                         <Link to={'/'}>

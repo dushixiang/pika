@@ -321,7 +321,7 @@ const ServerList = () => {
 
                                         {/* Network */}
                                         <td className="p-4 font-mono align-top">
-                                            <div className="flex flex-col gap-1.5 text-[10px] text-cyan-500 mb-3">
+                                            <div className="flex flex-col gap-1.5 text-[10px] text-cyan-500 mb-1.5">
                                                 <span className="flex items-center gap-2 text-emerald-400/80">
                                                     <ArrowDown className="w-3 h-3"/>
                                                     <span>IN: {formatSpeed(download)}</span>
