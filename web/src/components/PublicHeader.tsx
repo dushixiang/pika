@@ -47,8 +47,7 @@ const PublicHeader = () => {
         activeTab = 'monitors';
     }
 
-    let systemName = window.SystemConfig?.SystemNameZh;
-    // let systemName = "Best Zhen";
+    let systemName = window.SystemConfig?.SystemNameEn;
 
     let leftName = '';
     let rightName = '';
