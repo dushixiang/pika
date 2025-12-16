@@ -1,8 +1,8 @@
 import type {FC} from 'react';
-import {AlertTriangle, ArrowDown, ArrowUp, Calendar, Cpu, HardDrive, MemoryStick} from 'lucide-react';
+import {Activity, AlertTriangle, ArrowDown, ArrowUp, Calendar, Clock, Cpu, HardDrive, MemoryStick, Network, Thermometer} from 'lucide-react';
 import type {Agent, LatestMetrics} from '@/types';
 import CompactResourceBar from '@/components/CompactResourceBar';
-import {formatBytes, formatSpeed} from '@/utils/util';
+import {formatBytes, formatSpeed, formatUptime} from '@/utils/util';
 
 interface AgentWithMetrics extends Agent {
     metrics?: LatestMetrics;
@@ -30,6 +30,14 @@ const calculateDiskUsage = (metrics?: LatestMetrics) => {
     return metrics.disk.usagePercent;
 };
 
+const getCpuTemperature = (metrics?: LatestMetrics) => {
+    if (!metrics?.temperature || metrics.temperature.length === 0) {
+        return null;
+    }
+    const cpuTemp = metrics.temperature.find(t => t.type === 'CPU');
+    return cpuTemp ? cpuTemp.temperature : null;
+};
+
 const ServerCard: FC<ServerCardProps> = ({server, onClick}) => {
     const isOnline = server.status === 1;
     const cpuUsage = server.metrics?.cpu?.usagePercent ?? 0;
@@ -40,6 +48,8 @@ const ServerCard: FC<ServerCardProps> = ({server, onClick}) => {
     const diskTotal = server.metrics?.disk?.total ?? 0;
     const diskUsed = server.metrics?.disk?.used ?? 0;
     const {upload, download} = calculateNetworkSpeed(server.metrics);
+    const cpuTemp = getCpuTemperature(server.metrics);
+    const netConn = server.metrics?.networkConnection;
 
     return (
         <div
@@ -98,6 +108,20 @@ const ServerCard: FC<ServerCardProps> = ({server, onClick}) => {
                     )}
                 </div>
 
+                {isOnline && server.metrics?.host && (
+                    <div className="flex items-center gap-2 text-xs font-mono mt-1.5">
+                        <div className="flex items-center gap-1 text-cyan-700">
+                            <Clock className="w-3 h-3"/>
+                            <span>{formatUptime(server.metrics.host.uptime)}</span>
+                        </div>
+                        <span className="w-px h-2 bg-cyan-800"></span>
+                        <div className="flex items-center gap-1 text-cyan-700">
+                            <Activity className="w-3 h-3"/>
+                            <span>{server.metrics.host.procs} 进程</span>
+                        </div>
+                    </div>
+                )}
+
                 {/* 资源使用情况 */}
                 {isOnline ? (
                     <div className="space-y-1">
@@ -105,7 +129,7 @@ const ServerCard: FC<ServerCardProps> = ({server, onClick}) => {
                             value={cpuUsage}
                             label="CPU"
                             icon={Cpu}
-                            subtext={null}
+                            subtext={server.metrics?.cpu ? `${server.metrics.cpu.physicalCores}核` : null}
                             color="bg-blue-500"
                         />
                         <CompactResourceBar
@@ -122,6 +146,13 @@ const ServerCard: FC<ServerCardProps> = ({server, onClick}) => {
                             subtext={`${formatBytes(diskUsed, 0)}/${formatBytes(diskTotal, 0)}`}
                             color="bg-emerald-500"
                         />
+                        {cpuTemp !== null && (
+                            <div className="flex items-center gap-1.5 mt-1 text-xs font-mono pt-1">
+                                <Thermometer className="w-3 h-3 text-orange-400"/>
+                                <span className="text-orange-400">{cpuTemp.toFixed(1)}°C</span>
+                                <span className="text-cyan-700">CPU温度</span>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="text-xs text-rose-500 font-mono flex items-center gap-2 py-2">
@@ -131,21 +162,42 @@ const ServerCard: FC<ServerCardProps> = ({server, onClick}) => {
                 )}
 
                 {/* 网络和流量 */}
-                <div className="flex items-center justify-between pt-2 border-t border-cyan-900/30">
-                    <div className="flex gap-3 text-xs font-mono">
-                    <span className="flex items-center gap-1 text-emerald-400/80">
-                        <ArrowDown className="w-3 h-3"/>
-                        {formatSpeed(download)}
-                    </span>
-                        <span className="flex items-center gap-1 text-blue-400/80">
-                        <ArrowUp className="w-3 h-3"/>
-                            {formatSpeed(upload)}
-                    </span>
+                <div className="pt-2 border-t border-cyan-900/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex gap-3 text-xs font-mono">
+                            <span className="flex items-center gap-1 text-emerald-400/80">
+                                <ArrowDown className="w-3 h-3"/>
+                                {formatSpeed(download)}
+                            </span>
+                            <span className="flex items-center gap-1 text-blue-400/80">
+                                <ArrowUp className="w-3 h-3"/>
+                                {formatSpeed(upload)}
+                            </span>
+                        </div>
+                        {server.expireTime > 0 && (
+                            <div className="text-xs font-mono text-cyan-600 flex items-center gap-1">
+                                <Calendar className="w-3 h-3"/>
+                                {new Date(server.expireTime).toLocaleDateString('zh-CN')}
+                            </div>
+                        )}
                     </div>
-                    {server.expireTime > 0 && (
-                        <div className="text-xs font-mono text-cyan-600 flex items-center gap-1">
-                            <Calendar className="w-3 h-3"/>
-                            {new Date(server.expireTime).toLocaleDateString('zh-CN')}
+                    {isOnline && netConn && (
+                        <div className="flex gap-3 text-xs font-mono">
+                            <span className="flex items-center gap-1">
+                                <Network className="w-3 h-3 text-emerald-400"/>
+                                <span className="text-emerald-400">{netConn.established || 0}</span>
+                                <span className="text-cyan-700">已建立</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Network className="w-3 h-3 text-blue-400"/>
+                                <span className="text-blue-400">{netConn.listen || 0}</span>
+                                <span className="text-cyan-700">监听</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Network className="w-3 h-3 text-amber-400"/>
+                                <span className="text-amber-400">{netConn.closeWait || 0}</span>
+                                <span className="text-cyan-700">等待关闭</span>
+                            </span>
                         </div>
                     )}
                 </div>

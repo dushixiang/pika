@@ -2,16 +2,20 @@ import {type ReactNode, useMemo, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useQuery} from '@tanstack/react-query';
 import {
+    Activity,
     AlertTriangle,
     ArrowDown,
     ArrowUp,
+    Clock,
     Cpu,
     Filter,
     HardDrive,
     LinkIcon,
     Loader2,
     MemoryStick,
+    Network,
     Server,
+    Thermometer,
     UnlinkIcon
 } from 'lucide-react';
 import {getPublicTags, listAgents} from '@/api/agent.ts';
@@ -21,7 +25,7 @@ import CompactResourceBar from "@/components/CompactResourceBar.tsx";
 import StatCard from "@/components/StatCard.tsx";
 import ServerCard from "@/components/ServerCard.tsx";
 import NetworkStatCard from "@/components/NetworkStatCard.tsx";
-import {formatBytes, formatSpeed} from "@/utils/util.ts";
+import {formatBytes, formatSpeed, formatUptime} from "@/utils/util.ts";
 
 interface AgentWithMetrics extends Agent {
     metrics?: LatestMetrics;
@@ -69,6 +73,14 @@ const calculateDiskUsage = (metrics?: LatestMetrics) => {
         return 0;
     }
     return metrics.disk.usagePercent;
+};
+
+const getCpuTemperature = (metrics?: LatestMetrics) => {
+    if (!metrics?.temperature || metrics.temperature.length === 0) {
+        return null;
+    }
+    const cpuTemp = metrics.temperature.find(t => t.type === 'CPU');
+    return cpuTemp ? cpuTemp.temperature : null;
 };
 
 const ServerList = () => {
@@ -237,6 +249,7 @@ const ServerList = () => {
                                 <th className="p-4 font-normal w-[300px]">System Identity</th>
                                 <th className="p-4 font-normal">Resource Telemetry</th>
                                 <th className="p-4 font-normal w-[200px]">Network I/O</th>
+                                <th className="p-4 font-normal w-[150px]">Connections</th>
                                 <th className="p-4 font-normal w-[180px]">Meta / Tags</th>
                             </tr>
                             </thead>
@@ -251,6 +264,8 @@ const ServerList = () => {
                                 const diskTotal = server.metrics?.disk?.total ?? 0;
                                 const diskUsed = server.metrics?.disk?.used ?? 0;
                                 const {upload, download} = calculateNetworkSpeed(server.metrics);
+                                const cpuTemp = getCpuTemperature(server.metrics);
+                                const netConn = server.metrics?.networkConnection;
 
                                 return (
                                     <tr
@@ -268,7 +283,7 @@ const ServerList = () => {
                                         {/* Identity */}
                                         <td className="p-4 align-top">
                                             <div className="flex items-center gap-4">
-                                                <div>
+                                                <div className="space-y-1">
                                                     <div
                                                         className="font-bold text-cyan-100 font-mono text-sm group-hover:text-cyan-400 transition-colors">
                                                         {server.name || server.hostname}
@@ -279,6 +294,18 @@ const ServerList = () => {
                                                         <span className="w-px h-2 bg-cyan-800"></span>
                                                         <span>{server.arch}</span>
                                                     </div>
+                                                    {isOnline && server.metrics?.host && (
+                                                        <div className="flex items-center gap-3 text-xs font-mono mt-1">
+                                                            <div className="flex items-center gap-1 text-cyan-700">
+                                                                <Clock className="w-3 h-3"/>
+                                                                <span>{formatUptime(server.metrics.host.uptime)}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1 text-cyan-700">
+                                                                <Activity className="w-3 h-3"/>
+                                                                <span>{server.metrics.host.procs} 进程</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
@@ -291,7 +318,7 @@ const ServerList = () => {
                                                         value={cpuUsage}
                                                         label="CPU"
                                                         icon={Cpu}
-                                                        subtext={null}
+                                                        subtext={server.metrics?.cpu ? `${server.metrics.cpu.modelName} (${server.metrics.cpu.physicalCores}核)` : undefined}
                                                         color="bg-blue-500"
                                                     />
                                                     <CompactResourceBar
@@ -308,6 +335,13 @@ const ServerList = () => {
                                                         subtext={`${formatBytes(diskUsed, 1)}/${formatBytes(diskTotal, 1)}`}
                                                         color="bg-emerald-500"
                                                     />
+                                                    {cpuTemp !== null && (
+                                                        <div className="flex items-center gap-1.5 mt-1 text-xs font-mono">
+                                                            <Thermometer className="w-3 h-3 text-orange-400"/>
+                                                            <span className="text-orange-400">{cpuTemp.toFixed(1)}°C</span>
+                                                            <span className="text-cyan-700">CPU温度</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <div
@@ -342,6 +376,31 @@ const ServerList = () => {
                                                              style={{width: `${((server.trafficUsed || 0) / server.trafficLimit) * 100}%`}}></div>
                                                     </div>
                                                 </div>
+                                            )}
+                                        </td>
+
+                                        {/* Connections */}
+                                        <td className="p-4 font-mono text-xs align-top">
+                                            {isOnline && netConn ? (
+                                                <div className="flex flex-col gap-1.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <Network className="w-3 h-3 text-emerald-400"/>
+                                                        <span className="text-emerald-400">{netConn.established || 0}</span>
+                                                        <span className="text-cyan-700">已建立</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Network className="w-3 h-3 text-blue-400"/>
+                                                        <span className="text-blue-400">{netConn.listen || 0}</span>
+                                                        <span className="text-cyan-700">监听中</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Network className="w-3 h-3 text-amber-400"/>
+                                                        <span className="text-amber-400">{netConn.closeWait || 0}</span>
+                                                        <span className="text-cyan-700">等待关闭</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-cyan-700/50">-</div>
                                             )}
                                         </td>
 
