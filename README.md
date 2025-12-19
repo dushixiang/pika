@@ -94,3 +94,5 @@ docker-compose -f docker-compose.postgresql.yml up -d
 请备注 pika
 
 <img src="screenshots/wx1.png" width="300" height="auto"/>
+
+https://t.me/pika_monitor
