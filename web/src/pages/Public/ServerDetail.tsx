@@ -38,15 +38,15 @@ const ServerDetail = () => {
     const latestMetrics = latestMetricsResponse?.data || null;
 
     if (isLoading) {
-        return <LoadingSpinner variant="dark"/>;
+        return <LoadingSpinner/>;
     }
 
     if (!agent) {
-        return <EmptyState variant="dark"/>;
+        return <EmptyState/>;
     }
 
     return (
-        <div className="bg-[#05050a] min-h-screen">
+        <div className="bg-[#f0f2f5] dark:bg-[#05050a] min-h-screen">
             <div className="mx-auto flex max-w-7xl flex-col px-4 pb-10 pt-4 sm:pt-6 sm:px-6 lg:px-8">
                 {/* 头部区域 */}
                 <ServerHero
@@ -64,13 +64,11 @@ const ServerDetail = () => {
                     <Card
                         title="历史趋势"
                         description="针对选定时间范围展示 CPU、内存与网络的变化趋势"
-                        variant="dark"
                         action={
                             <TimeRangeSelector
                                 value={timeRange}
                                 onChange={setTimeRange}
                                 options={SERVER_TIME_RANGE_OPTIONS}
-                                variant="dark"
                             />
                         }
                     >

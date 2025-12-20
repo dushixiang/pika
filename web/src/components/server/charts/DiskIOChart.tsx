@@ -55,7 +55,7 @@ export const DiskIOChart = ({agentId, timeRange}: DiskIOChartProps) => {
     if (isLoading) {
         return (
             <ChartContainer title="磁盘 I/O (MB/s)" icon={HardDrive}>
-                <ChartPlaceholder variant="dark"/>
+                <ChartPlaceholder/>
             </ChartContainer>
         );
     }
@@ -75,7 +75,7 @@ export const DiskIOChart = ({agentId, timeRange}: DiskIOChartProps) => {
                                 <stop offset="95%" stopColor="#6FD598" stopOpacity={0}/>
                             </linearGradient>
                         </defs>
-                        <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-cyan-900/30"/>
+                        <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-slate-200 dark:stroke-cyan-900/30"/>
                         <XAxis
                             dataKey="timestamp"
                             type="number"
@@ -85,15 +85,15 @@ export const DiskIOChart = ({agentId, timeRange}: DiskIOChartProps) => {
                             stroke="currentColor"
                             angle={-15}
                             textAnchor="end"
-                            className="text-xs text-cyan-500 font-mono"
+                            className="text-xs text-gray-600 dark:text-cyan-500 font-mono"
                             height={45}
                         />
                         <YAxis
                             stroke="currentColor"
-                            className="stroke-cyan-600 text-xs"
+                            className="stroke-gray-400 dark:stroke-cyan-600 text-xs"
                             tickFormatter={(value) => `${value} MB`}
                         />
-                        <Tooltip content={<CustomTooltip unit=" MB" variant="dark"/>}/>
+                        <Tooltip content={<CustomTooltip unit=" MB"/>}/>
                         <Legend/>
                         <Area
                             type="monotone"
@@ -116,7 +116,7 @@ export const DiskIOChart = ({agentId, timeRange}: DiskIOChartProps) => {
                     </AreaChart>
                 </ResponsiveContainer>
             ) : (
-                <ChartPlaceholder subtitle="暂无磁盘 I/O 采集数据" variant="dark"/>
+                <ChartPlaceholder subtitle="暂无磁盘 I/O 采集数据"/>
             )}
         </ChartContainer>
     );

@@ -79,7 +79,7 @@ export const MonitorChart = ({agentId, timeRange}: MonitorChartProps) => {
     if (isLoading) {
         return (
             <ChartContainer title="监控响应时间" icon={Activity}>
-                <ChartPlaceholder variant="dark"/>
+                <ChartPlaceholder/>
             </ChartContainer>
         );
     }
@@ -99,7 +99,7 @@ export const MonitorChart = ({agentId, timeRange}: MonitorChartProps) => {
                                     </linearGradient>
                                 ))}
                             </defs>
-                            <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-cyan-900/30"/>
+                            <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-slate-200 dark:stroke-cyan-900/30"/>
                             <XAxis
                                 dataKey="timestamp"
                                 type="number"
@@ -109,16 +109,16 @@ export const MonitorChart = ({agentId, timeRange}: MonitorChartProps) => {
                                 stroke="currentColor"
                                 angle={-15}
                                 textAnchor="end"
-                                className="text-xs text-cyan-500 font-mono"
+                                className="text-xs text-gray-600 dark:text-cyan-500 font-mono"
                                 height={45}
                             />
                             <YAxis
                                 stroke="currentColor"
-                                className="stroke-cyan-600 text-xs"
+                                className="stroke-gray-400 dark:stroke-cyan-600 text-xs"
                                 tickFormatter={(value) => `${value}ms`}
                             />
                             <Tooltip
-                                content={<CustomTooltip unit="ms" variant="dark"/>}
+                                content={<CustomTooltip unit="ms"/>}
                                 wrapperStyle={{zIndex: 9999,}}
                             />
                             {!isMobile && monitorKeys.length > 1 && (
@@ -145,7 +145,7 @@ export const MonitorChart = ({agentId, timeRange}: MonitorChartProps) => {
                     <MobileLegend items={legendItems} show={isMobile}/>
                 </>
             ) : (
-                <ChartPlaceholder variant="dark"/>
+                <ChartPlaceholder/>
             )}
         </ChartContainer>
     );

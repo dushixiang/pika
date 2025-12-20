@@ -56,7 +56,7 @@ export const GpuChart = ({agentId, timeRange}: GpuChartProps) => {
     if (isLoading) {
         return (
             <ChartContainer title="GPU 使用率与温度" icon={Zap}>
-                <ChartPlaceholder variant="dark"/>
+                <ChartPlaceholder/>
             </ChartContainer>
         );
     }
@@ -70,7 +70,7 @@ export const GpuChart = ({agentId, timeRange}: GpuChartProps) => {
         <ChartContainer title="GPU 使用率与温度" icon={Zap}>
             <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={chartData}>
-                    <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-cyan-900/30"/>
+                    <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-slate-200 dark:stroke-cyan-900/30"/>
                     <XAxis
                         dataKey="timestamp"
                         type="number"
@@ -78,13 +78,13 @@ export const GpuChart = ({agentId, timeRange}: GpuChartProps) => {
                         domain={['dataMin', 'dataMax']}
                         tickFormatter={(value) => formatChartTime(Number(value), timeRange)}
                         stroke="currentColor"
-                        className="stroke-cyan-600"
+                        className="stroke-gray-400 dark:stroke-cyan-600"
                         style={{fontSize: '12px'}}
                     />
                     <YAxis
                         yAxisId="left"
                         stroke="currentColor"
-                        className="stroke-cyan-600"
+                        className="stroke-gray-400 dark:stroke-cyan-600"
                         style={{fontSize: '12px'}}
                         tickFormatter={(value) => `${value}%`}
                     />
@@ -92,11 +92,11 @@ export const GpuChart = ({agentId, timeRange}: GpuChartProps) => {
                         yAxisId="right"
                         orientation="right"
                         stroke="currentColor"
-                        className="stroke-cyan-600"
+                        className="stroke-gray-400 dark:stroke-cyan-600"
                         style={{fontSize: '12px'}}
                         tickFormatter={(value) => `${value}°C`}
                     />
-                    <Tooltip content={<CustomTooltip unit="" variant="dark"/>}/>
+                    <Tooltip content={<CustomTooltip unit=""/>}/>
                     <Legend/>
                     <Line
                         yAxisId="left"

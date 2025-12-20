@@ -55,7 +55,7 @@ export const NetworkConnectionChart = ({agentId, timeRange}: NetworkConnectionCh
     if (isLoading) {
         return (
             <ChartContainer title="网络连接统计" icon={Network}>
-                <ChartPlaceholder variant="dark"/>
+                <ChartPlaceholder/>
             </ChartContainer>
         );
     }
@@ -65,7 +65,7 @@ export const NetworkConnectionChart = ({agentId, timeRange}: NetworkConnectionCh
             {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                     <LineChart data={chartData}>
-                        <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-cyan-900/30"/>
+                        <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-slate-200 dark:stroke-cyan-900/30"/>
                         <XAxis
                             dataKey="timestamp"
                             type="number"
@@ -75,14 +75,14 @@ export const NetworkConnectionChart = ({agentId, timeRange}: NetworkConnectionCh
                             stroke="currentColor"
                             angle={-15}
                             textAnchor="end"
-                            className="text-xs text-cyan-500 font-mono"
+                            className="text-xs text-gray-600 dark:text-cyan-500 font-mono"
                             height={45}
                         />
                         <YAxis
                             stroke="currentColor"
-                            className="stroke-cyan-600 text-xs"
+                            className="stroke-gray-400 dark:stroke-cyan-600 text-xs"
                         />
-                        <Tooltip content={<CustomTooltip unit="" variant="dark"/>}/>
+                        <Tooltip content={<CustomTooltip unit=""/>}/>
                         <Legend/>
                         <Line
                             type="monotone"
@@ -123,7 +123,7 @@ export const NetworkConnectionChart = ({agentId, timeRange}: NetworkConnectionCh
                     </LineChart>
                 </ResponsiveContainer>
             ) : (
-                <ChartPlaceholder subtitle="暂无网络连接统计数据" variant="dark"/>
+                <ChartPlaceholder subtitle="暂无网络连接统计数据"/>
             )}
         </ChartContainer>
     );

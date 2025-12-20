@@ -22,7 +22,7 @@ export const MonitorHero = ({monitor, onBack}: MonitorHeroProps) => {
             <button
                 type="button"
                 onClick={onBack}
-                className="group inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-cyan-500 hover:text-cyan-500 transition font-mono"
+                className="group inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-cyan-500 hover:text-gray-800 dark:hover:text-cyan-400 transition font-mono"
             >
                 <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1"/>
                 返回监控列表
@@ -31,15 +31,15 @@ export const MonitorHero = ({monitor, onBack}: MonitorHeroProps) => {
             {/* 监控信息 */}
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex items-start gap-4 flex-1 min-w-0">
-                    <div className="p-3 bg-cyan-950/30 border border-cyan-500/20 rounded-lg flex-shrink-0">
+                    <div className="p-3 bg-gray-100 dark:bg-cyan-950/30 border border-slate-200 dark:border-cyan-500/20 rounded-lg flex-shrink-0">
                         <TypeIcon type={monitor.type}/>
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-3 mb-2">
-                            <h1 className="text-2xl sm:text-3xl font-bold truncate text-cyan-100 tracking-wide">{monitor.name}</h1>
+                            <h1 className="text-2xl sm:text-3xl font-bold truncate text-slate-800 dark:text-cyan-100 tracking-wide">{monitor.name}</h1>
                             <StatusBadge status={monitor.status}/>
                         </div>
-                        <p className="text-sm text-cyan-500/80 font-mono truncate">
+                        <p className="text-sm text-gray-600 dark:text-cyan-500/80 font-mono truncate">
                             {monitor.showTargetPublic ? monitor.target : '******'}
                         </p>
                     </div>
@@ -68,8 +68,8 @@ export const MonitorHero = ({monitor, onBack}: MonitorHeroProps) => {
 
             {/* 证书信息（如果是 HTTPS）*/}
             {monitor.type === 'https' && monitor.certExpiryTime && (
-                <div className="flex items-center gap-2 pt-4 border-t border-cyan-900/50">
-                    <span className="text-xstext-cyan-500 font-mono">SSL 证书:</span>
+                <div className="flex items-center gap-2 pt-4 border-t border-slate-200 dark:border-cyan-900/50">
+                    <span className="text-xs text-gray-600 dark:text-cyan-500 font-mono">SSL 证书:</span>
                     <CertBadge
                         expiryTime={monitor.certExpiryTime}
                         daysLeft={monitor.certDaysLeft}

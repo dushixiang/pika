@@ -449,7 +449,6 @@ const ServerList = () => {
                             <ServerCard
                                 key={server.id}
                                 server={server}
-                                onClick={handleNavigate}
                             />
                         ))}
                     </div>

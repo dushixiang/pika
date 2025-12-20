@@ -157,15 +157,15 @@ export const SystemInfoSection = ({agent, latestMetrics}: SystemInfoSectionProps
             <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <CyberCard className={'p-6'}>
-                        <h3 className="text-sm font-bold font-mono uppercase tracking-widest text-cyan-500">运行环境</h3>
-                        <p className="mt-1 text-xs text-cyan-500">来自最近一次探针上报的硬件与系统信息</p>
+                        <h3 className="text-sm font-bold font-mono uppercase tracking-widest text-gray-700 dark:text-cyan-500">运行环境</h3>
+                        <p className="mt-1 text-xs text-gray-600 dark:text-cyan-500">来自最近一次探针上报的硬件与系统信息</p>
                         <div className="mt-4">
                             <InfoGrid items={environmentInfo}/>
                         </div>
                     </CyberCard>
                     <CyberCard className={'p-6'}>
-                        <h3 className="text-sm font-bold font-mono uppercase tracking-widest text-cyan-500">运行状态</h3>
-                        <p className="mt-1 text-xs text-cyan-500">关键时间与网络指标，帮助快速判断主机健康状况</p>
+                        <h3 className="text-sm font-bold font-mono uppercase tracking-widest text-gray-700 dark:text-cyan-500">运行状态</h3>
+                        <p className="mt-1 text-xs text-gray-600 dark:text-cyan-500">关键时间与网络指标，帮助快速判断主机健康状况</p>
                         <div className="mt-4">
                             <InfoGrid items={statusInfo}/>
                         </div>

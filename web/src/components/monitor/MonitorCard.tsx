@@ -78,14 +78,14 @@ const MonitorCard = ({monitor, displayMode}: {
             <div className="flex justify-between items-start mb-4">
                 <div className="flex gap-3 flex-1 min-w-0">
                     <div
-                        className="p-2.5 bg-cyan-950/30 border border-cyan-500/20 rounded-lg flex-shrink-0">
+                        className="p-2.5 bg-gray-100 dark:bg-cyan-950/30 border border-slate-200 dark:border-cyan-500/20 rounded-lg flex-shrink-0">
                         <TypeIcon type={monitor.type}/>
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-sm text-cyan-100 tracking-wide truncate group-hover:text-cyan-500 transition-colors">
+                        <h3 className="font-bold text-sm text-slate-800 dark:text-cyan-100 tracking-wide truncate group-hover:text-cyan-500 transition-colors">
                             {monitor.name}
                         </h3>
-                        <div className="text-xs font-mono text-cyan-500/80 mb-0.5 tracking-wider truncate">
+                        <div className="text-xs font-mono text-gray-600 dark:text-cyan-500/80 mb-0.5 tracking-wider truncate">
                             {monitor.target}
                         </div>
                     </div>
@@ -98,24 +98,24 @@ const MonitorCard = ({monitor, displayMode}: {
             {/* 指标信息 */}
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                    <p className="text-xs text-cyan-500 mb-1 flex items-center gap-1">
+                    <p className="text-xs text-gray-600 dark:text-cyan-500 mb-1 flex items-center gap-1">
                         {displayLabel}
                         {monitor.agentCount > 0 && (
                             <span
-                                className="bg-slate-700 text-xs px-1.5 rounded-full text-cyan-300">
+                                className="bg-slate-200 dark:bg-slate-700 text-xs px-1.5 rounded-full text-slate-700 dark:text-cyan-300">
                                     {monitor.agentCount} 节点
                                 </span>
                         )}
                     </p>
                     <div
-                        className={`text-xl font-bold flex items-baseline gap-1 ${displayValue > 200 ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' : 'text-white drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]'}`}>
-                        {displayValue}<span className="text-xs text-cyan-500 font-normal">ms</span>
+                        className={`text-xl font-bold flex items-baseline gap-1 ${displayValue > 200 ? 'text-amber-600 dark:text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.3)] dark:drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' : 'text-slate-800 dark:text-white drop-shadow-none dark:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]'}`}>
+                        {displayValue}<span className="text-xs text-gray-600 dark:text-cyan-500 font-normal">ms</span>
                     </div>
                 </div>
                 <div>
                     {monitor.type === 'https' && monitor.certExpiryTime ? (
                         <>
-                            <p className="text-xs text-cyan-500 mb-1">SSL 证书</p>
+                            <p className="text-xs text-gray-600 dark:text-cyan-500 mb-1">SSL 证书</p>
                             <CertBadge
                                 expiryTime={monitor.certExpiryTime}
                                 daysLeft={monitor.certDaysLeft}
@@ -123,8 +123,8 @@ const MonitorCard = ({monitor, displayMode}: {
                         </>
                     ) : (
                         <>
-                            <p className="text-xs text-cyan-500 mb-1">上次检测</p>
-                            <p className="text-sm font-medium text-cyan-300 font-mono">
+                            <p className="text-xs text-gray-600 dark:text-cyan-500 mb-1">上次检测</p>
+                            <p className="text-sm font-medium text-gray-700 dark:text-cyan-300 font-mono">
                                 {formatDateTime(monitor.lastCheckTime)}
                             </p>
                         </>

@@ -37,7 +37,7 @@ export const CpuChart = ({agentId, timeRange}: CpuChartProps) => {
     if (isLoading) {
         return (
             <ChartContainer title="CPU 使用率" icon={Cpu}>
-                <ChartPlaceholder variant="dark"/>
+                <ChartPlaceholder/>
             </ChartContainer>
         );
     }
@@ -53,7 +53,7 @@ export const CpuChart = ({agentId, timeRange}: CpuChartProps) => {
                                 <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                             </linearGradient>
                         </defs>
-                        <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-cyan-900/30"/>
+                        <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-slate-200 dark:stroke-cyan-900/30"/>
                         <XAxis
                             dataKey="timestamp"
                             type="number"
@@ -63,15 +63,15 @@ export const CpuChart = ({agentId, timeRange}: CpuChartProps) => {
                             stroke="currentColor"
                             angle={-15}
                             textAnchor="end"
-                            className="text-xs text-cyan-500 font-mono"
+                            className="text-xs text-gray-600 dark:text-cyan-500 font-mono"
                         />
                         <YAxis
                             domain={[0, 100]}
                             stroke="currentColor"
-                            className="stroke-cyan-600 text-xs"
+                            className="stroke-gray-400 dark:stroke-cyan-600 text-xs"
                             tickFormatter={(value) => `${value}%`}
                         />
-                        <Tooltip content={<CustomTooltip unit="%" variant="dark"/>}/>
+                        <Tooltip content={<CustomTooltip unit="%"/>}/>
                         <Area
                             type="monotone"
                             dataKey="usage"
@@ -84,7 +84,7 @@ export const CpuChart = ({agentId, timeRange}: CpuChartProps) => {
                     </AreaChart>
                 </ResponsiveContainer>
             ) : (
-                <ChartPlaceholder variant="dark"/>
+                <ChartPlaceholder/>
             )}
         </ChartContainer>
     );

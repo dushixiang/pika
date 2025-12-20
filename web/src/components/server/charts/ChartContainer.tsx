@@ -16,8 +16,8 @@ export const ChartContainer = ({title, icon: Icon, children, action}: ChartConta
     return (
         <section>
             <div className="mb-3 flex items-center justify-between">
-                <h3 className="flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-widest text-cyan-500">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
+                <h3 className="flex items-center gap-2 text-xs font-bold font-mono uppercase tracking-widest text-gray-700 dark:text-cyan-500">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-200 dark:bg-cyan-500/10 text-gray-700 dark:text-cyan-500">
             <Icon className="h-4 w-4"/>
           </span>
                     {title}
