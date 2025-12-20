@@ -9,17 +9,19 @@ import {formatChartTime} from '@/utils/util';
 interface DiskIOChartProps {
     agentId: string;
     timeRange: string;
+    aggregation?: 'avg' | 'max';
 }
 
 /**
  * 磁盘 I/O 图表组件
  */
-export const DiskIOChart = ({agentId, timeRange}: DiskIOChartProps) => {
+export const DiskIOChart = ({agentId, timeRange, aggregation}: DiskIOChartProps) => {
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'disk_io',
         range: timeRange,
+        aggregation,
     });
 
     // 数据转换

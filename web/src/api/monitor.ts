@@ -66,6 +66,13 @@ export interface GetMetricsResponse {
 }
 
 // 公开接口 - 获取指定监控的历史数据（VictoriaMetrics 原始时序数据）
-export const getMonitorHistory = (id: string, range: string = '15m') => {
-    return get<GetMetricsResponse>(`/monitors/${encodeURIComponent(id)}/history?range=${range}`);
+export type MonitorHistoryAggregation = 'avg' | 'max';
+
+export const getMonitorHistory = (id: string, range: string = '15m', aggregation?: MonitorHistoryAggregation) => {
+    const params = new URLSearchParams();
+    params.append('range', range);
+    if (aggregation) {
+        params.append('aggregation', aggregation);
+    }
+    return get<GetMetricsResponse>(`/monitors/${encodeURIComponent(id)}/history?${params.toString()}`);
 };

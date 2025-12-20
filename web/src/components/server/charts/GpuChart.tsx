@@ -9,18 +9,20 @@ import {formatChartTime} from '@/utils/util';
 interface GpuChartProps {
     agentId: string;
     timeRange: string;
+    aggregation?: 'avg' | 'max';
 }
 
 /**
  * GPU 使用率与温度图表组件
  * 使用双 Y 轴显示使用率和温度
  */
-export const GpuChart = ({agentId, timeRange}: GpuChartProps) => {
+export const GpuChart = ({agentId, timeRange, aggregation}: GpuChartProps) => {
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'gpu',
         range: timeRange,
+        aggregation,
     });
 
     // 数据转换

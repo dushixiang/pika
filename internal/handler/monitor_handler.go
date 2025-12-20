@@ -188,13 +188,17 @@ func (h *MonitorHandler) GetHistoryByID(c echo.Context) error {
 	}
 
 	timeRange := c.QueryParam("range")
+	aggregation, ok := normalizeAggregation(c.QueryParam("aggregation"))
+	if !ok {
+		return orz.NewError(400, "无效的聚合方式")
+	}
 
 	// 默认时间范围为 5 分钟
 	if timeRange == "" {
 		timeRange = "5m"
 	}
 
-	history, err := h.monitorService.GetMonitorHistory(ctx, id, timeRange)
+	history, err := h.monitorService.GetMonitorHistory(ctx, id, timeRange, aggregation)
 	if err != nil {
 		return err
 	}

@@ -4,10 +4,11 @@ import {Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XA
 import {type GetMetricsResponse, getMonitorHistory} from '@/api/monitor';
 import {AGENT_COLORS} from '@/constants/colors';
 import {MONITOR_TIME_RANGE_OPTIONS} from '@/constants/time';
+import {AGGREGATION_OPTIONS, type AggregationOptionValue} from '@/constants/metrics';
 import {useIsMobile} from '@/hooks/use-mobile';
 import type {AgentMonitorStat} from '@/types';
 import CyberCard from "@/components/CyberCard.tsx";
-import {ChartPlaceholder, CustomTooltip, MobileLegend, TimeRangeSelector} from "@/components/common";
+import {AggregationSelector, ChartPlaceholder, CustomTooltip, MobileLegend, TimeRangeSelector} from "@/components/common";
 import {formatChartTime} from '@/utils/util';
 
 interface ResponseTimeChartProps {
@@ -22,14 +23,15 @@ interface ResponseTimeChartProps {
 export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartProps) => {
     const [selectedAgent, setSelectedAgent] = useState<string>('all');
     const [timeRange, setTimeRange] = useState<string>('1h');
+    const [aggregation, setAggregation] = useState<AggregationOptionValue>('avg');
     const isMobile = useIsMobile();
 
     // 获取历史数据
     const {data: historyData} = useQuery<GetMetricsResponse>({
-        queryKey: ['monitorHistory', monitorId, timeRange],
+        queryKey: ['monitorHistory', monitorId, timeRange, aggregation],
         queryFn: async () => {
             if (!monitorId) throw new Error('Monitor ID is required');
-            const response = await getMonitorHistory(monitorId, timeRange);
+            const response = await getMonitorHistory(monitorId, timeRange, aggregation);
             return response.data;
         },
         refetchInterval: 30000,
@@ -119,6 +121,11 @@ export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartPr
                         value={timeRange}
                         onChange={setTimeRange}
                         options={MONITOR_TIME_RANGE_OPTIONS}
+                    />
+                    <AggregationSelector
+                        value={aggregation}
+                        onChange={setAggregation}
+                        options={AGGREGATION_OPTIONS}
                     />
                     {availableAgents.length > 0 && (
                         <select

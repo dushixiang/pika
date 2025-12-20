@@ -10,12 +10,13 @@ import {formatChartTime} from '@/utils/util';
 interface MonitorChartProps {
     agentId: string;
     timeRange: string;
+    aggregation?: 'avg' | 'max';
 }
 
 /**
  * 监控响应时间图表组件
  */
-export const MonitorChart = ({agentId, timeRange}: MonitorChartProps) => {
+export const MonitorChart = ({agentId, timeRange, aggregation}: MonitorChartProps) => {
     const isMobile = useIsMobile();
 
     // 数据查询
@@ -23,6 +24,7 @@ export const MonitorChart = ({agentId, timeRange}: MonitorChartProps) => {
         agentId,
         type: 'monitor',
         range: timeRange,
+        aggregation,
     });
 
     // 数据转换 - 支持多个监控任务

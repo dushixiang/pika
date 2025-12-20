@@ -558,16 +558,22 @@ func (s *MetricService) convertQueryResultToSeries(result *vmclient.QueryResult,
 }
 
 // buildMonitorPromQLQueries 构建监控查询的 PromQL 语句
-func (s *MetricService) buildMonitorPromQLQueries(monitorID string) []metric.QueryDefinition {
+func (s *MetricService) buildMonitorPromQLQueries(monitorID string, aggregation string, step time.Duration) []metric.QueryDefinition {
 	var queries = []metric.QueryDefinition{
 		{Name: "response_time", Query: fmt.Sprintf(`pika_monitor_response_time_ms{monitor_id="%s"}`, monitorID)},
+	}
+	if aggregation != "" {
+		for i := range queries {
+			queries[i].Query = wrapAggregationQuery(queries[i].Query, aggregation, step)
+		}
 	}
 	return queries
 }
 
 // GetMonitorHistory 获取监控任务的历史趋势数据
-func (s *MetricService) GetMonitorHistory(ctx context.Context, monitorID string, start, end int64) (*metric.GetMetricsResponse, error) {
-	queries := s.buildMonitorPromQLQueries(monitorID)
+func (s *MetricService) GetMonitorHistory(ctx context.Context, monitorID string, start, end int64, aggregation string) (*metric.GetMetricsResponse, error) {
+	step := vmclient.AutoStep(time.UnixMilli(start), time.UnixMilli(end))
+	queries := s.buildMonitorPromQLQueries(monitorID, aggregation, step)
 
 	var series []metric.Series
 	for _, q := range queries {
@@ -576,7 +582,7 @@ func (s *MetricService) GetMonitorHistory(ctx context.Context, monitorID string,
 			q.Query,
 			time.UnixMilli(start),
 			time.UnixMilli(end),
-			0, // 自动步长
+			step,
 		)
 		if err != nil {
 			s.logger.Warn("查询历史趋势失败", zap.String("query", q.Name), zap.Error(err))

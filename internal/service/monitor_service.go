@@ -401,7 +401,7 @@ func (s *MonitorService) GetMonitorStatsByID(ctx context.Context, monitorID stri
 // GetMonitorHistory 获取监控任务的历史时序数据
 // 直接返回 VictoriaMetrics 的原始时序数据，包含所有探针的独立序列
 // 支持时间范围：15m, 30m, 1h, 3h, 6h, 12h, 1d, 3d, 7d
-func (s *MonitorService) GetMonitorHistory(ctx context.Context, monitorID, timeRange string) (*metric.GetMetricsResponse, error) {
+func (s *MonitorService) GetMonitorHistory(ctx context.Context, monitorID, timeRange, aggregation string) (*metric.GetMetricsResponse, error) {
 	// 计算时间范围
 	var duration time.Duration
 	switch timeRange {
@@ -432,7 +432,7 @@ func (s *MonitorService) GetMonitorHistory(ctx context.Context, monitorID, timeR
 	start := now.Add(-duration).UnixMilli()
 
 	// 直接返回 VictoriaMetrics 查询结果，无需任何转换
-	return s.metricService.GetMonitorHistory(ctx, monitorID, start, end)
+	return s.metricService.GetMonitorHistory(ctx, monitorID, start, end, aggregation)
 }
 
 // GetMonitorByAuth 根据认证状态获取监控任务（已登录返回全部，未登录返回公开可见）

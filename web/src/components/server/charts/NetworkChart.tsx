@@ -10,13 +10,14 @@ import {formatChartTime} from '@/utils/util';
 interface NetworkChartProps {
     agentId: string;
     timeRange: string;
+    aggregation?: 'avg' | 'max';
 }
 
 /**
  * 网络流量图表组件
  * 支持网卡切换
  */
-export const NetworkChart = ({agentId, timeRange}: NetworkChartProps) => {
+export const NetworkChart = ({agentId, timeRange, aggregation}: NetworkChartProps) => {
     const [selectedInterface, setSelectedInterface] = useState<string>('all');
 
     // 查询网卡列表
@@ -38,6 +39,7 @@ export const NetworkChart = ({agentId, timeRange}: NetworkChartProps) => {
         type: 'network',
         range: timeRange,
         interfaceName: selectedInterface !== 'all' ? selectedInterface : undefined,
+        aggregation,
     });
 
     // 数据转换

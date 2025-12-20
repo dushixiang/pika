@@ -9,17 +9,19 @@ import {formatChartTime} from '@/utils/util';
 interface CpuChartProps {
     agentId: string;
     timeRange: string;
+    aggregation?: 'avg' | 'max';
 }
 
 /**
  * CPU 使用率图表组件
  */
-export const CpuChart = ({agentId, timeRange}: CpuChartProps) => {
+export const CpuChart = ({agentId, timeRange, aggregation}: CpuChartProps) => {
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'cpu',
         range: timeRange,
+        aggregation,
     });
 
     // 数据转换

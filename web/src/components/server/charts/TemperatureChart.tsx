@@ -10,13 +10,14 @@ import {formatChartTime} from '@/utils/util';
 interface TemperatureChartProps {
     agentId: string;
     timeRange: string;
+    aggregation?: 'avg' | 'max';
 }
 
 /**
  * 系统温度图表组件
  * 支持温度类型切换
  */
-export const TemperatureChart = ({agentId, timeRange}: TemperatureChartProps) => {
+export const TemperatureChart = ({agentId, timeRange, aggregation}: TemperatureChartProps) => {
     const [selectedTempType, setSelectedTempType] = useState<string>('all');
 
     // 数据查询
@@ -24,6 +25,7 @@ export const TemperatureChart = ({agentId, timeRange}: TemperatureChartProps) =>
         agentId,
         type: 'temperature',
         range: timeRange,
+        aggregation,
     });
 
     // 数据转换

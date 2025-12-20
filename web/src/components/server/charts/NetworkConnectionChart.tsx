@@ -9,17 +9,19 @@ import {formatChartTime} from '@/utils/util';
 interface NetworkConnectionChartProps {
     agentId: string;
     timeRange: string;
+    aggregation?: 'avg' | 'max';
 }
 
 /**
  * 网络连接统计图表组件
  */
-export const NetworkConnectionChart = ({agentId, timeRange}: NetworkConnectionChartProps) => {
+export const NetworkConnectionChart = ({agentId, timeRange, aggregation}: NetworkConnectionChartProps) => {
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'network_connection',
         range: timeRange,
+        aggregation,
     });
 
     // 数据转换

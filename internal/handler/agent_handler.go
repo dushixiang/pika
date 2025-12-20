@@ -404,14 +404,8 @@ func (h *AgentHandler) GetMetrics(c echo.Context) error {
 	if interfaceName == "" {
 		interfaceName = "all"
 	}
-	aggregation := strings.ToLower(strings.TrimSpace(c.QueryParam("aggregation")))
-	switch aggregation {
-	case "", "avg":
-	case "mean":
-		aggregation = "avg"
-	case "max", "peak":
-		aggregation = "max"
-	default:
+	aggregation, ok := normalizeAggregation(c.QueryParam("aggregation"))
+	if !ok {
 		return orz.NewError(400, "无效的聚合方式")
 	}
 

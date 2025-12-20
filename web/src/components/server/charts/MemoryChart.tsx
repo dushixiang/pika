@@ -9,17 +9,19 @@ import {formatChartTime} from '@/utils/util';
 interface MemoryChartProps {
     agentId: string;
     timeRange: string;
+    aggregation?: 'avg' | 'max';
 }
 
 /**
  * 内存使用率图表组件
  */
-export const MemoryChart = ({agentId, timeRange}: MemoryChartProps) => {
+export const MemoryChart = ({agentId, timeRange, aggregation}: MemoryChartProps) => {
     // 数据查询
     const {data: metricsResponse, isLoading} = useMetricsQuery({
         agentId,
         type: 'memory',
         range: timeRange,
+        aggregation,
     });
 
     // 数据转换

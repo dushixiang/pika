@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
-import {Card, EmptyState, LoadingSpinner, TimeRangeSelector} from '@/components/common';
+import {AggregationSelector, Card, EmptyState, LoadingSpinner, TimeRangeSelector} from '@/components/common';
 import {
     GpuMonitorSection,
     NetworkConnectionSection,
@@ -20,6 +20,7 @@ import {
 } from '@/components/server/charts';
 import {useAgentQuery, useLatestMetricsQuery} from '@/hooks/server/queries';
 import {SERVER_TIME_RANGE_OPTIONS} from '@/constants/time';
+import {AGGREGATION_OPTIONS} from '@/constants/metrics';
 
 /**
  * 服务器详情页面
@@ -29,6 +30,7 @@ const ServerDetail = () => {
     const {id} = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [timeRange, setTimeRange] = useState<string>('15m');
+    const [aggregation, setAggregation] = useState<'avg' | 'max'>('avg');
 
     // 查询基础数据（用于页面头部和系统信息）
     const {data: agentResponse, isLoading} = useAgentQuery(id);
@@ -65,40 +67,47 @@ const ServerDetail = () => {
                         title="历史趋势"
                         description="针对选定时间范围展示 CPU、内存与网络的变化趋势"
                         action={
-                            <TimeRangeSelector
-                                value={timeRange}
-                                onChange={setTimeRange}
-                                options={SERVER_TIME_RANGE_OPTIONS}
-                            />
+                            <div className="flex flex-wrap items-center gap-2">
+                                <TimeRangeSelector
+                                    value={timeRange}
+                                    onChange={setTimeRange}
+                                    options={SERVER_TIME_RANGE_OPTIONS}
+                                />
+                                <AggregationSelector
+                                    value={aggregation}
+                                    onChange={setAggregation}
+                                    options={AGGREGATION_OPTIONS}
+                                />
+                            </div>
                         }
                     >
                         <div className="space-y-4 sm:space-y-5 lg:space-y-6">
                             {/* 核心指标：大屏 2 列，小屏 1 列 */}
                             <div className="grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 md:grid-cols-2">
-                                <CpuChart agentId={id!} timeRange={timeRange}/>
-                                <MemoryChart agentId={id!} timeRange={timeRange}/>
+                                <CpuChart agentId={id!} timeRange={timeRange} aggregation={aggregation}/>
+                                <MemoryChart agentId={id!} timeRange={timeRange} aggregation={aggregation}/>
                             </div>
 
                             {/* 网络相关：大屏 2 列，中屏 1 列 */}
                             <div className="grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 lg:grid-cols-2">
-                                <NetworkChart agentId={id!} timeRange={timeRange}/>
-                                <DiskIOChart agentId={id!} timeRange={timeRange}/>
+                                <NetworkChart agentId={id!} timeRange={timeRange} aggregation={aggregation}/>
+                                <DiskIOChart agentId={id!} timeRange={timeRange} aggregation={aggregation}/>
                             </div>
 
                             {/* 进阶指标：单列全宽 */}
                             <div className="grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1">
-                                <NetworkConnectionChart agentId={id!} timeRange={timeRange}/>
+                                <NetworkConnectionChart agentId={id!} timeRange={timeRange} aggregation={aggregation}/>
                             </div>
 
                             {/* 硬件指标：条件渲染，单列全宽 */}
                             <div className="grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1">
-                                <GpuChart agentId={id!} timeRange={timeRange}/>
-                                <TemperatureChart agentId={id!} timeRange={timeRange}/>
+                                <GpuChart agentId={id!} timeRange={timeRange} aggregation={aggregation}/>
+                                <TemperatureChart agentId={id!} timeRange={timeRange} aggregation={aggregation}/>
                             </div>
 
                             {/* 监控指标：单列全宽 */}
                             <div className="grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1">
-                                <MonitorChart agentId={id!} timeRange={timeRange}/>
+                                <MonitorChart agentId={id!} timeRange={timeRange} aggregation={aggregation}/>
                             </div>
                         </div>
                     </Card>
