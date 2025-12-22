@@ -8,6 +8,7 @@ import linuxPng from '../../assets/os/linux.png';
 import applePng from '../../assets/os/apple.png';
 import windowsPng from '../../assets/os/win11.png';
 import {useNavigate} from "react-router-dom";
+import copy from 'copy-to-clipboard';
 
 const {Paragraph, Text} = Typography;
 const {TabPane} = Tabs;
@@ -123,7 +124,7 @@ const AgentInstall = () => {
     // 复制到剪贴板
     const copyToClipboard = useCallback(async (text: string) => {
         try {
-            await navigator.clipboard.writeText(text);
+            copy(text);
             message.success('已复制到剪贴板');
         } catch (error) {
             console.error('Failed to copy:', error);
