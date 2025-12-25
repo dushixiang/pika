@@ -5,7 +5,7 @@ import {App, Button, Divider, Form, Input, InputNumber, Modal, Select, Space, Sw
 import {PageHeader} from '@/components';
 import {Edit, MinusCircle, Plus, PlusCircle, RefreshCw, Trash2} from 'lucide-react';
 import dayjs from 'dayjs';
-import {getAgentPaging, getTags} from '@/api/agent.ts';
+import {getAgentPaging} from '@/api/agent.ts';
 import type {Agent, MonitorTask, MonitorTaskRequest} from '@/types';
 import {createMonitor, deleteMonitor, listMonitors, updateMonitor} from '@/api/monitor.ts';
 import {getErrorMessage} from '@/lib/utils';
@@ -23,7 +23,6 @@ const MonitorList = () => {
     const [agents, setAgents] = useState<Agent[]>([]);
     const [loadingAgents, setLoadingAgents] = useState(false);
     const [keyword, setKeyword] = useState('');
-    const [existingTags, setExistingTags] = useState<string[]>([]);
 
     const loadAgents = useCallback(async () => {
         try {
@@ -40,19 +39,6 @@ const MonitorList = () => {
     useEffect(() => {
         void loadAgents();
     }, [loadAgents]);
-
-    // 加载已有的标签
-    useEffect(() => {
-        const loadTags = async () => {
-            try {
-                const response = await getTags();
-                setExistingTags(response.data.tags || []);
-            } catch (error) {
-                console.error('加载标签失败:', error);
-            }
-        };
-        void loadTags();
-    }, []);
 
     const agentOptions = useMemo(
         () =>
@@ -451,19 +437,6 @@ const MonitorList = () => {
                             placeholder="选择探针节点（可多选）"
                             options={agentOptions}
                             loading={loadingAgents}
-                            allowClear
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="探针标签"
-                        name="tags"
-                        extra="选择标签后，拥有这些标签的探针都会执行此监控。若同时选择探针和标签，则两者取并集（自动去重）。若都不选择，则所有探针都会执行"
-                    >
-                        <Select
-                            mode="multiple"
-                            placeholder="选择标签（可多选）"
-                            options={existingTags.map(tag => ({label: tag, value: tag}))}
                             allowClear
                         />
                     </Form.Item>
