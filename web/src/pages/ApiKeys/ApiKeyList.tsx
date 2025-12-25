@@ -1,7 +1,7 @@
 import {useRef, useState} from 'react';
 import type {ActionType, ProColumns} from '@ant-design/pro-components';
 import {ProTable} from '@ant-design/pro-components';
-import {App, Button, Divider, Form, Input, message as antMessage, Modal, Popconfirm, Tag,} from 'antd';
+import {App, Button, Divider, Form, Input, Modal, Popconfirm, Tag,} from 'antd';
 import {Copy, Edit, Eye, EyeOff, Plus, Power, PowerOff, RefreshCw, Trash2} from 'lucide-react';
 import {
     deleteApiKey,
@@ -15,6 +15,7 @@ import type {ApiKey, GenerateApiKeyRequest} from '@/types';
 import dayjs from 'dayjs';
 import {getErrorMessage} from '@/lib/utils';
 import {PageHeader} from '@/components';
+import copy from "copy-to-clipboard";
 
 const ApiKeyList = () => {
     const {message: messageApi} = App.useApp();
@@ -110,8 +111,8 @@ const ApiKeyList = () => {
     };
 
     const handleCopyApiKey = (key: string) => {
-        navigator.clipboard.writeText(key);
-        antMessage.success('已复制到剪贴板');
+        copy(key)
+        messageApi.success('复制成功');
     };
 
     const toggleKeyVisibility = (id: string) => {
@@ -139,7 +140,8 @@ const ApiKeyList = () => {
                 const displayText = isVisible ? fullKey : (fullKey.length > 8 ? `${fullKey.substring(0, 8)}...` : fullKey);
                 return (
                     <div className="flex items-center gap-2">
-                        <code className="text-xs bg-gray-100 dark:bg-gray-800 dark:text-gray-200 px-2 py-1 rounded font-mono">
+                        <code
+                            className="text-xs bg-gray-100 dark:bg-gray-800 dark:text-gray-200 px-2 py-1 rounded font-mono">
                             {displayText}
                         </code>
                         <Button
@@ -357,17 +359,21 @@ const ApiKeyList = () => {
                 ]}
             >
                 <div className="space-y-4">
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                    <div
+                        className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                         <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
                             ⚠️ 重要提示:请妥善保管此密钥,关闭后将无法再次查看完整密钥!
                         </p>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">密钥名称</label>
-                        <div className="text-base font-semibold text-gray-900 dark:text-white">{newApiKeyData?.name}</div>
+                        <label
+                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">密钥名称</label>
+                        <div
+                            className="text-base font-semibold text-gray-900 dark:text-white">{newApiKeyData?.name}</div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">API密钥</label>
+                        <label
+                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">API密钥</label>
                         <code
                             className="block w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 dark:text-gray-200 rounded px-3 py-2 text-sm font-mono break-all">
                             {newApiKeyData?.key}

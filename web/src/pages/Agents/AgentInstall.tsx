@@ -122,16 +122,10 @@ const AgentInstall = () => {
     }), []);
 
     // 复制到剪贴板
-    const copyToClipboard = useCallback(async (text: string) => {
-        try {
-            copy(text);
-            message.success('已复制到剪贴板');
-        } catch (error) {
-            console.error('Failed to copy:', error);
-            message.error('复制失败,请手动复制');
-        }
-    }, [message]);
-
+    const copyToClipboard = (text: string) => {
+        copy(text);
+        message.success('已复制到剪贴板');
+    }
     // 获取一键安装命令（使用后端检测的地址）
     const installCommand = useMemo(() => {
         if (!backendServerUrl || !selectedApiKey) {
