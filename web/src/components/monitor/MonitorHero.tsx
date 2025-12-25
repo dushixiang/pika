@@ -5,6 +5,7 @@ import {CertBadge} from './CertBadge';
 import LittleStatCard from '@/components/common/LittleStatCard';
 import type {PublicMonitor} from '@/types';
 import CyberCard from "@/components/CyberCard.tsx";
+import {formatDateTime} from "@/utils/util.ts";
 
 interface MonitorHeroProps {
     monitor: PublicMonitor;
@@ -66,14 +67,19 @@ export const MonitorHero = ({monitor, onBack}: MonitorHeroProps) => {
                 </div>
             </div>
 
-            {/* 证书信息（如果是 HTTPS）*/}
-            {monitor.type === 'https' && monitor.certExpiryTime && (
-                <div className="flex items-center gap-2 pt-4 border-t border-slate-200 dark:border-cyan-900/50">
+            {/* 证书信息（如果存在证书数据）*/}
+            {monitor.certExpiryTime > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-4 border-t border-slate-200 dark:border-cyan-900/50">
                     <span className="text-xs text-gray-600 dark:text-cyan-500 font-mono">SSL 证书:</span>
-                    <CertBadge
-                        expiryTime={monitor.certExpiryTime}
-                        daysLeft={monitor.certDaysLeft}
-                    />
+                    <div className="flex items-center gap-3">
+                        <CertBadge
+                            expiryTime={monitor.certExpiryTime}
+                            daysLeft={monitor.certDaysLeft}
+                        />
+                        <span className="text-xs text-gray-500 dark:text-cyan-600 font-mono">
+                            到期时间: {formatDateTime(monitor.certExpiryTime)}
+                        </span>
+                    </div>
                 </div>
             )}
         </CyberCard>
