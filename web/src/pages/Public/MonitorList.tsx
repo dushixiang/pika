@@ -35,7 +35,6 @@ interface Stats {
 }
 
 const MonitorList = () => {
-    const [filter, setFilter] = useState<FilterStatus>('all');
     const [searchKeyword, setSearchKeyword] = useState('');
     const [displayMode, setDisplayMode] = useState<DisplayMode>('max');
 
@@ -54,11 +53,6 @@ const MonitorList = () => {
     const filteredMonitors = useMemo(() => {
         let result = monitors;
 
-        // 状态过滤
-        if (filter !== 'all') {
-            result = result.filter(m => m.status === filter);
-        }
-
         // 搜索过滤
         if (searchKeyword.trim()) {
             const keyword = searchKeyword.toLowerCase();
@@ -69,7 +63,7 @@ const MonitorList = () => {
         }
 
         return result;
-    }, [monitors, filter, searchKeyword]);
+    }, [monitors, searchKeyword]);
 
     // 统计信息
     const calculateStats = (monitors: PublicMonitor[]) => {
@@ -131,28 +125,6 @@ const MonitorList = () => {
             {/* 过滤和搜索 */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div className="flex flex-wrap gap-4 items-center w-full md:w-auto">
-                    {/* 状态过滤 */}
-                    <div
-                        className="flex gap-2 bg-slate-100 dark:bg-black/40 p-1 rounded-lg border border-slate-200 dark:border-cyan-900/50">
-                        {(['all', 'up', 'down', 'unknown'] as const).map(f => {
-                            const labels = {all: '全部', up: '正常', down: '异常', unknown: '未知'};
-                            return (
-                                <button
-                                    key={f}
-                                    onClick={() => setFilter(f)}
-                                    className={cn(
-                                        "px-4 py-1.5 rounded-md text-xs font-medium transition-all font-mono cursor-pointer",
-                                        filter === f
-                                            ? 'bg-gray-200 dark:bg-cyan-500/20 text-gray-800 dark:text-cyan-300 border border-gray-300 dark:border-cyan-500/30'
-                                            : 'text-gray-600 dark:text-cyan-500 hover:text-gray-800 dark:hover:text-cyan-400'
-                                    )}
-                                >
-                                    {labels[f]}
-                                </button>
-                            );
-                        })}
-                    </div>
-
                     {/* 显示模式切换 */}
                     <div className="flex gap-1 bg-slate-100 dark:bg-black/40 p-1 rounded-lg border border-slate-200 dark:border-cyan-900/50 items-center">
                         <span className="text-xs text-gray-600 dark:text-cyan-500 px-2 font-mono">卡片指标:</span>

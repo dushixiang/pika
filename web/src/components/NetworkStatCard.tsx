@@ -27,7 +27,7 @@ const NetworkStatCard: FC<NetworkStatCardProps> = ({
             </div>
             <div className="relative z-10 flex justify-between items-start">
                 <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold font-mono uppercase tracking-widest opacity-70 mb-2">网络统计</div>
+                    <div className="text-xs font-bold font-mono uppercase tracking-widest opacity-70 mb-3">网络统计</div>
                     <div className="space-y-0.5 text-xs sm:text-xs font-mono">
                         <div className="flex items-center gap-1.5 sm:gap-2">
                             <ArrowUp className="w-3 h-3 dark:text-blue-400 text-blue-600 flex-shrink-0"/>

@@ -187,17 +187,17 @@ const ServerCard: FC<ServerCardProps> = ({server}) => {
                                 <Network className="w-3 h-3 text-emerald-600 dark:text-emerald-400"/>
                                 <span
                                     className="text-emerald-600 dark:text-emerald-400">{netConn.established || 0}</span>
-                                <span className="text-gray-600 dark:text-cyan-500">已建立</span>
+                                <span className="text-gray-600 dark:text-cyan-500">ESTABLISHED</span>
                             </span>
                                 <span className="flex items-center gap-1">
                                 <Network className="w-3 h-3 text-blue-600 dark:text-blue-400"/>
                                 <span className="text-blue-600 dark:text-blue-400">{netConn.listen || 0}</span>
-                                <span className="text-gray-600 dark:text-cyan-500">监听</span>
+                                <span className="text-gray-600 dark:text-cyan-500">LISTEN</span>
                             </span>
                                 <span className="flex items-center gap-1">
                                 <Network className="w-3 h-3 text-rose-600 dark:text-rose-400"/>
                                 <span className="text-rose-600 dark:text-rose-400">{netConn.closeWait || 0}</span>
-                                <span className="text-gray-600 dark:text-cyan-500">等待关闭</span>
+                                <span className="text-gray-600 dark:text-cyan-500">CLOSE_WAIT</span>
                             </span>
                             </div>
                         )}
