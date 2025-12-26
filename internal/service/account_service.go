@@ -167,15 +167,17 @@ func (s *AccountService) ValidateToken(tokenString string) (*JWTClaims, error) {
 
 // AuthConfig 认证配置
 type AuthConfig struct {
-	OIDCEnabled   bool `json:"oidcEnabled"`
-	GitHubEnabled bool `json:"githubEnabled"`
+	OIDCEnabled     bool `json:"oidcEnabled"`
+	GitHubEnabled   bool `json:"githubEnabled"`
+	PasswordEnabled bool `json:"passwordEnabled"`
 }
 
 // GetAuthConfig 获取认证配置
 func (s *AccountService) GetAuthConfig() *AuthConfig {
 	return &AuthConfig{
-		OIDCEnabled:   s.oidcService.IsEnabled(),
-		GitHubEnabled: s.githubService.IsEnabled(),
+		OIDCEnabled:     s.oidcService.IsEnabled(),
+		GitHubEnabled:   s.githubService.IsEnabled(),
+		PasswordEnabled: s.userService.IsEnabled(),
 	}
 }
 
