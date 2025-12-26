@@ -1,21 +1,21 @@
-import {useEffect, useState} from 'react';
-import {App, Button, Card, Form, Input, Radio, Space, Spin, Upload} from 'antd';
-import {Upload as UploadIcon, Grid3x3, List} from 'lucide-react';
-import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import type {SystemConfig} from '@/api/property.ts';
-import {getSystemConfig, saveSystemConfig} from '@/api/property.ts';
-import {getErrorMessage} from '@/lib/utils.ts';
-import type {RcFile} from 'antd/es/upload/interface';
+import { useEffect, useState } from 'react';
+import { App, Button, Card, Form, Input, Radio, Space, Spin, Upload } from 'antd';
+import { Upload as UploadIcon, Grid3x3, List } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { SystemConfig } from '@/api/property.ts';
+import { getSystemConfig, saveSystemConfig } from '@/api/property.ts';
+import { getErrorMessage } from '@/lib/utils.ts';
+import type { RcFile } from 'antd/es/upload/interface';
 
 const SystemConfigComponent = () => {
     const [form] = Form.useForm();
-    const {message: messageApi} = App.useApp();
+    const { message: messageApi } = App.useApp();
     const queryClient = useQueryClient();
     const [logoPreview, setLogoPreview] = useState<string>('');
     const [uploading, setUploading] = useState(false);
 
     // 获取系统配置
-    const {data: config, isLoading} = useQuery({
+    const { data: config, isLoading } = useQuery({
         queryKey: ['systemConfig'],
         queryFn: getSystemConfig,
     });
@@ -25,7 +25,7 @@ const SystemConfigComponent = () => {
         mutationFn: saveSystemConfig,
         onSuccess: () => {
             messageApi.success('保存成功');
-            queryClient.invalidateQueries({queryKey: ['systemConfig']});
+            queryClient.invalidateQueries({ queryKey: ['systemConfig'] });
             // 刷新页面以应用新的系统配置
             window.location.reload();
         },
@@ -42,6 +42,8 @@ const SystemConfigComponent = () => {
                 systemNameZh: config.systemNameZh,
                 icpCode: config.icpCode,
                 defaultView: config.defaultView ?? true, // 默认为 grid 视图
+                customCSS: config.customCSS,
+                customJS: config.customJS,
             });
             if (config.logoBase64) {
                 setLogoPreview(config.logoBase64);
@@ -99,6 +101,8 @@ const SystemConfigComponent = () => {
                 logoBase64: logoPreview,
                 icpCode: values.icpCode || '',
                 defaultView: values.defaultView ?? true,
+                customCSS: values.customCSS || '',
+                customJS: values.customJS || '',
             } as SystemConfig);
         } catch (error) {
             // 表单验证失败
@@ -113,6 +117,8 @@ const SystemConfigComponent = () => {
                 systemNameZh: config.systemNameZh,
                 icpCode: config.icpCode,
                 defaultView: config.defaultView ?? true,
+                customCSS: config.customCSS,
+                customJS: config.customJS,
             });
             setLogoPreview(config.logoBase64 || '');
         }
@@ -153,22 +159,22 @@ const SystemConfigComponent = () => {
                                 label="系统英文名称"
                                 name="systemNameEn"
                                 rules={[
-                                    {required: true, message: '请输入系统英文名称'},
-                                    {max: 50, message: '系统名称不能超过 50 个字符'},
+                                    { required: true, message: '请输入系统英文名称' },
+                                    { max: 50, message: '系统名称不能超过 50 个字符' },
                                 ]}
                             >
-                                <Input placeholder="例如：Pika Monitor"/>
+                                <Input placeholder="例如：Pika Monitor" />
                             </Form.Item>
 
                             <Form.Item
                                 label="系统中文名称"
                                 name="systemNameZh"
                                 rules={[
-                                    {required: true, message: '请输入系统中文名称'},
-                                    {max: 50, message: '系统名称不能超过 50 个字符'},
+                                    { required: true, message: '请输入系统中文名称' },
+                                    { max: 50, message: '系统名称不能超过 50 个字符' },
                                 ]}
                             >
-                                <Input placeholder="例如：皮卡监控"/>
+                                <Input placeholder="例如：皮卡监控" />
                             </Form.Item>
                         </div>
 
@@ -176,11 +182,11 @@ const SystemConfigComponent = () => {
                             label="ICP 备案号"
                             name="icpCode"
                             rules={[
-                                {max: 50, message: 'ICP 备案号不能超过 50 个字符'},
+                                { max: 50, message: 'ICP 备案号不能超过 50 个字符' },
                             ]}
                             tooltip="ICP 备案号将显示在公共页面底部，例如：京ICP备12345678号"
                         >
-                            <Input placeholder="例如：京ICP备12345678号"/>
+                            <Input placeholder="例如：京ICP备12345678号" />
                         </Form.Item>
 
                         <Form.Item
@@ -215,11 +221,39 @@ const SystemConfigComponent = () => {
                                     beforeUpload={beforeUpload}
                                     disabled={uploading}
                                 >
-                                    <Button icon={<UploadIcon size={16}/>} loading={uploading}>
+                                    <Button icon={<UploadIcon size={16} />} loading={uploading}>
                                         {uploading ? '处理中...' : '上传 Logo'}
                                     </Button>
                                 </Upload>
                             </Space>
+                        </Form.Item>
+                    </Card>
+
+                    <Card
+                        title="自定义代码"
+                        type="inner"
+                        className="mb-4"
+                    >
+                        <Form.Item
+                            label="自定义 CSS"
+                            name="customCSS"
+                            tooltip="输入自定义 CSS 代码，将注入到页面 <style> 标签中"
+                        >
+                            <Input.TextArea
+                                placeholder="例如：body { background-color: #f0f0f0; }"
+                                rows={6}
+                            />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="自定义 JS"
+                            name="customJS"
+                            tooltip="输入自定义 JavaScript 代码，将注入到页面 <script> 标签中"
+                        >
+                            <Input.TextArea
+                                placeholder="例如：console.log('Hello World');"
+                                rows={6}
+                            />
                         </Form.Item>
                     </Card>
 
@@ -229,7 +263,7 @@ const SystemConfigComponent = () => {
                         className="mb-4"
                     >
                         <Form.Item noStyle shouldUpdate>
-                            {({getFieldValue}) => {
+                            {({ getFieldValue }) => {
                                 const systemNameEn = getFieldValue('systemNameEn') || '';
                                 const systemNameZh = getFieldValue('systemNameZh') || '';
 

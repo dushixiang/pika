@@ -5,6 +5,7 @@ import type { LoginRequest, LoginResponse } from '../types';
 export interface AuthConfig {
     oidcEnabled: boolean;
     githubEnabled: boolean;
+    passwordEnabled: boolean;
 }
 
 // OIDC 认证 URL

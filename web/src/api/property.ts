@@ -86,6 +86,8 @@ export interface SystemConfig {
     logoBase64: string;    // Logo 的 base64 编码
     icpCode: string;       // ICP 备案号
     defaultView: string;   // 默认视图 grid,list
+    customCSS: string;     // 自定义 CSS
+    customJS: string;      // 自定义 JS
 }
 
 // 获取系统配置（管理后台使用）

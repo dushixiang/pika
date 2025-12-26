@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
@@ -109,7 +110,12 @@ func setupApi(app *orz.App, components *AppComponents) {
 	e.Use(middleware.Recover())
 	e.Use(ErrorHandler(logger))
 
-	indexTemplate, err := template.New("index").Parse(web.IndexHtml())
+	indexTemplate, err := template.New("index").Funcs(template.FuncMap{
+		"json": func(v interface{}) template.JS {
+			b, _ := json.Marshal(v)
+			return template.JS(b)
+		},
+	}).Parse(web.IndexHtml())
 	if err != nil {
 		logger.Fatal("failed to parse index.html", zap.Error(err))
 	}

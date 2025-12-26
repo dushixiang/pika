@@ -1,22 +1,17 @@
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8"/>
-    <link rel="icon" type="image/svg+xml" href="/api/logo"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>{{.SystemNameZh}} | {{.SystemNameEn}}</title>
-    <script type="application/javascript">
-        window.SystemConfig = {
-            SystemNameZh: "{{.SystemNameZh}}",
-            SystemNameEn: "{{.SystemNameEn}}",
-            ICPCode: "{{.ICPCode}}",
-            DefaultView: "{{.DefaultView}}",
-        };
-    </script>
-</head>
-<body>
-<div id="root"></div>
 
-<script type="module" src="/src/main.tsx"></script>
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/api/logo" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{.SystemNameZh}} | {{.SystemNameEn}}</title>
+    <script id="app-config" type="application/json">{{json .}}</script>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
 </body>
+
 </html>
