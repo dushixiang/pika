@@ -59,7 +59,6 @@ const (
 	// 防篡改消息
 	MessageTypeTamperProtect MessageType = "tamper_protect"
 	MessageTypeTamperEvent   MessageType = "tamper_event"
-	MessageTypeTamperAlert   MessageType = "tamper_alert"
 	// DDNS 消息
 	MessageTypeDDNSConfig   MessageType = "ddns_config"
 	MessageTypeDDNSIPReport MessageType = "ddns_ip_report"
@@ -323,15 +322,15 @@ type TamperProtectResponse struct {
 	Paths   []string `json:"paths"`             // 当前保护的目录列表
 	Added   []string `json:"added,omitempty"`   // 新增的目录
 	Removed []string `json:"removed,omitempty"` // 移除的目录
-	Error   string   `json:"error,omitempty"`   // 错误信息
 }
 
 // TamperEventData 防篡改事件数据
 type TamperEventData struct {
-	Path      string `json:"path"`      // 被修改的路径
-	Operation string `json:"operation"` // 操作类型: write, remove, rename, chmod, create
-	Timestamp int64  `json:"timestamp"` // 事件时间(毫秒)
-	Details   string `json:"details"`   // 详细信息
+	Path      string `json:"path"`               // 被修改的路径
+	Operation string `json:"operation"`          // 操作类型: write, remove, rename, chmod, create, attr_tamper
+	Timestamp int64  `json:"timestamp"`          // 事件时间(毫秒)
+	Details   string `json:"details"`            // 详细信息
+	Restored  bool   `json:"restored,omitempty"` // 是否已自动恢复（仅用于 attr_tamper 操作）
 }
 
 // TamperAlertData 防篡改属性告警数据
@@ -687,10 +686,9 @@ type SSHLoginConfig struct {
 
 // SSHLoginConfigResult SSH登录监控配置应用结果（Agent 反馈）
 type SSHLoginConfigResult struct {
-	Success bool   `json:"success"`         // 配置应用是否成功
-	Enabled bool   `json:"enabled"`         // 当前启用状态
-	Message string `json:"message"`         // 结果描述信息
-	Error   string `json:"error,omitempty"` // 错误信息（如果失败）
+	Success bool   `json:"success"` // 配置应用是否成功
+	Enabled bool   `json:"enabled"` // 当前启用状态
+	Message string `json:"message"` // 结果描述信息
 }
 
 // SSHLoginEvent SSH登录事件

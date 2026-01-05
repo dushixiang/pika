@@ -483,6 +483,8 @@ export interface SSHLoginConfig {
     agentId: string;
     enabled: boolean;
     recordFailed: boolean;
+    applyStatus?: string;  // 配置应用状态: success/failed/pending
+    applyMessage?: string; // 应用结果消息
     createdAt?: number;
     updatedAt?: number;
 }

@@ -235,11 +235,6 @@ func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
 		a.tamperEventLoop(ctx, conn, done)
 	})
 
-	// 启动防篡改属性告警监控
-	wg.Go(func() {
-		a.tamperAlertLoop(ctx, conn, done)
-	})
-
 	// 启动 SSH 登录事件监控
 	wg.Go(func() {
 		a.sshLoginEventLoop(ctx, conn, done)
@@ -626,7 +621,7 @@ func (a *Agent) handleTamperProtect(data json.RawMessage) {
 	var tamperProtectConfig protocol.TamperProtectConfig
 	if err := json.Unmarshal(data, &tamperProtectConfig); err != nil {
 		slog.Warn("解析防篡改保护配置失败", "error", err)
-		a.sendTamperProtectResponse(false, "解析配置失败", nil, nil, nil, err.Error())
+		a.sendTamperProtectResponse(false, fmt.Sprintf("解析配置失败: %v", err), nil, nil, nil)
 		return
 	}
 
@@ -641,7 +636,7 @@ func (a *Agent) handleTamperProtect(data json.RawMessage) {
 	// 如果没有新增也没有移除，不需要做任何操作
 	if len(tamperProtectConfig.Added) == 0 && len(tamperProtectConfig.Removed) == 0 {
 		slog.Info("配置无变化，跳过更新")
-		a.sendTamperProtectResponse(true, "配置无变化", a.tamperProtector.GetProtectedPaths(), []string{}, []string{}, "")
+		a.sendTamperProtectResponse(true, "", a.tamperProtector.GetProtectedPaths(), []string{}, []string{})
 		return
 	}
 
@@ -653,9 +648,9 @@ func (a *Agent) handleTamperProtect(data json.RawMessage) {
 		slog.Warn("应用增量更新失败", "error", err)
 		// 即使有错误也返回部分成功的结果
 		if result != nil {
-			a.sendTamperProtectResponse(false, "部分更新失败", result.Current, result.Added, result.Removed, err.Error())
+			a.sendTamperProtectResponse(false, fmt.Sprintf("应用增量更新失败: %v", err), result.Current, result.Added, result.Removed)
 		} else {
-			a.sendTamperProtectResponse(false, "更新失败", nil, nil, nil, err.Error())
+			a.sendTamperProtectResponse(false, fmt.Sprintf("应用增量更新失败: %v", err), nil, nil, nil)
 		}
 		return
 	}
@@ -664,11 +659,11 @@ func (a *Agent) handleTamperProtect(data json.RawMessage) {
 	message := fmt.Sprintf("防篡改保护已更新: 新增 %d 个, 移除 %d 个, 当前保护 %d 个目录",
 		len(result.Added), len(result.Removed), len(result.Current))
 	slog.Info(message)
-	a.sendTamperProtectResponse(true, message, result.Current, result.Added, result.Removed, "")
+	a.sendTamperProtectResponse(true, message, result.Current, result.Added, result.Removed)
 }
 
 // sendTamperProtectResponse 发送防篡改保护响应
-func (a *Agent) sendTamperProtectResponse(success bool, message string, paths []string, added []string, removed []string, errMsg string) {
+func (a *Agent) sendTamperProtectResponse(success bool, message string, paths []string, added []string, removed []string) {
 	conn := a.getActiveConn()
 	if conn == nil {
 		return
@@ -680,7 +675,6 @@ func (a *Agent) sendTamperProtectResponse(success bool, message string, paths []
 		Paths:   paths,
 		Added:   added,
 		Removed: removed,
-		Error:   errMsg,
 	}
 
 	if err := conn.WriteJSON(protocol.OutboundMessage{
@@ -691,9 +685,10 @@ func (a *Agent) sendTamperProtectResponse(success bool, message string, paths []
 	}
 }
 
-// tamperEventLoop 防篡改事件监控循环
+// tamperEventLoop 防篡改事件监控循环（包含事件和告警）
 func (a *Agent) tamperEventLoop(ctx context.Context, conn *safeConn, done chan struct{}) {
 	eventCh := a.tamperProtector.GetEvents()
+	alertCh := a.tamperProtector.GetAlerts()
 
 	for {
 		select {
@@ -718,40 +713,27 @@ func (a *Agent) tamperEventLoop(ctx context.Context, conn *safeConn, done chan s
 			} else {
 				slog.Info("已上报防篡改事件", "path", event.Path, "operation", event.Operation)
 			}
-		}
-	}
-}
-
-// tamperAlertLoop 防篡改属性告警监控循环
-func (a *Agent) tamperAlertLoop(ctx context.Context, conn *safeConn, done chan struct{}) {
-	alertCh := a.tamperProtector.GetAlerts()
-
-	for {
-		select {
-		case <-done:
-			return
-		case <-ctx.Done():
-			return
 		case alert := <-alertCh:
-			// 发送属性篡改告警到服务端
-			alertData := protocol.TamperAlertData{
+			// 将防篡改告警转换为事件格式发送
+			eventData := protocol.TamperEventData{
 				Path:      alert.Path,
+				Operation: "attr_tamper", // 使用特殊的操作类型标识属性篡改
 				Timestamp: alert.Timestamp.UnixMilli(),
 				Details:   alert.Details,
 				Restored:  alert.Restored,
 			}
 
 			if err := conn.WriteJSON(protocol.OutboundMessage{
-				Type: protocol.MessageTypeTamperAlert,
-				Data: alertData,
+				Type: protocol.MessageTypeTamperEvent,
+				Data: eventData,
 			}); err != nil {
-				slog.Warn("发送属性篡改告警失败", "error", err)
+				slog.Warn("发送防篡改告警失败", "error", err)
 			} else {
 				status := "未恢复"
 				if alert.Restored {
 					status = "已恢复"
 				}
-				slog.Info("已上报属性篡改告警", "path", alert.Path, "status", status)
+				slog.Info("已上报防篡改告警", "path", alert.Path, "status", status)
 			}
 		}
 	}
@@ -868,42 +850,41 @@ func (a *Agent) handleUninstall() {
 
 // handleSSHLoginConfig 处理 SSH 登录监控配置
 func (a *Agent) handleSSHLoginConfig(conn *websocket.Conn, data json.RawMessage) {
-	var config protocol.SSHLoginConfig
-	if err := json.Unmarshal(data, &config); err != nil {
+	var sshLoginConfig protocol.SSHLoginConfig
+	if err := json.Unmarshal(data, &sshLoginConfig); err != nil {
 		slog.Warn("解析SSH登录监控配置失败", "error", err)
 		// 发送失败结果
-		a.sendSSHLoginConfigResult(conn, false, false, "解析配置失败", err.Error())
+		a.sendSSHLoginConfigResult(conn, false, false, err.Error())
 		return
 	}
 
-	slog.Info("收到SSH登录监控配置", "enabled", config.Enabled, "recordFailed", config.RecordFailed)
+	slog.Info("收到SSH登录监控配置", "enabled", sshLoginConfig.Enabled, "recordFailed", sshLoginConfig.RecordFailed)
 
 	// 应用配置
 	ctx := context.Background()
-	if err := a.sshMonitor.Start(ctx, config); err != nil {
+	if err := a.sshMonitor.Start(ctx, sshLoginConfig); err != nil {
 		slog.Warn("应用SSH登录监控配置失败", "error", err)
 		// 发送失败结果，包含详细错误信息
-		a.sendSSHLoginConfigResult(conn, false, config.Enabled, "应用配置失败", err.Error())
+		a.sendSSHLoginConfigResult(conn, false, sshLoginConfig.Enabled, err.Error())
 		return
 	}
 
 	// 发送成功结果
 	message := "配置已成功应用"
-	if config.Enabled {
+	if sshLoginConfig.Enabled {
 		message = "SSH登录监控已启用"
 	} else {
 		message = "SSH登录监控已禁用"
 	}
-	a.sendSSHLoginConfigResult(conn, true, config.Enabled, message, "")
+	a.sendSSHLoginConfigResult(conn, true, sshLoginConfig.Enabled, message)
 }
 
 // sendSSHLoginConfigResult 发送 SSH 登录监控配置应用结果
-func (a *Agent) sendSSHLoginConfigResult(conn *websocket.Conn, success bool, enabled bool, message string, errorMsg string) {
+func (a *Agent) sendSSHLoginConfigResult(conn *websocket.Conn, success bool, enabled bool, message string) {
 	result := protocol.SSHLoginConfigResult{
 		Success: success,
 		Enabled: enabled,
 		Message: message,
-		Error:   errorMsg,
 	}
 
 	msg := protocol.OutboundMessage{

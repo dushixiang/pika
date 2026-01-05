@@ -38,8 +38,8 @@ func NewSSHLoginService(logger *zap.Logger, db *gorm.DB, wsManager *websocket.Ma
 // === 配置管理 ===
 
 // GetConfig 获取探针的配置
-func (s *SSHLoginService) GetConfig(agentID string) (*models.SSHLoginConfig, error) {
-	config, err := s.repo.GetConfigByAgentID(agentID)
+func (s *SSHLoginService) GetConfig(agentID string) (*models.SSHLoginConfigData, error) {
+	config, err := s.agentRepo.GetSSHLoginConfig(context.Background(), agentID)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (s *SSHLoginService) GetConfig(agentID string) (*models.SSHLoginConfig, err
 
 // UpdateConfig 更新配置并下发到 Agent
 // 返回: config - 配置对象, configSent - 是否成功下发到 Agent, error - 错误信息
-func (s *SSHLoginService) UpdateConfig(ctx context.Context, agentID string, enabled, recordFailed bool) (*models.SSHLoginConfig, bool, error) {
+func (s *SSHLoginService) UpdateConfig(ctx context.Context, agentID string, enabled bool) (*models.SSHLoginConfigData, bool, error) {
 	// 检查探针是否存在
 	agent, err := s.agentRepo.FindById(ctx, agentID)
 	if err != nil {
@@ -56,20 +56,18 @@ func (s *SSHLoginService) UpdateConfig(ctx context.Context, agentID string, enab
 	}
 
 	// 保存配置到数据库
-	config := &models.SSHLoginConfig{
-		AgentID:      agentID,
-		Enabled:      enabled,
-		RecordFailed: recordFailed,
+	config := &models.SSHLoginConfigData{
+		Enabled: enabled,
 	}
 
-	if err := s.repo.UpsertConfig(config); err != nil {
+	if err := s.agentRepo.UpdateSSHLoginConfig(ctx, agentID, config); err != nil {
 		return nil, false, err
 	}
 
 	// 下发配置到 Agent
 	configSent := false
 	if agent.Status == 1 { // 仅在探针在线时尝试下发
-		if err := s.sendConfigToAgent(agentID, enabled, recordFailed); err != nil {
+		if err := s.sendConfigToAgent(agentID, enabled); err != nil {
 			s.logger.Warn("下发SSH登录监控配置到Agent失败", zap.Error(err), zap.String("agentId", agentID))
 		} else {
 			s.logger.Info("成功下发SSH登录监控配置", zap.String("agentId", agentID), zap.Bool("enabled", enabled))
@@ -83,10 +81,9 @@ func (s *SSHLoginService) UpdateConfig(ctx context.Context, agentID string, enab
 }
 
 // sendConfigToAgent 下发配置到 Agent
-func (s *SSHLoginService) sendConfigToAgent(agentID string, enabled, recordFailed bool) error {
+func (s *SSHLoginService) sendConfigToAgent(agentID string, enabled bool) error {
 	configData := protocol.SSHLoginConfig{
-		Enabled:      enabled,
-		RecordFailed: recordFailed,
+		Enabled: enabled,
 	}
 
 	message := protocol.OutboundMessage{
@@ -105,7 +102,7 @@ func (s *SSHLoginService) sendConfigToAgent(agentID string, enabled, recordFaile
 // HandleConfigResult 处理 Agent 上报的配置应用结果
 func (s *SSHLoginService) HandleConfigResult(agentID string, result protocol.SSHLoginConfigResult) error {
 	// 获取现有配置
-	config, err := s.repo.GetConfigByAgentID(agentID)
+	config, err := s.agentRepo.GetSSHLoginConfig(context.Background(), agentID)
 	if err != nil {
 		return fmt.Errorf("获取配置失败: %w", err)
 	}
@@ -120,14 +117,10 @@ func (s *SSHLoginService) HandleConfigResult(agentID string, result protocol.SSH
 		status = "failed"
 	}
 
-	updates := map[string]interface{}{
-		"apply_status":    status,
-		"apply_message":   result.Message,
-		"apply_error":     result.Error,
-		"last_applied_at": getCurrentTimestamp(),
-	}
+	config.ApplyStatus = status
+	config.ApplyMessage = result.Message
 
-	if err := s.repo.UpdateConfigStatus(agentID, updates); err != nil {
+	if err := s.agentRepo.UpdateSSHLoginConfig(context.Background(), agentID, config); err != nil {
 		s.logger.Error("更新配置应用状态失败", zap.Error(err), zap.String("agentId", agentID))
 		return err
 	}
@@ -141,8 +134,7 @@ func (s *SSHLoginService) HandleConfigResult(agentID string, result protocol.SSH
 	} else {
 		s.logger.Warn("Agent应用SSH登录监控配置失败",
 			zap.String("agentId", agentID),
-			zap.String("message", result.Message),
-			zap.String("error", result.Error))
+			zap.String("message", result.Message))
 	}
 
 	return nil
@@ -158,7 +150,7 @@ func getCurrentTimestamp() int64 {
 // HandleEvent 处理 Agent 上报的事件
 func (s *SSHLoginService) HandleEvent(agentID string, eventData protocol.SSHLoginEvent) error {
 	// 检查是否启用监控
-	config, err := s.repo.GetConfigByAgentID(agentID)
+	config, err := s.agentRepo.GetSSHLoginConfig(context.Background(), agentID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
@@ -166,11 +158,6 @@ func (s *SSHLoginService) HandleEvent(agentID string, eventData protocol.SSHLogi
 	// 如果未启用，忽略事件
 	if config == nil || !config.Enabled {
 		s.logger.Debug("SSH登录监控未启用，忽略事件", zap.String("agentId", agentID))
-		return nil
-	}
-
-	// 如果不记录失败登录且状态为失败，忽略
-	if !config.RecordFailed && eventData.Status == "failed" {
 		return nil
 	}
 

@@ -63,8 +63,7 @@ func (h *SSHLoginHandler) UpdateConfig(c echo.Context) error {
 	}
 
 	var req struct {
-		Enabled      bool `json:"enabled"`
-		RecordFailed bool `json:"recordFailed"`
+		Enabled bool `json:"enabled"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -73,7 +72,7 @@ func (h *SSHLoginHandler) UpdateConfig(c echo.Context) error {
 		})
 	}
 
-	config, configSent, err := h.service.UpdateConfig(c.Request().Context(), agentID, req.Enabled, req.RecordFailed)
+	config, configSent, err := h.service.UpdateConfig(c.Request().Context(), agentID, req.Enabled)
 	if err != nil {
 		h.logger.Error("更新SSH登录监控配置失败", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, map[string]string{

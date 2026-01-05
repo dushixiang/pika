@@ -184,15 +184,6 @@ func (h *AgentHandler) handleWebSocketMessage(ctx context.Context, agentID strin
 		}
 		return h.tamperService.CreateEvent(agentID, eventData.Path, eventData.Operation, eventData.Details, eventData.Timestamp)
 
-	case protocol.MessageTypeTamperAlert:
-		// 防篡改告警
-		var alertData protocol.TamperAlertData
-		if err := json.Unmarshal(data, &alertData); err != nil {
-			h.logger.Error("failed to unmarshal tamper alert", zap.Error(err))
-			return err
-		}
-		return h.tamperService.CreateAlert(agentID, alertData.Path, alertData.Details, alertData.Restored, alertData.Timestamp)
-
 	case protocol.MessageTypeDDNSIPReport:
 		// DDNS IP 上报 - 异步处理，避免阻塞 WebSocket 消息循环
 		var ipReport protocol.DDNSIPReportData
@@ -238,8 +229,7 @@ func (h *AgentHandler) handleWebSocketMessage(ctx context.Context, agentID strin
 		} else {
 			h.logger.Error("tamper protect config apply failed",
 				zap.String("agentID", agentID),
-				zap.String("message", protectResp.Message),
-				zap.String("error", protectResp.Error))
+				zap.String("message", protectResp.Message))
 		}
 		return nil
 
@@ -551,16 +541,18 @@ func (h *AgentHandler) GetAgents(c echo.Context) error {
 			"status":     agent.Status,
 			"lastSeenAt": agent.LastSeenAt,
 			"visibility": agent.Visibility,
-			// 流量统计相关字段
-			"trafficLimit":        agent.TrafficLimit,
-			"trafficUsed":         agent.TrafficUsed,
-			"trafficResetDay":     agent.TrafficResetDay,
-			"trafficPeriodStart":  agent.TrafficPeriodStart,
-			"trafficBaselineRecv": agent.TrafficBaselineRecv,
-			"trafficAlertSent80":  agent.TrafficAlertSent80,
-			"trafficAlertSent90":  agent.TrafficAlertSent90,
-			"trafficAlertSent100": agent.TrafficAlertSent100,
 		}
+
+		// 添加流量统计数据
+		trafficStats := agent.TrafficStats.Data()
+		item["trafficLimit"] = trafficStats.Limit
+		item["trafficUsed"] = trafficStats.Used
+		item["trafficResetDay"] = trafficStats.ResetDay
+		item["trafficPeriodStart"] = trafficStats.PeriodStart
+		item["trafficBaselineRecv"] = trafficStats.BaselineRecv
+		item["trafficAlertSent80"] = trafficStats.AlertSent80
+		item["trafficAlertSent90"] = trafficStats.AlertSent90
+		item["trafficAlertSent100"] = trafficStats.AlertSent100
 
 		// 获取最新指标数据
 		metrics, ok := h.metricService.GetLatestMetrics(agent.ID)

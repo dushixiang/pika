@@ -8,6 +8,7 @@ import (
 	"github.com/dushixiang/pika/internal/models"
 	"github.com/dushixiang/pika/internal/repo"
 	"go.uber.org/zap"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -32,66 +33,73 @@ func (s *TrafficService) UpdateAgentTraffic(ctx context.Context, agentID string,
 		return err
 	}
 
+	// 获取流量统计数据
+	stats := agent.TrafficStats.Data()
+
 	// 如果未配置流量限制,跳过更新
-	if agent.TrafficLimit == 0 && agent.TrafficResetDay == 0 {
+	if stats.Limit == 0 && stats.ResetDay == 0 {
 		return nil
 	}
 
 	// 初始化基线(首次统计)
-	if agent.TrafficBaselineRecv == 0 {
-		agent.TrafficBaselineRecv = currentRecvTotal
-		agent.TrafficUsed = 0
-		if agent.TrafficPeriodStart == 0 {
-			agent.TrafficPeriodStart = time.Now().UnixMilli()
+	if stats.BaselineRecv == 0 {
+		stats.BaselineRecv = currentRecvTotal
+		stats.Used = 0
+		if stats.PeriodStart == 0 {
+			stats.PeriodStart = time.Now().UnixMilli()
 		}
+		agent.TrafficStats = datatypes.NewJSONType(stats)
 		return s.agentRepo.UpdateById(ctx, &agent)
 	}
 
 	// 检测计数器重置(探针重启)
-	if currentRecvTotal < agent.TrafficBaselineRecv {
+	if currentRecvTotal < stats.BaselineRecv {
 		s.logger.Warn("检测到流量计数器重置",
 			zap.String("agentId", agentID),
-			zap.Uint64("baseline", agent.TrafficBaselineRecv),
+			zap.Uint64("baseline", stats.BaselineRecv),
 			zap.Uint64("current", currentRecvTotal))
-		agent.TrafficBaselineRecv = currentRecvTotal
-		// 保持 TrafficUsed 不变,避免丢失已统计的流量
+		stats.BaselineRecv = currentRecvTotal
+		// 保持 Used 不变,避免丢失已统计的流量
 	} else {
 		// 计算使用量
-		agent.TrafficUsed = currentRecvTotal - agent.TrafficBaselineRecv
+		stats.Used = currentRecvTotal - stats.BaselineRecv
 	}
 
 	// 检查告警(如果配置了限额)
-	if agent.TrafficLimit > 0 {
-		s.checkTrafficAlerts(ctx, &agent)
+	if stats.Limit > 0 {
+		s.checkTrafficAlerts(ctx, &agent, &stats)
 	}
+
+	// 保存更新后的统计数据
+	agent.TrafficStats = datatypes.NewJSONType(stats)
 
 	// 更新数据库
 	return s.agentRepo.UpdateById(ctx, &agent)
 }
 
 // checkTrafficAlerts 检查并发送流量告警
-func (s *TrafficService) checkTrafficAlerts(ctx context.Context, agent *models.Agent) {
-	usagePercent := float64(agent.TrafficUsed) / float64(agent.TrafficLimit) * 100
+func (s *TrafficService) checkTrafficAlerts(ctx context.Context, agent *models.Agent, stats *models.TrafficStatsData) {
+	usagePercent := float64(stats.Used) / float64(stats.Limit) * 100
 
 	// 100% 告警
-	if usagePercent >= 100 && !agent.TrafficAlertSent100 {
-		s.sendTrafficAlert(ctx, agent, 100, usagePercent)
-		agent.TrafficAlertSent100 = true
+	if usagePercent >= 100 && !stats.AlertSent100 {
+		s.sendTrafficAlert(ctx, agent, stats, 100, usagePercent)
+		stats.AlertSent100 = true
 	}
 	// 90% 告警
-	if usagePercent >= 90 && !agent.TrafficAlertSent90 {
-		s.sendTrafficAlert(ctx, agent, 90, usagePercent)
-		agent.TrafficAlertSent90 = true
+	if usagePercent >= 90 && !stats.AlertSent90 {
+		s.sendTrafficAlert(ctx, agent, stats, 90, usagePercent)
+		stats.AlertSent90 = true
 	}
 	// 80% 告警
-	if usagePercent >= 80 && !agent.TrafficAlertSent80 {
-		s.sendTrafficAlert(ctx, agent, 80, usagePercent)
-		agent.TrafficAlertSent80 = true
+	if usagePercent >= 80 && !stats.AlertSent80 {
+		s.sendTrafficAlert(ctx, agent, stats, 80, usagePercent)
+		stats.AlertSent80 = true
 	}
 }
 
 // sendTrafficAlert 发送流量告警
-func (s *TrafficService) sendTrafficAlert(ctx context.Context, agent *models.Agent, threshold int, actualPercent float64) {
+func (s *TrafficService) sendTrafficAlert(ctx context.Context, agent *models.Agent, stats *models.TrafficStatsData, threshold int, actualPercent float64) {
 	level := "info"
 	if threshold == 100 {
 		level = "critical"
@@ -106,8 +114,8 @@ func (s *TrafficService) sendTrafficAlert(ctx context.Context, agent *models.Age
 		AlertType: "traffic",
 		Message: fmt.Sprintf("流量使用已达到%d%%，当前使用%.2f%%（%s/%s）",
 			threshold, actualPercent,
-			formatBytes(agent.TrafficUsed),
-			formatBytes(agent.TrafficLimit)),
+			formatBytes(stats.Used),
+			formatBytes(stats.Limit)),
 		Threshold:   float64(threshold),
 		ActualValue: actualPercent,
 		Level:       level,

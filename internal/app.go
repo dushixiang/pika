@@ -255,7 +255,6 @@ func setupApi(app *orz.App, components *AppComponents) {
 		adminApi.GET("/agents/:id/tamper/config", components.TamperHandler.GetTamperConfig)
 		adminApi.PUT("/agents/:id/tamper/config", components.TamperHandler.UpdateTamperConfig)
 		adminApi.GET("/agents/:id/tamper/events", components.TamperHandler.GetTamperEvents)
-		adminApi.GET("/agents/:id/tamper/alerts", components.TamperHandler.GetTamperAlerts)
 
 		// SSH 登录监控管理（管理员功能）
 		adminApi.GET("/agents/:id/ssh-login/config", components.SSHLoginHandler.GetConfig)
@@ -307,21 +306,18 @@ func setupApi(app *orz.App, components *AppComponents) {
 func autoMigrate(database *gorm.DB) error {
 	// 自动迁移数据库表
 	return database.AutoMigrate(
-		&models.Agent{},               // 探针
-		&models.ApiKey{},              // ApiKey
-		&models.HostMetric{},          // 保留主机静态信息表
-		&models.AuditResult{},         // 审计历史
-		&models.Property{},            // 系统属性
-		&models.AlertRecord{},         // 告警记录
-		&models.AlertState{},          // 告警状态
-		&models.MonitorTask{},         // 服务监控
-		&models.TamperProtectConfig{}, // 防篡改配置
-		&models.TamperEvent{},         // 防篡改事件
-		&models.TamperAlert{},         // 防篡改告警
-		&models.DDNSConfig{},          // DDNS 配置
-		&models.DDNSRecord{},          // DDNS 记录
-		&models.SSHLoginConfig{},      // SSH 登录监控配置
-		&models.SSHLoginEvent{},       // SSH 登录事件
+		&models.Agent{},         // 探针
+		&models.ApiKey{},        // ApiKey
+		&models.HostMetric{},    // 保留主机静态信息表
+		&models.AuditResult{},   // 审计历史
+		&models.Property{},      // 系统属性
+		&models.AlertRecord{},   // 告警记录
+		&models.AlertState{},    // 告警状态
+		&models.MonitorTask{},   // 服务监控
+		&models.TamperEvent{},   // 防篡改事件
+		&models.DDNSConfig{},    // DDNS 配置
+		&models.DDNSRecord{},    // DDNS 记录
+		&models.SSHLoginEvent{}, // SSH 登录事件
 	)
 }
 

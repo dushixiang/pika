@@ -3,8 +3,10 @@ import {App, Button, Tag, Tooltip} from 'antd';
 import {Terminal} from 'lucide-react';
 import type {ActionType, ProColumns} from '@ant-design/pro-table';
 import ProTable from '@ant-design/pro-table';
+import {useMutation} from '@tanstack/react-query';
 import type {SSHLoginEvent} from '@/types';
 import {deleteSSHLoginEvents, getSSHLoginEvents} from '@/api/agent';
+import {getErrorMessage} from '@/lib/utils';
 import dayjs from 'dayjs';
 
 interface SSHLoginEventsProps {
@@ -112,6 +114,19 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
         },
     ];
 
+    // 删除所有事件 mutation
+    const deleteMutation = useMutation({
+        mutationFn: () => deleteSSHLoginEvents(agentId),
+        onSuccess: () => {
+            message.success('所有事件已删除');
+            actionRef.current?.reload();
+        },
+        onError: (error: unknown) => {
+            console.error('Failed to delete SSH login events:', error);
+            message.error(getErrorMessage(error, '删除失败'));
+        },
+    });
+
     // 删除所有事件
     const handleDeleteAllEvents = () => {
         modal.confirm({
@@ -120,16 +135,7 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
             okText: '确定删除',
             okType: 'danger',
             cancelText: '取消',
-            onOk: async () => {
-                try {
-                    await deleteSSHLoginEvents(agentId);
-                    message.success('所有事件已删除');
-                    actionRef.current?.reload();
-                } catch (error: any) {
-                    console.error('Failed to delete SSH login events:', error);
-                    message.error(error.response?.data?.error || '删除失败');
-                }
-            },
+            onOk: () => deleteMutation.mutate(),
         });
     };
 

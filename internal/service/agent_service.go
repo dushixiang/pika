@@ -13,6 +13,7 @@ import (
 	"github.com/dushixiang/pika/internal/repo"
 	"github.com/go-orz/orz"
 	"go.uber.org/zap"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -480,21 +481,23 @@ func (s *AgentService) UpdateTrafficConfig(ctx context.Context, agentID string, 
 	}
 
 	now := time.Now().UnixMilli()
-	oldResetDay := agent.TrafficResetDay
+	stats := agent.TrafficStats.Data()
+	oldResetDay := stats.ResetDay
 
-	agent.TrafficLimit = limit
-	agent.TrafficResetDay = resetDay
+	stats.Limit = limit
+	stats.ResetDay = resetDay
 
 	// 如果是首次设置或修改重置日期,重置流量统计
-	if agent.TrafficPeriodStart == 0 || resetDay != oldResetDay {
-		agent.TrafficUsed = 0
-		agent.TrafficPeriodStart = now
-		agent.TrafficBaselineRecv = 0 // 下次上报时会设置正确的基线
-		agent.TrafficAlertSent80 = false
-		agent.TrafficAlertSent90 = false
-		agent.TrafficAlertSent100 = false
+	if stats.PeriodStart == 0 || resetDay != oldResetDay {
+		stats.Used = 0
+		stats.PeriodStart = now
+		stats.BaselineRecv = 0 // 下次上报时会设置正确的基线
+		stats.AlertSent80 = false
+		stats.AlertSent90 = false
+		stats.AlertSent100 = false
 	}
 
+	agent.TrafficStats = datatypes.NewJSONType(stats)
 	agent.UpdatedAt = now
 	return s.AgentRepo.UpdateById(ctx, &agent)
 }
@@ -506,32 +509,34 @@ func (s *AgentService) GetTrafficStats(ctx context.Context, agentID string) (*Tr
 		return nil, err
 	}
 
+	trafficData := agent.TrafficStats.Data()
+
 	stats := &TrafficStats{
-		TrafficLimit:    agent.TrafficLimit,
-		TrafficUsed:     agent.TrafficUsed,
-		TrafficResetDay: agent.TrafficResetDay,
-		PeriodStart:     agent.TrafficPeriodStart,
+		TrafficLimit:    trafficData.Limit,
+		TrafficUsed:     trafficData.Used,
+		TrafficResetDay: trafficData.ResetDay,
+		PeriodStart:     trafficData.PeriodStart,
 		AlertsSent: TrafficAlerts{
-			Sent80:  agent.TrafficAlertSent80,
-			Sent90:  agent.TrafficAlertSent90,
-			Sent100: agent.TrafficAlertSent100,
+			Sent80:  trafficData.AlertSent80,
+			Sent90:  trafficData.AlertSent90,
+			Sent100: trafficData.AlertSent100,
 		},
 	}
 
 	// 计算使用百分比
-	if agent.TrafficLimit > 0 {
-		stats.TrafficUsedPercent = float64(agent.TrafficUsed) / float64(agent.TrafficLimit) * 100
-		if agent.TrafficUsed < agent.TrafficLimit {
-			stats.TrafficRemaining = agent.TrafficLimit - agent.TrafficUsed
+	if trafficData.Limit > 0 {
+		stats.TrafficUsedPercent = float64(trafficData.Used) / float64(trafficData.Limit) * 100
+		if trafficData.Used < trafficData.Limit {
+			stats.TrafficRemaining = trafficData.Limit - trafficData.Used
 		} else {
 			stats.TrafficRemaining = 0
 		}
 	}
 
 	// 计算下次重置日期和剩余天数
-	if agent.TrafficResetDay > 0 && agent.TrafficPeriodStart > 0 {
-		periodStart := time.UnixMilli(agent.TrafficPeriodStart)
-		nextReset := calculateNextResetDate(periodStart, agent.TrafficResetDay)
+	if trafficData.ResetDay > 0 && trafficData.PeriodStart > 0 {
+		periodStart := time.UnixMilli(trafficData.PeriodStart)
+		nextReset := calculateNextResetDate(periodStart, trafficData.ResetDay)
 		stats.PeriodEnd = nextReset.UnixMilli()
 		stats.DaysUntilReset = int(time.Until(nextReset).Hours() / 24)
 		if stats.DaysUntilReset < 0 {
@@ -550,22 +555,23 @@ func (s *AgentService) ResetAgentTraffic(ctx context.Context, agentID string) er
 	}
 
 	now := time.Now().UnixMilli()
+	stats := agent.TrafficStats.Data()
 
-	updates := map[string]interface{}{
-		"traffic_used":          0,
-		"traffic_baseline_recv": 0, // 下次上报时会设置正确的基线
-		"traffic_period_start":  now,
-		"traffic_alert_sent80":  false,
-		"traffic_alert_sent90":  false,
-		"traffic_alert_sent100": false,
-		"updated_at":            now,
-	}
+	stats.Used = 0
+	stats.BaselineRecv = 0 // 下次上报时会设置正确的基线
+	stats.PeriodStart = now
+	stats.AlertSent80 = false
+	stats.AlertSent90 = false
+	stats.AlertSent100 = false
+
+	agent.TrafficStats = datatypes.NewJSONType(stats)
+	agent.UpdatedAt = now
 
 	s.logger.Info("探针流量已重置",
 		zap.String("agentId", agentID),
 		zap.String("agentName", agent.Name))
 
-	return s.AgentRepo.UpdateTrafficStats(ctx, agentID, updates)
+	return s.AgentRepo.UpdateById(ctx, &agent)
 }
 
 // CheckAndResetTraffic 检查并重置所有到期的探针流量(定时任务调用)
@@ -599,12 +605,13 @@ func (s *AgentService) CheckAndResetTraffic(ctx context.Context) error {
 
 // shouldResetTraffic 判断是否需要重置流量
 func (s *AgentService) shouldResetTraffic(agent *models.Agent, now time.Time) bool {
-	if agent.TrafficResetDay == 0 || agent.TrafficPeriodStart == 0 {
+	stats := agent.TrafficStats.Data()
+	if stats.ResetDay == 0 || stats.PeriodStart == 0 {
 		return false
 	}
 
-	periodStart := time.UnixMilli(agent.TrafficPeriodStart)
-	nextReset := calculateNextResetDate(periodStart, agent.TrafficResetDay)
+	periodStart := time.UnixMilli(stats.PeriodStart)
+	nextReset := calculateNextResetDate(periodStart, stats.ResetDay)
 
 	return now.After(nextReset) || now.Equal(nextReset)
 }

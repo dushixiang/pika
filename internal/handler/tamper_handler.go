@@ -33,7 +33,8 @@ func (h *TamperHandler) UpdateTamperConfig(c echo.Context) error {
 	}
 
 	var req struct {
-		Paths []string `json:"paths"`
+		Enabled bool     `json:"enabled"`
+		Paths   []string `json:"paths"`
 	}
 
 	if err := c.Bind(&req); err != nil {
@@ -43,7 +44,7 @@ func (h *TamperHandler) UpdateTamperConfig(c echo.Context) error {
 		})
 	}
 
-	config, err := h.tamperService.UpdateConfig(agentID, req.Paths)
+	config, err := h.tamperService.UpdateConfig(agentID, req.Enabled, req.Paths)
 	if err != nil {
 		h.logger.Error("更新防篡改配置失败", zap.Error(err), zap.String("agentId", agentID))
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
@@ -122,39 +123,6 @@ func (h *TamperHandler) GetTamperEvents(c echo.Context) error {
 		"success": true,
 		"data": map[string]interface{}{
 			"items": events,
-			"total": total,
-		},
-	})
-}
-
-// GetTamperAlerts 获取探针的防篡改告警
-// GET /api/agents/:id/tamper/alerts
-func (h *TamperHandler) GetTamperAlerts(c echo.Context) error {
-	agentID := c.Param("id")
-	if agentID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"message": "探针ID不能为空",
-		})
-	}
-
-	// 获取分页参数
-	pageNum, _ := strconv.Atoi(c.QueryParam("pageNum"))
-	pageSize, _ := strconv.Atoi(c.QueryParam("pageSize"))
-
-	alerts, total, err := h.tamperService.GetAlertsByAgentID(agentID, pageNum, pageSize)
-	if err != nil {
-		h.logger.Error("获取防篡改告警失败", zap.Error(err), zap.String("agentId", agentID))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
-			"message": "获取告警失败",
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data": map[string]interface{}{
-			"items": alerts,
 			"total": total,
 		},
 	})

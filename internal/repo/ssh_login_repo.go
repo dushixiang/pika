@@ -18,54 +18,6 @@ func NewSSHLoginRepo(db *gorm.DB) *SSHLoginRepo {
 	return &SSHLoginRepo{db: db}
 }
 
-// === 配置相关 ===
-
-// GetConfigByAgentID 获取探针的配置
-func (r *SSHLoginRepo) GetConfigByAgentID(agentID string) (*models.SSHLoginConfig, error) {
-	var config models.SSHLoginConfig
-	err := r.db.Where("agent_id = ?", agentID).First(&config).Error
-	if err == gorm.ErrRecordNotFound {
-		return nil, nil
-	}
-	return &config, err
-}
-
-// UpsertConfig 创建或更新配置
-func (r *SSHLoginRepo) UpsertConfig(config *models.SSHLoginConfig) error {
-	// 检查是否已存在
-	existing, err := r.GetConfigByAgentID(config.AgentID)
-	if err != nil {
-		return err
-	}
-
-	if existing != nil {
-		// 更新
-		return r.db.Model(&models.SSHLoginConfig{}).
-			Where("agent_id = ?", config.AgentID).
-			Updates(map[string]interface{}{
-				"enabled":       config.Enabled,
-				"record_failed": config.RecordFailed,
-			}).Error
-	}
-
-	// 创建
-	config.ID = uuid.New().String()
-	config.CreatedAt = time.Now().UnixMilli()
-	return r.db.Create(config).Error
-}
-
-// DeleteConfigByAgentID 删除探针的配置
-func (r *SSHLoginRepo) DeleteConfigByAgentID(agentID string) error {
-	return r.db.Where("agent_id = ?", agentID).Delete(&models.SSHLoginConfig{}).Error
-}
-
-// UpdateConfigStatus 更新配置应用状态
-func (r *SSHLoginRepo) UpdateConfigStatus(agentID string, updates map[string]interface{}) error {
-	return r.db.Model(&models.SSHLoginConfig{}).
-		Where("agent_id = ?", agentID).
-		Updates(updates).Error
-}
-
 // === 事件相关 ===
 
 // CreateEvent 创建事件记录

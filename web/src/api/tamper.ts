@@ -4,7 +4,10 @@ import qs from 'qs';
 export interface TamperConfig {
     id: string;
     agentId: string;
+    enabled: boolean;
     paths: string[];
+    applyStatus?: string;
+    applyMessage?: string;
     createdAt: number;
     updatedAt: number;
 }
@@ -45,10 +48,10 @@ export const getTamperConfig = (agentId: string) => {
 };
 
 // 更新防篡改配置
-export const updateTamperConfig = (agentId: string, paths: string[]) => {
+export const updateTamperConfig = (agentId: string, enabled: boolean, paths: string[]) => {
     return request.put<{ success: boolean; message: string; data: TamperConfig }>(
         `/admin/agents/${agentId}/tamper/config`,
-        {paths}
+        {enabled, paths}
     );
 };
 
@@ -68,4 +71,9 @@ export const getTamperAlerts = (agentId: string, pageIndex: number = 1, pageSize
     return request.get<{ success: boolean; data: PagedTamperAlerts }>(
         `/admin/agents/${agentId}/tamper/alerts?${paramStr}`,
     );
+};
+
+// 删除防篡改事件
+export const deleteTamperEvents = (agentId: string) => {
+    return request.delete<{ success: boolean; message: string }>(`/admin/agents/${agentId}/tamper/events`);
 };
