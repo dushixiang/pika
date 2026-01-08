@@ -1,5 +1,5 @@
 import {AlertCircle, Clock, MapPin} from 'lucide-react';
-import {StatusBadge} from '../common/StatusBadge.tsx';
+import {StatusBadge} from '@portal/components/StatusBadge';
 import {CertBadge} from './CertBadge';
 import {AGENT_COLORS} from '@portal/constants/colors';
 import {formatDateTime, formatTime} from '@portal/utils/util';

@@ -4,28 +4,13 @@ import {useQuery} from "@tanstack/react-query";
 import {type GetMetricsResponse, getMonitorHistory} from "@/api/monitor.ts";
 import {useMemo} from "react";
 import CyberCard from "@portal/components/CyberCard.tsx";
-import {StatusBadge} from "@portal/components/common/StatusBadge.tsx";
+import {StatusBadge} from "@portal/components/StatusBadge";
 import {CertBadge} from "@portal/components/monitor/CertBadge.tsx";
 import {formatDateTime} from "@portal/utils/util.ts";
 import {MiniChart} from "@portal/components/monitor/MiniChart.tsx";
-import type {DisplayMode} from "@portal/components/monitor/index.ts";
-import {Activity, Globe, Server, ShieldCheck, Wifi} from "lucide-react";
+import {TypeIcon} from "@portal/components/monitor/TypeIcon";
 
-// 类型图标组件
-const TypeIcon = ({type}: { type: string }) => {
-    switch (type.toUpperCase()) {
-        case 'HTTPS':
-            return <ShieldCheck className="w-4 h-4 text-purple-400"/>;
-        case 'HTTP':
-            return <Globe className="w-4 h-4 text-blue-400"/>;
-        case 'TCP':
-            return <Server className="w-4 h-4 text-amber-400"/>;
-        case 'ICMP':
-            return <Wifi className="w-4 h-4 text-cyan-500"/>;
-        default:
-            return <Activity className="w-4 h-4 text-slate-400"/>;
-    }
-};
+export type DisplayMode = 'avg' | 'max';
 
 const MonitorCard = ({monitor, displayMode}: {
     monitor: PublicMonitor;

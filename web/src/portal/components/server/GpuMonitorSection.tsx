@@ -1,5 +1,5 @@
 import {Zap} from 'lucide-react';
-import {Card} from '@portal/components/common';
+import {Card} from '@portal/components/Card';
 import {formatBytes} from '@portal/utils/util';
 import type {LatestMetrics} from '@/types';
 

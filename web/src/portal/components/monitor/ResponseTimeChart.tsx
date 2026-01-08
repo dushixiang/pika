@@ -7,7 +7,10 @@ import {MONITOR_TIME_RANGE_OPTIONS} from '@portal/constants/time';
 import {useIsMobile} from '@portal/hooks/use-mobile';
 import type {AgentMonitorStat} from '@/types';
 import CyberCard from "@portal/components/CyberCard.tsx";
-import {ChartPlaceholder, CustomTooltip, MobileLegend, TimeRangeSelector} from "@portal/components/common";
+import {ChartPlaceholder} from "@portal/components/ChartPlaceholder";
+import {CustomTooltip} from "@portal/components/CustomTooltip";
+import {MobileLegend} from "@portal/components/MobileLegend";
+import {TimeRangeSelector} from "@portal/components/TimeRangeSelector";
 import {formatChartTime} from '@portal/utils/util';
 
 interface ResponseTimeChartProps {

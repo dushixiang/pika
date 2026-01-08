@@ -2,8 +2,11 @@ import {useNavigate, useParams} from 'react-router-dom';
 import {useQuery} from '@tanstack/react-query';
 import {getMonitorAgentStats, getMonitorStatsById} from '@/api/monitor.ts';
 import type {AgentMonitorStat, PublicMonitor} from '@/types';
-import {MonitorHero, ResponseTimeChart, AgentStatsTable} from '@portal/components/monitor';
-import {EmptyState, LoadingSpinner} from '@portal/components/common';
+import {MonitorHero} from '@portal/components/monitor/MonitorHero';
+import {ResponseTimeChart} from '@portal/components/monitor/ResponseTimeChart';
+import {AgentStatsTable} from '@portal/components/monitor/AgentStatsTable';
+import {EmptyState} from '@portal/components/EmptyState';
+import {LoadingSpinner} from '@portal/components/LoadingSpinner';
 
 /**
  * 监控详情页面

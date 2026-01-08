@@ -6,8 +6,7 @@ import {getPublicMonitors} from '@/api/monitor.ts';
 import type {PublicMonitor} from '@/types';
 import {cn} from '@/lib/utils';
 import StatBlock from "@portal/components/StatBlock.tsx";
-import type {DisplayMode, FilterStatus} from "@portal/components/monitor";
-import MonitorCard from "@portal/components/monitor/MonitorCard.tsx";
+import MonitorCard, {type DisplayMode} from "@portal/components/monitor/MonitorCard";
 
 const LoadingSpinner = () => (
     <div className="flex min-h-[400px] w-full items-center justify-center">

@@ -1,5 +1,5 @@
 import {Thermometer} from 'lucide-react';
-import {Card} from '@portal/components/common';
+import {Card} from '@portal/components/Card';
 import type {LatestMetrics} from '@/types';
 
 interface TemperatureMonitorSectionProps {

@@ -1,5 +1,7 @@
 import {Cpu, HardDrive, MemoryStick, Network} from 'lucide-react';
-import {InfoGrid, type SnapshotCardData, SnapshotSection} from '@portal/components/server';
+import {InfoGrid} from '@portal/components/server/InfoGrid';
+import {SnapshotSection} from '@portal/components/server/SnapshotSection';
+import type {SnapshotCardData} from '@portal/components/server/SnapshotGrid';
 import {formatBytes, formatDateTime, formatPercentValue, formatUptime} from '@portal/utils/util';
 import type {Agent, LatestMetrics} from '@/types';
 import CyberCard from "@portal/components/CyberCard.tsx";

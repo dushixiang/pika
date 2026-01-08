@@ -1,8 +1,10 @@
 import {useMemo} from 'react';
 import {Activity} from 'lucide-react';
 import {Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
-import {ChartPlaceholder, CustomTooltip, MobileLegend} from '@portal/components/common';
-import {useMetricsQuery} from '@portal/hooks/server/queries';
+import {ChartPlaceholder} from '@portal/components/ChartPlaceholder';
+import {CustomTooltip} from '@portal/components/CustomTooltip';
+import {MobileLegend} from '@portal/components/MobileLegend';
+import {useMetricsQuery} from '@portal/hooks/server';
 import {useIsMobile} from '@portal/hooks/use-mobile';
 import {ChartContainer} from './ChartContainer';
 import {formatChartTime} from '@portal/utils/util';

@@ -1,8 +1,8 @@
 import {ArrowLeft} from 'lucide-react';
 import {TypeIcon} from './TypeIcon';
-import {StatusBadge} from '../common/StatusBadge.tsx';
+import {StatusBadge} from '@portal/components/StatusBadge';
 import {CertBadge} from './CertBadge';
-import LittleStatCard from '@portal/components/common/LittleStatCard';
+import LittleStatCard from '@portal/components/LittleStatCard';
 import type {PublicMonitor} from '@/types';
 import CyberCard from "@portal/components/CyberCard.tsx";
 import {formatDateTime} from "@portal/utils/util.ts";

@@ -1,8 +1,9 @@
 import {useMemo} from 'react';
 import {HardDrive} from 'lucide-react';
 import {Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
-import {ChartPlaceholder, CustomTooltip} from '@portal/components/common';
-import {useMetricsQuery} from '@portal/hooks/server/queries';
+import {ChartPlaceholder} from '@portal/components/ChartPlaceholder';
+import {CustomTooltip} from '@portal/components/CustomTooltip';
+import {useMetricsQuery} from '@portal/hooks/server';
 import {ChartContainer} from './ChartContainer';
 import {formatChartTime} from '@portal/utils/util';
 
