@@ -30,14 +30,12 @@ export interface Agent {
     createdAt?: string;
     updatedAt?: string;
     // 流量统计相关字段
-    trafficLimit?: number;        // 流量限额(字节), 0表示不限制
-    trafficUsed?: number;         // 当前周期已使用流量(字节)
-    trafficResetDay?: number;     // 流量重置日期(1-31), 0表示不自动重置
-    trafficPeriodStart?: number;  // 当前周期开始时间(时间戳毫秒)
-    trafficBaselineRecv?: number; // 当前周期流量基线(BytesRecvTotal)
-    trafficAlertSent80?: boolean; // 是否已发送80%告警
-    trafficAlertSent90?: boolean; // 是否已发送90%告警
-    trafficAlertSent100?: boolean;// 是否已发送100%告警
+    traffic?: TrafficData;        // 流量
+}
+
+export interface TrafficData {
+    limit?: number;
+    used?: number;
 }
 
 // 聚合指标数据（所有图表查询只返回聚合数据）

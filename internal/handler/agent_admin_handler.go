@@ -12,6 +12,46 @@ import (
 	"go.uber.org/zap"
 )
 
+// Paging 探针分页查询
+func (h *AgentHandler) Paging(c echo.Context) error {
+	status := c.QueryParam("status")
+
+	pr := orz.GetPageRequest(c, "name")
+
+	builder := orz.NewPageBuilder(h.agentService.AgentRepo.Repository).
+		PageRequest(pr).
+		Contains("name", c.QueryParam("name")).
+		Contains("hostname", c.QueryParam("hostname")).
+		Contains("ip", c.QueryParam("ip"))
+
+	// 处理状态筛选
+	if status == "online" {
+		builder.Equal("status", "1")
+	} else if status == "offline" {
+		builder.Equal("status", "0")
+	}
+
+	ctx := c.Request().Context()
+	page, err := builder.Execute(ctx)
+	if err != nil {
+		return err
+	}
+	return orz.Ok(c, page)
+}
+
+// GetForAdmin 获取探针详情（管理员接口，显示完整信息）
+func (h *AgentHandler) GetForAdmin(c echo.Context) error {
+	id := c.Param("id")
+	ctx := c.Request().Context()
+
+	agent, err := h.agentService.GetAgent(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	return orz.Ok(c, agent)
+}
+
 // SendCommand 向探针发送指令
 func (h *AgentHandler) SendCommand(c echo.Context) error {
 	agentID := c.Param("id")

@@ -8,7 +8,8 @@ import {
     ArrowUp,
     Clock,
     Cpu,
-    Filter, Globe,
+    Filter,
+    Globe,
     HardDrive,
     LinkIcon,
     Loader2,
@@ -19,12 +20,13 @@ import {
 } from 'lucide-react';
 import {getPublicTags, listAgents} from '@/api/agent.ts';
 import type {Agent, LatestMetrics} from '@/types';
-import {cn} from '@/lib/utils';
+import {cn} from '@/lib/utils.ts';
 import CompactResourceBar from "@portal/components/CompactResourceBar.tsx";
 import StatBlock from "@portal/components/StatBlock.tsx";
 import ServerCard from "@portal/components/ServerCard.tsx";
 import NetworkStatCard from "@portal/components/NetworkStatCard.tsx";
 import {formatBytes, formatSpeed, formatUptime} from "@portal/utils/util.ts";
+import {isExpired} from "@portal/utils/server.ts";
 
 interface AgentWithMetrics extends Agent {
     metrics?: LatestMetrics;
@@ -289,7 +291,10 @@ const ServerList = () => {
                                             <div className="flex items-center gap-4">
                                                 <div className="space-y-1">
                                                     <div
-                                                        className="font-bold text-slate-800 dark:text-cyan-100 font-mono text-sm transition-colors">
+                                                        className={cn(
+                                                            'font-bold text-slate-800 dark:text-cyan-100 font-mono text-sm transition-colors',
+                                                            isExpired(server.expireTime) ? 'text-red-600 dark:text-red-400' : ''
+                                                        )}>
                                                         {server.name}
                                                     </div>
                                                     <div
@@ -300,11 +305,13 @@ const ServerList = () => {
                                                     </div>
                                                     {isOnline && server.metrics?.host && (
                                                         <div className="flex items-center gap-3 text-xs font-mono mt-1">
-                                                            <div className="flex items-center gap-1 text-gray-500 dark:text-cyan-600">
+                                                            <div
+                                                                className="flex items-center gap-1 text-gray-500 dark:text-cyan-600">
                                                                 <Clock className="w-3 h-3"/>
                                                                 <span>{formatUptime(server.metrics.host.uptime)}</span>
                                                             </div>
-                                                            <div className="flex items-center gap-1 text-gray-500 dark:text-cyan-600">
+                                                            <div
+                                                                className="flex items-center gap-1 text-gray-500 dark:text-cyan-600">
                                                                 <Activity className="w-3 h-3"/>
                                                                 <span>{server.metrics.host.procs} 进程</span>
                                                             </div>
@@ -347,7 +354,8 @@ const ServerList = () => {
                                                                 <span key={index} className="flex items-center gap-1">
                                                                     <span
                                                                         className="text-orange-400">{temp.temperature?.toFixed(1)}°C</span>
-                                                                    <span className="text-gray-500 dark:text-cyan-500">{temp.type}</span>
+                                                                    <span
+                                                                        className="text-gray-500 dark:text-cyan-500">{temp.type}</span>
                                                                     {index < temperatures.length - 1 &&
                                                                         <span className="text-cyan-900">|</span>}
                                                                 </span>
@@ -367,25 +375,28 @@ const ServerList = () => {
                                         {/* Network */}
                                         <td className="p-4 font-mono text-xs align-top">
                                             <div className="flex flex-col gap-1.5 mb-1.5">
-                                                <span className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400/80">
+                                                <span
+                                                    className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400/80">
                                                     <ArrowDown className="w-3 h-3"/>
                                                     <span>{formatSpeed(download)}</span>
                                                 </span>
-                                                <span className="flex items-center gap-2 text-blue-600 dark:text-blue-400/80">
+                                                <span
+                                                    className="flex items-center gap-2 text-blue-600 dark:text-blue-400/80">
                                                     <ArrowUp className="w-3 h-3"/>
                                                     <span>{formatSpeed(upload)}</span>
                                                 </span>
                                             </div>
-                                            {server.trafficLimit > 0 && (
+                                            {server.traffic?.limit > 0 && (
                                                 <div className="w-32 text-xs">
                                                     <div
                                                         className="flex justify-between text-gray-600 dark:text-cyan-500 mb-0.5">
                                                         <span className={''}>流量使用</span>
-                                                        <span>{Math.round((server.trafficUsed || 0) / server.trafficLimit * 100)}%</span>
+                                                        <span>{Math.round((server.traffic?.used || 0) / server.traffic?.limit * 100)}%</span>
                                                     </div>
-                                                    <div className="h-1 bg-slate-200 dark:bg-cyan-900/50 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-1 bg-slate-200 dark:bg-cyan-900/50 rounded-full overflow-hidden">
                                                         <div className="h-full bg-gray-500 dark:bg-cyan-400"
-                                                             style={{width: `${((server.trafficUsed || 0) / server.trafficLimit) * 100}%`}}></div>
+                                                             style={{width: `${((server.traffic?.used || 0) / server.traffic?.limit) * 100}%`}}></div>
                                                     </div>
                                                 </div>
                                             )}
@@ -396,20 +407,25 @@ const ServerList = () => {
                                             {isOnline && netConn ? (
                                                 <div className="flex flex-col gap-1.5">
                                                     <div className="flex items-center gap-2">
-                                                        <Network className="w-3 h-3 text-emerald-600 dark:text-emerald-400"/>
+                                                        <Network
+                                                            className="w-3 h-3 text-emerald-600 dark:text-emerald-400"/>
                                                         <span
                                                             className="text-emerald-600 dark:text-emerald-400">{netConn.established || 0}</span>
-                                                        <span className="text-gray-600 dark:text-cyan-500">ESTABLISHED</span>
+                                                        <span
+                                                            className="text-gray-600 dark:text-cyan-500">ESTABLISHED</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <Network className="w-3 h-3 text-blue-600 dark:text-blue-400"/>
-                                                        <span className="text-blue-600 dark:text-blue-400">{netConn.listen || 0}</span>
+                                                        <span
+                                                            className="text-blue-600 dark:text-blue-400">{netConn.listen || 0}</span>
                                                         <span className="text-gray-600 dark:text-cyan-500">LISTEN</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <Network className="w-3 h-3 text-rose-600 dark:text-rose-400"/>
-                                                        <span className="text-rose-600 dark:text-rose-400">{netConn.closeWait || 0}</span>
-                                                        <span className="text-gray-600 dark:text-cyan-500">CLOSE_WAIT</span>
+                                                        <span
+                                                            className="text-rose-600 dark:text-rose-400">{netConn.closeWait || 0}</span>
+                                                        <span
+                                                            className="text-gray-600 dark:text-cyan-500">CLOSE_WAIT</span>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -432,7 +448,7 @@ const ServerList = () => {
                                                     className={cn(
                                                         `text-xs font-mono flex items-center gap-1 text-gray-600 dark:text-cyan-500`,
                                                         // 剩余时间小于 30 天时显示为红色
-                                                        server.expireTime && server.expireTime > 0 && server.expireTime - Date.now() < 30 * 24 * 60 * 60 * 1000 ? 'text-red-600 dark:text-red-400' : ''
+                                                        isExpired(server.expireTime) ? 'text-red-600 dark:text-red-400' : ''
                                                     )}>
 
                                                     {server.expireTime > 0 &&

@@ -17,6 +17,8 @@ import CompactResourceBar from '@portal/components/CompactResourceBar';
 import {formatBytes, formatSpeed, formatUptime} from '@portal/utils/util';
 import CyberCard from "@portal/components/CyberCard.tsx";
 import {Link} from "react-router-dom";
+import {isExpired} from "@portal/utils/server.ts";
+import {cn} from "@/lib/utils.ts";
 
 interface AgentWithMetrics extends Agent {
     metrics?: LatestMetrics;
@@ -71,7 +73,10 @@ const ServerCard: FC<ServerCardProps> = ({server}) => {
                     {/* 顶部：名称和状态 */}
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                            <div className="font-bold text-slate-800 dark:text-cyan-100 font-mono text-base truncate">
+                            <div className={cn(
+                                'font-bold text-slate-800 dark:text-cyan-100 font-mono text-base truncate',
+                                isExpired(server.expireTime) ? 'text-red-600 dark:text-red-400' : ''
+                            )}>
                                 {server.name || server.hostname}
                             </div>
                             <div
@@ -175,7 +180,11 @@ const ServerCard: FC<ServerCardProps> = ({server}) => {
                             </div>
                             {server.expireTime > 0 && (
                                 <div
-                                    className="text-xs font-mono text-cyan-600 dark:text-cyan-500 flex items-center gap-1">
+                                    className={cn(
+                                        `text-xs font-mono flex items-center gap-1 text-gray-600 dark:text-cyan-500`,
+                                        // 剩余时间小于 30 天时显示为红色
+                                        isExpired(server.expireTime) ? 'text-red-600 dark:text-red-400' : ''
+                                    )}>
                                     <Calendar className="w-3 h-3"/>
                                     {new Date(server.expireTime).toLocaleDateString('zh-CN')}
                                 </div>
@@ -204,16 +213,16 @@ const ServerCard: FC<ServerCardProps> = ({server}) => {
                     </div>
 
                     {/* 流量限制 */}
-                    {server.trafficLimit > 0 && (
+                    {server.traffic?.limit > 0 && (
                         <div className="pt-2 border-t border-slate-200 dark:border-cyan-900/30">
                             <div className="flex justify-between text-xs text-gray-600 dark:text-cyan-500 mb-1">
                                 <span>流量使用</span>
-                                <span>{Math.round((server.trafficUsed || 0) / server.trafficLimit * 100)}%</span>
+                                <span>{Math.round((server.traffic?.used || 0) / server.traffic?.limit * 100)}%</span>
                             </div>
                             <div className="h-1.5 bg-slate-200 dark:bg-cyan-900/50 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-gray-500 dark:bg-cyan-400 transition-all"
-                                    style={{width: `${((server.trafficUsed || 0) / server.trafficLimit) * 100}%`}}
+                                    style={{width: `${((server.traffic?.used || 0) / server.traffic?.limit) * 100}%`}}
                                 />
                             </div>
                         </div>

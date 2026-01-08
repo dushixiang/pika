@@ -1,24 +1,24 @@
 import {useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
-import {Card} from '@portal/components/Card';
-import {EmptyState} from '@portal/components/EmptyState';
-import {LoadingSpinner} from '@portal/components/LoadingSpinner';
-import {TimeRangeSelector} from '@portal/components/TimeRangeSelector';
-import {GpuMonitorSection} from '@portal/components/server/GpuMonitorSection';
-import {NetworkConnectionSection} from '@portal/components/server/NetworkConnectionSection';
-import {ServerHero} from '@portal/components/server/ServerHero';
-import {SystemInfoSection} from '@portal/components/server/SystemInfoSection';
-import {TemperatureMonitorSection} from '@portal/components/server/TemperatureMonitorSection';
-import {CpuChart} from '@portal/components/server/CpuChart';
-import {DiskIOChart} from '@portal/components/server/DiskIOChart';
-import {GpuChart} from '@portal/components/server/GpuChart';
-import {MemoryChart} from '@portal/components/server/MemoryChart';
-import {MonitorChart} from '@portal/components/server/MonitorChart';
-import {NetworkChart} from '@portal/components/server/NetworkChart';
-import {NetworkConnectionChart} from '@portal/components/server/NetworkConnectionChart';
-import {TemperatureChart} from '@portal/components/server/TemperatureChart';
-import {useAgentQuery, useLatestMetricsQuery} from '@portal/hooks/server';
-import {SERVER_TIME_RANGE_OPTIONS} from '@portal/constants/time';
+import {Card} from '@portal/components/Card.tsx';
+import {EmptyState} from '@portal/components/EmptyState.tsx';
+import {LoadingSpinner} from '@portal/components/LoadingSpinner.tsx';
+import {TimeRangeSelector} from '@portal/components/TimeRangeSelector.tsx';
+import {GpuMonitorSection} from '@portal/components/server/GpuMonitorSection.tsx';
+import {NetworkConnectionSection} from '@portal/components/server/NetworkConnectionSection.tsx';
+import {ServerHero} from '@portal/components/server/ServerHero.tsx';
+import {SystemInfoSection} from '@portal/components/server/SystemInfoSection.tsx';
+import {TemperatureMonitorSection} from '@portal/components/server/TemperatureMonitorSection.tsx';
+import {CpuChart} from '@portal/components/server/CpuChart.tsx';
+import {DiskIOChart} from '@portal/components/server/DiskIOChart.tsx';
+import {GpuChart} from '@portal/components/server/GpuChart.tsx';
+import {MemoryChart} from '@portal/components/server/MemoryChart.tsx';
+import {MonitorChart} from '@portal/components/server/MonitorChart.tsx';
+import {NetworkChart} from '@portal/components/server/NetworkChart.tsx';
+import {NetworkConnectionChart} from '@portal/components/server/NetworkConnectionChart.tsx';
+import {TemperatureChart} from '@portal/components/server/TemperatureChart.tsx';
+import {useAgentQuery, useLatestMetricsQuery} from '@portal/hooks/server.ts';
+import {SERVER_TIME_RANGE_OPTIONS} from '@portal/constants/time.ts';
 
 /**
  * 服务器详情页面
