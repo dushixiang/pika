@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { App, Button, Card, Collapse, Form, Input, InputNumber, Select, Space, Spin, Switch } from 'antd';
 import { TestTube } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,6 +14,15 @@ const NotificationChannels = () => {
     const [form] = Form.useForm();
     const { message: messageApi } = App.useApp();
     const queryClient = useQueryClient();
+    const [savedValues, setSavedValues] = useState<Record<string, any>>({});
+
+    // 验证 token 字段，检查是否误输入了完整的 URL
+    const validateToken = (_: any, value: string) => {
+        if (value && (value.startsWith('http://') || value.startsWith('https://'))) {
+            return Promise.reject(new Error('请只输入 Token，不要包含完整的 URL 地址'));
+        }
+        return Promise.resolve();
+    };
 
     // 监听各个通知渠道的启用状态
     const dingtalkEnabled = Form.useWatch('dingtalkEnabled', form);
@@ -106,6 +115,8 @@ const NotificationChannels = () => {
             });
 
             form.setFieldsValue(formValues);
+            // 保存当前值作为"已保存"的值，用于检测是否有未保存的修改
+            setSavedValues(formValues);
         }
     }, [channels, form]);
 
@@ -225,6 +236,12 @@ const NotificationChannels = () => {
     };
 
     const handleTest = (type: string) => {
+        // 检查表单是否有未保存的修改
+        const currentValues = form.getFieldsValue();
+        if (JSON.stringify(currentValues) !== JSON.stringify(savedValues)) {
+            messageApi.warning('检测到未保存的修改，请先保存配置后再进行测试');
+            return;
+        }
         testMutation.mutate(type);
     };
 
@@ -288,7 +305,10 @@ const NotificationChannels = () => {
                                         <Form.Item
                                             label="访问令牌 (Access Token)"
                                             name="dingtalkSecretKey"
-                                            rules={[{ required: true, message: '请输入访问令牌' }]}
+                                            rules={[
+                                                { required: true, message: '请输入访问令牌' },
+                                                { validator: validateToken }
+                                            ]}
                                             tooltip="在钉钉机器人配置中获取的 access_token"
                                         >
                                             <Input placeholder="输入访问令牌" />
@@ -346,7 +366,10 @@ const NotificationChannels = () => {
                                     <Form.Item
                                         label="Webhook Key"
                                         name="wecomSecretKey"
-                                        rules={[{ required: true, message: '请输入 Webhook Key' }]}
+                                        rules={[
+                                            { required: true, message: '请输入 Webhook Key' },
+                                            { validator: validateToken }
+                                        ]}
                                         tooltip="企业微信群机器人的 Webhook Key"
                                     >
                                         <Input placeholder="输入 Webhook Key" />
@@ -487,7 +510,10 @@ const NotificationChannels = () => {
                                         <Form.Item
                                             label="Webhook Token"
                                             name="feishuSecretKey"
-                                            rules={[{ required: true, message: '请输入 Webhook Token' }]}
+                                            rules={[
+                                                { required: true, message: '请输入 Webhook Token' },
+                                                { validator: validateToken }
+                                            ]}
                                             tooltip="飞书群机器人的 Webhook Token"
                                         >
                                             <Input placeholder="输入 Webhook Token" />
@@ -548,7 +574,10 @@ const NotificationChannels = () => {
                                         <Form.Item
                                             label="Bot Token"
                                             name="telegramBotToken"
-                                            rules={[{ required: true, message: '请输入 Bot Token' }]}
+                                            rules={[
+                                                { required: true, message: '请输入 Bot Token' },
+                                                { validator: validateToken }
+                                            ]}
                                             tooltip="通过 @BotFather 创建机器人后获得的 token"
                                         >
                                             <Input.Password placeholder="输入 Bot Token" />

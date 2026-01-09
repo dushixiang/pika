@@ -33,7 +33,7 @@ func (h *PropertyHandler) GetProperty(c echo.Context) error {
 	if err != nil {
 		h.logger.Error("获取属性失败", zap.String("id", id), zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "获取属性失败",
+			"message": "获取属性失败",
 		})
 	}
 
@@ -43,7 +43,7 @@ func (h *PropertyHandler) GetProperty(c echo.Context) error {
 		if err := json.Unmarshal([]byte(property.Value), &value); err != nil {
 			h.logger.Error("解析属性值失败", zap.String("id", id), zap.Error(err))
 			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "解析属性值失败",
+				"message": "解析属性值失败",
 			})
 		}
 	}
@@ -66,14 +66,14 @@ func (h *PropertyHandler) SetProperty(c echo.Context) error {
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "无效的请求参数",
+			"message": "无效的请求参数",
 		})
 	}
 
 	if err := h.service.Set(c.Request().Context(), id, req.Name, req.Value); err != nil {
 		h.logger.Error("设置属性失败", zap.String("id", id), zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "设置属性失败",
+			"message": "设置属性失败",
 		})
 	}
 
@@ -155,7 +155,7 @@ func (h *PropertyHandler) TestNotificationChannel(c echo.Context) error {
 	channelType := c.Param("type")
 	if channelType == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "缺少渠道类型参数",
+			"message": "缺少渠道类型参数",
 		})
 	}
 
@@ -165,7 +165,7 @@ func (h *PropertyHandler) TestNotificationChannel(c echo.Context) error {
 	if err != nil {
 		h.logger.Error("获取通知渠道配置失败", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "获取通知渠道配置失败",
+			"message": "获取通知渠道配置失败",
 		})
 	}
 
@@ -180,13 +180,13 @@ func (h *PropertyHandler) TestNotificationChannel(c echo.Context) error {
 
 	if targetChannel == nil {
 		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": "通知渠道不存在，请先配置",
+			"message": "通知渠道不存在，请先配置",
 		})
 	}
 
 	if !targetChannel.Enabled {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "通知渠道未启用",
+			"message": "通知渠道未启用",
 		})
 	}
 
@@ -197,11 +197,9 @@ func (h *PropertyHandler) TestNotificationChannel(c echo.Context) error {
 	if sendErr != nil {
 		h.logger.Error("发送测试通知失败", zap.String("type", channelType), zap.Error(sendErr))
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "发送测试通知失败: " + sendErr.Error(),
+			"message": "发送测试通知失败: " + sendErr.Error(),
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "测试通知已发送",
-	})
+	return c.JSON(http.StatusOK, echo.Map{})
 }
