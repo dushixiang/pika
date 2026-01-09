@@ -77,7 +77,7 @@ func (h *AgentHandler) handleWebSocketMessage(ctx context.Context, agentID strin
 		return h.handleCommandResponseMessage(ctx, agentID, data)
 
 	case protocol.MessageTypeTamperEvent:
-		return h.handleTamperEventMessage(agentID, data)
+		return h.handleTamperEventMessage(ctx, agentID, data)
 
 	case protocol.MessageTypeDDNSIPReport:
 		return h.handleDDNSIPReportMessage(ctx, agentID, data)
@@ -165,13 +165,13 @@ func (h *AgentHandler) handleCommandResponseMessage(ctx context.Context, agentID
 	return h.agentService.HandleCommandResponse(ctx, agentID, &cmdResp)
 }
 
-func (h *AgentHandler) handleTamperEventMessage(agentID string, data json.RawMessage) error {
+func (h *AgentHandler) handleTamperEventMessage(ctx context.Context, agentID string, data json.RawMessage) error {
 	var eventData protocol.TamperEventData
 	if err := json.Unmarshal(data, &eventData); err != nil {
 		h.logger.Error("failed to unmarshal tamper event", zap.Error(err))
 		return err
 	}
-	return h.tamperService.CreateEvent(agentID, eventData.Path, eventData.Operation, eventData.Details, eventData.Timestamp)
+	return h.tamperService.CreateEvent(ctx, agentID, &eventData)
 }
 
 func (h *AgentHandler) handleDDNSIPReportMessage(ctx context.Context, agentID string, data json.RawMessage) error {

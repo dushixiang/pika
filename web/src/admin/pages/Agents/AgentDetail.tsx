@@ -285,8 +285,7 @@ const AgentDetail = () => {
                             loading={auditing}
                             size="middle"
                         >
-                            <span className="hidden sm:inline">下发命令</span>
-                            <span className="sm:hidden">命令</span>
+                            下发命令
                         </Button>
                     </Dropdown>
                 </Space>

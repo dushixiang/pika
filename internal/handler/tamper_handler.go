@@ -1,10 +1,11 @@
 package handler
 
 import (
+	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/dushixiang/pika/internal/service"
+	"github.com/go-orz/orz"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )
@@ -25,12 +26,6 @@ func NewTamperHandler(logger *zap.Logger, tamperService *service.TamperService) 
 // POST /api/agents/:id/tamper/config
 func (h *TamperHandler) UpdateTamperConfig(c echo.Context) error {
 	agentID := c.Param("id")
-	if agentID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"message": "探针ID不能为空",
-		})
-	}
 
 	var req struct {
 		Enabled bool     `json:"enabled"`
@@ -39,7 +34,6 @@ func (h *TamperHandler) UpdateTamperConfig(c echo.Context) error {
 
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
 			"message": "请求参数错误",
 		})
 	}
@@ -48,82 +42,48 @@ func (h *TamperHandler) UpdateTamperConfig(c echo.Context) error {
 	if err != nil {
 		h.logger.Error("更新防篡改配置失败", zap.Error(err), zap.String("agentId", agentID))
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
 			"message": "更新配置失败",
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-		"message": "配置更新成功",
-		"data":    config,
-	})
+	return c.JSON(http.StatusOK, config)
 }
 
 // GetTamperConfig 获取探针的防篡改配置
 // GET /api/agents/:id/tamper/config
 func (h *TamperHandler) GetTamperConfig(c echo.Context) error {
 	agentID := c.Param("id")
-	if agentID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"message": "探针ID不能为空",
-		})
-	}
 
 	config, err := h.tamperService.GetConfigByAgentID(agentID)
 	if err != nil {
 		h.logger.Error("获取防篡改配置失败", zap.Error(err), zap.String("agentId", agentID))
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
 			"message": "获取配置失败",
 		})
 	}
 
-	if config == nil {
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"success": true,
-			"data": map[string]interface{}{
-				"paths": []string{},
-			},
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data":    config,
-	})
+	return c.JSON(http.StatusOK, config)
 }
 
 // GetTamperEvents 获取探针的防篡改事件
 // GET /api/agents/:id/tamper/events
 func (h *TamperHandler) GetTamperEvents(c echo.Context) error {
 	agentID := c.Param("id")
-	if agentID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"message": "探针ID不能为空",
-		})
-	}
 
 	// 获取分页参数
-	pageNum, _ := strconv.Atoi(c.QueryParam("pageNum"))
-	pageSize, _ := strconv.Atoi(c.QueryParam("pageSize"))
+	pageReq := orz.GetPageRequest(c)
+	builder := orz.NewPageBuilder(h.tamperService.TamperEventRepo.Repository).
+		PageRequest(pageReq).
+		Equal("agentId", agentID).
+		Equal("path", c.QueryParam("path")).
+		Equal("operation", c.QueryParam("operation")).
+		Contains("details", c.QueryParam("details"))
 
-	events, total, err := h.tamperService.GetEventsByAgentID(agentID, pageNum, pageSize)
+	ctx := context.Background()
+	page, err := builder.Execute(ctx)
 	if err != nil {
-		h.logger.Error("获取防篡改事件失败", zap.Error(err), zap.String("agentId", agentID))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
-			"message": "获取事件失败",
-		})
+		return err
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data": map[string]interface{}{
-			"items": events,
-			"total": total,
-		},
-	})
+	return orz.Ok(c, page)
 }

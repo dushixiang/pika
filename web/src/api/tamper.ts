@@ -44,22 +44,34 @@ export interface PagedTamperAlerts {
 
 // 获取防篡改配置
 export const getTamperConfig = (agentId: string) => {
-    return request.get<{ success: boolean; data: TamperConfig }>(`/admin/agents/${agentId}/tamper/config`);
+    return request.get<TamperConfig>(`/admin/agents/${agentId}/tamper/config`);
 };
 
 // 更新防篡改配置
 export const updateTamperConfig = (agentId: string, enabled: boolean, paths: string[]) => {
-    return request.put<{ success: boolean; message: string; data: TamperConfig }>(
+    return request.put<TamperConfig>(
         `/admin/agents/${agentId}/tamper/config`,
         {enabled, paths}
     );
 };
 
 // 获取防篡改事件
-export const getTamperEvents = (agentId: string, pageIndex: number = 1, pageSize: number = 20) => {
-    let params = {pageIndex: pageIndex, pageSize: pageSize}
-    let paramStr = qs.stringify(params);
-    return request.get<{ success: boolean; data: PagedTamperEvents }>(
+export const getTamperEvents = (agentId: string, params?: {
+    pageIndex?: number;
+    pageSize?: number;
+    path?: string;
+    operation?: string;
+    details?: string;
+}) => {
+    const queryParams = {
+        pageIndex: params?.pageIndex || 1,
+        pageSize: params?.pageSize || 20,
+        path: params?.path,
+        operation: params?.operation,
+        details: params?.details,
+    };
+    const paramStr = qs.stringify(queryParams, { skipNulls: true });
+    return request.get<PagedTamperEvents>(
         `/admin/agents/${agentId}/tamper/events?${paramStr}`,
     );
 };
@@ -75,5 +87,5 @@ export const getTamperAlerts = (agentId: string, pageIndex: number = 1, pageSize
 
 // 删除防篡改事件
 export const deleteTamperEvents = (agentId: string) => {
-    return request.delete<{ success: boolean; message: string }>(`/admin/agents/${agentId}/tamper/events`);
+    return request.delete<void>(`/admin/agents/${agentId}/tamper/events`);
 };

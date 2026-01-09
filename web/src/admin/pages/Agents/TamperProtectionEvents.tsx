@@ -74,7 +74,6 @@ const TamperProtectionEvents: React.FC<TamperProtectionEventsProps> = ({agentId}
             title: '详细信息',
             dataIndex: 'details',
             key: 'details',
-            hideInSearch: true,
             ellipsis: true,
             render: (_, record) => (
                 record.details ? (
@@ -118,22 +117,17 @@ const TamperProtectionEvents: React.FC<TamperProtectionEventsProps> = ({agentId}
             cardBordered
             request={async (params) => {
                 try {
-                    const response = await getTamperEvents(
-                        agentId,
-                        params.current || 1,
-                        params.pageSize || 20
-                    );
-                    if (response.data.success) {
-                        return {
-                            data: response.data.data.items || [],
-                            success: true,
-                            total: response.data.data.total || 0,
-                        };
-                    }
+                    const response = await getTamperEvents(agentId, {
+                        pageIndex: params.current || 1,
+                        pageSize: params.pageSize || 20,
+                        path: params.path,
+                        operation: params.operation,
+                        details: params.details,
+                    });
                     return {
-                        data: [],
-                        success: false,
-                        total: 0,
+                        data: response.data.items || [],
+                        success: true,
+                        total: response.data.total || 0,
                     };
                 } catch (error) {
                     console.error('Failed to load tamper events:', error);

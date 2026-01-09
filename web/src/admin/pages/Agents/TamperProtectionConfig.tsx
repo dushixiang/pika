@@ -21,10 +21,7 @@ const TamperProtectionConfig: React.FC<TamperProtectionConfigProps> = ({agentId}
         queryKey: ['tamperConfig', agentId],
         queryFn: async () => {
             const response = await getTamperConfig(agentId);
-            if (response.data.success && response.data.data) {
-                return response.data.data;
-            }
-            return null;
+            return response.data || null;
         },
     });
 

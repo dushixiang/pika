@@ -16,18 +16,18 @@ import (
 )
 
 type TamperService struct {
-	logger     *zap.Logger
-	agentRepo  *repo.AgentRepo
-	tamperRepo *repo.TamperRepo
-	wsManager  *websocket.Manager
+	logger          *zap.Logger
+	agentRepo       *repo.AgentRepo
+	TamperEventRepo *repo.TamperEventRepo
+	wsManager       *websocket.Manager
 }
 
 func NewTamperService(logger *zap.Logger, db *gorm.DB, wsManager *websocket.Manager) *TamperService {
 	return &TamperService{
-		logger:     logger,
-		agentRepo:  repo.NewAgentRepo(db),
-		tamperRepo: repo.NewTamperRepo(db),
-		wsManager:  wsManager,
+		logger:          logger,
+		agentRepo:       repo.NewAgentRepo(db),
+		TamperEventRepo: repo.NewTamperEventRepo(db),
+		wsManager:       wsManager,
 	}
 }
 
@@ -146,39 +146,22 @@ func (s *TamperService) sendConfigToAgent(agentID string, added, removed []strin
 }
 
 // CreateEvent 创建防篡改事件
-func (s *TamperService) CreateEvent(agentID, path, operation, details string, timestamp int64) error {
+func (s *TamperService) CreateEvent(ctx context.Context, agentID string, eventData *protocol.TamperEventData) error {
 	event := &models.TamperEvent{
 		ID:        uuid.New().String(),
 		AgentID:   agentID,
-		Path:      path,
-		Operation: operation,
-		Details:   details,
-		Timestamp: timestamp,
+		Path:      eventData.Path,
+		Operation: eventData.Operation,
+		Details:   eventData.Details,
+		Timestamp: eventData.Timestamp,
 		CreatedAt: time.Now().UnixMilli(),
 	}
-	return s.tamperRepo.CreateEvent(event)
-}
-
-// GetEventsByAgentID 获取探针的防篡改事件
-func (s *TamperService) GetEventsByAgentID(agentID string, pageNum, pageSize int) ([]models.TamperEvent, int64, error) {
-	if pageNum < 1 {
-		pageNum = 1
-	}
-	if pageSize < 1 {
-		pageSize = 20
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
-
-	offset := (pageNum - 1) * pageSize
-	return s.tamperRepo.GetEventsByAgentID(agentID, pageSize, offset)
+	return s.TamperEventRepo.Create(ctx, event)
 }
 
 // CleanupOldRecords 清理旧记录（保留最近30天）
-func (s *TamperService) CleanupOldRecords() error {
+func (s *TamperService) CleanupOldRecords(ctx context.Context) error {
 	// 30天前的时间戳
 	threshold := time.Now().AddDate(0, 0, -30).UnixMilli()
-
-	return s.tamperRepo.DeleteOldEvents(threshold)
+	return s.TamperEventRepo.DeleteOldEvents(ctx, threshold)
 }
