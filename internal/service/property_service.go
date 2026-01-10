@@ -16,6 +16,8 @@ import (
 )
 
 const (
+	// PropertyIDSystemVersion 系统版本的固定 ID
+	PropertyIDSystemVersion = "version"
 	// PropertyIDNotificationChannels 通知渠道配置的固定 ID
 	PropertyIDNotificationChannels = "notification_channels"
 	// PropertyIDSystemConfig 系统配置的固定 ID
@@ -304,4 +306,17 @@ func (s *PropertyService) initializeProperty(ctx context.Context, config default
 	}
 	s.logger.Info("配置默认值已初始化", zap.String("name", config.Name))
 	return nil
+}
+
+func (s *PropertyService) GetSystemVersion(ctx context.Context) (string, error) {
+	var systemVersion string
+	err := s.GetValue(ctx, PropertyIDSystemVersion, &systemVersion)
+	if err != nil {
+		return "", err
+	}
+	return systemVersion, nil
+}
+
+func (s *PropertyService) SetSystemVersion(ctx context.Context, systemVersion string) error {
+	return s.Set(ctx, PropertyIDSystemVersion, "系统版本", systemVersion)
 }

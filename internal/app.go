@@ -12,6 +12,7 @@ import (
 
 	"github.com/dushixiang/pika/internal/config"
 	"github.com/dushixiang/pika/internal/handler"
+	"github.com/dushixiang/pika/internal/migrate"
 	"github.com/dushixiang/pika/internal/models"
 	"github.com/dushixiang/pika/internal/scheduler"
 	"github.com/dushixiang/pika/pkg/replace"
@@ -65,6 +66,11 @@ func setup(app *orz.App) error {
 	components, err := InitializeApp(app.Logger(), app.GetDatabase(), &appConfig)
 	if err != nil {
 		return err
+	}
+
+	// 自动化升级数据库
+	if err := migrate.AutoMigrate(app.Logger(), app.GetDatabase(), components.PropertyService); err != nil {
+		app.Logger().Warn("数据库自动升级失败", zap.Error(err))
 	}
 
 	// 初始化默认属性配置
