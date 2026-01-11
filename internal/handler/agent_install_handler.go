@@ -22,6 +22,13 @@ func (h *AgentHandler) GetAgentVersion(c echo.Context) error {
 func (h *AgentHandler) DownloadAgent(c echo.Context) error {
 	filename := c.Param("filename")
 
+	// 校验 API Key
+	apiKey := c.QueryParam("key")
+	if _, err := h.apiKeyService.ValidateApiKey(c.Request().Context(), apiKey); err != nil {
+		h.logger.Warn("download agent failed: invalid api key", zap.String("key", apiKey))
+		return orz.NewError(401, "无效的 API 密钥")
+	}
+
 	// 从嵌入的文件系统读取
 	agentFile, err := pika.AgentFS().Open(fmt.Sprintf("pika-%s", filename))
 	if err != nil {
@@ -135,7 +142,7 @@ detect_platform() {
 
 # 下载探针
 download_agent() {
-    local download_url="` + serverUrl + `/api/agent/downloads/agent-$PLATFORM"
+    local download_url="` + serverUrl + `/api/agent/downloads/agent-$PLATFORM?key=` + token + `"
     local temp_file="/tmp/pika-agent-download"
 
     echo_info "正在下载探针..."

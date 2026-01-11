@@ -1,17 +1,17 @@
-import React, {type ReactElement, useCallback, useEffect, useMemo, useState} from 'react';
-import {Alert, App, Button, Card, Select, Space, Tabs, Typography} from 'antd';
-import {CopyIcon} from 'lucide-react';
-import {listApiKeys} from '@/api/apiKey.ts';
-import {getServerUrl} from '@/api/agent.ts';
-import type {ApiKey} from '@/types';
+import React, { type ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, App, Button, Card, Select, Space, Tabs, Typography } from 'antd';
+import { CopyIcon } from 'lucide-react';
+import { listApiKeys } from '@/api/apiKey.ts';
+import { getServerUrl } from '@/api/agent.ts';
+import type { ApiKey } from '@/types';
 import linuxPng from '../../assets/os/linux.png';
 import applePng from '../../assets/os/apple.png';
 import windowsPng from '../../assets/os/win11.png';
-import {useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import copy from 'copy-to-clipboard';
 
-const {Paragraph, Text} = Typography;
-const {TabPane} = Tabs;
+const { Paragraph, Text } = Typography;
+const { TabPane } = Tabs;
 
 // 常量定义
 const AGENT_NAME = 'pika-agent';
@@ -42,7 +42,7 @@ const AgentInstall = () => {
     // 服务器地址相关状态
     const [backendServerUrl, setBackendServerUrl] = useState<string>('');
 
-    const {message} = App.useApp();
+    const { message } = App.useApp();
     const navigate = useNavigate();
     const frontendUrl = useMemo(() => window.location.origin, []);
 
@@ -86,37 +86,37 @@ const AgentInstall = () => {
     const osConfigs: Record<OSType, OSConfig> = useMemo(() => ({
         'linux-amd64': {
             name: 'Linux (amd64)',
-            icon: <img src={linuxPng} alt="Linux" className="h-4 w-4"/>,
+            icon: <img src={linuxPng} alt="Linux" className="h-4 w-4" />,
             downloadUrl: '/api/agent/downloads/agent-linux-amd64',
         },
         'linux-arm64': {
             name: 'Linux (arm64)',
-            icon: <img src={linuxPng} alt="Linux" className="h-4 w-4"/>,
+            icon: <img src={linuxPng} alt="Linux" className="h-4 w-4" />,
             downloadUrl: '/api/agent/downloads/agent-linux-arm64',
         },
         'linux-loong64': {
             name: 'Linux (loongarch64)',
-            icon: <img src={linuxPng} alt="Linux" className={'h-4 w-4'}/>,
+            icon: <img src={linuxPng} alt="Linux" className={'h-4 w-4'} />,
             downloadUrl: '/api/agent/downloads/agent-linux-loong64',
         },
         'darwin-amd64': {
             name: 'macOS (amd64)',
-            icon: <img src={applePng} alt="macOS" className="h-4 w-4"/>,
+            icon: <img src={applePng} alt="macOS" className="h-4 w-4" />,
             downloadUrl: '/api/agent/downloads/agent-darwin-amd64',
         },
         'darwin-arm64': {
             name: 'macOS (arm64)',
-            icon: <img src={applePng} alt="macOS" className="h-4 w-4"/>,
+            icon: <img src={applePng} alt="macOS" className="h-4 w-4" />,
             downloadUrl: '/api/agent/downloads/agent-darwin-arm64',
         },
         'windows-amd64': {
             name: 'Windows (amd64)',
-            icon: <img src={windowsPng} alt="Windows" className="h-4 w-4"/>,
+            icon: <img src={windowsPng} alt="Windows" className="h-4 w-4" />,
             downloadUrl: '/api/agent/downloads/agent-windows-amd64.exe',
         },
         'windows-arm64': {
             name: 'Windows (arm64)',
-            icon: <img src={windowsPng} alt="Windows" className="h-4 w-4"/>,
+            icon: <img src={windowsPng} alt="Windows" className="h-4 w-4" />,
             downloadUrl: '/api/agent/downloads/agent-windows-arm64.exe',
         },
     }), []);
@@ -158,7 +158,7 @@ const AgentInstall = () => {
                     <Space direction="vertical" className="w-full">
                         <div>
                             当前访问地址: <Text code>{frontendUrl}</Text>
-                            <br/>
+                            <br />
                             后端检测地址: <Text code>{backendServerUrl}</Text>
                         </div>
                         <div>
@@ -170,7 +170,7 @@ const AgentInstall = () => {
                         <div>
                             <Text strong>Nginx 配置示例：</Text>
                             <pre className="m-0 mt-2 overflow-auto text-xs bg-gray-100 dark:bg-slate-900 p-2 rounded">
-{`location / {
+                                {`location / {
     proxy_pass http://backend;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header X-Forwarded-Host $host;
@@ -182,7 +182,7 @@ const AgentInstall = () => {
                         <div>
                             <Text strong>Caddy 配置示例：</Text>
                             <pre className="m-0 mt-2 overflow-auto text-xs bg-gray-100 dark:bg-slate-900 p-2 rounded">
-{`reverse_proxy backend:8080 {
+                                {`reverse_proxy backend:8080 {
     header_up X-Forwarded-Proto {scheme}
     header_up X-Forwarded-Host {host}
 }`}
@@ -191,7 +191,7 @@ const AgentInstall = () => {
                         <div>
                             <Text strong>Traefik 配置说明：</Text>
                             <pre className="m-0 mt-2 overflow-auto text-xs bg-gray-100 dark:bg-slate-900 p-2 rounded">
-{`# Traefik 默认会自动添加 X-Forwarded-* 头部
+                                {`# Traefik 默认会自动添加 X-Forwarded-* 头部
 # 无需额外配置`}
                             </pre>
                         </div>
@@ -240,8 +240,8 @@ const AgentInstall = () => {
     // 一键安装组件
     const InstallByOneClick = useCallback(() => (
         <Space direction="vertical" className="w-full">
-            <ServerUrlChecker/>
-            <ApiChooser/>
+            <ServerUrlChecker />
+            <ApiChooser />
             <Alert
                 description="一键安装脚本仅支持 Linux/macOS 系统。"
                 type="info"
@@ -259,16 +259,16 @@ const AgentInstall = () => {
                 <Button
                     type="link"
                     onClick={() => void copyToClipboard(installCommand)}
-                    icon={<CopyIcon className="h-4 w-4"/>}
-                    style={{margin: 0, padding: 0}}
+                    icon={<CopyIcon className="h-4 w-4" />}
+                    style={{ margin: 0, padding: 0 }}
                     disabled={!selectedApiKey}
                 >
                     复制命令
                 </Button>
             </Card>
 
-            <ServiceHelper os={AGENT_NAME}/>
-            <ConfigHelper/>
+            <ServiceHelper os={AGENT_NAME} />
+            <ConfigHelper />
         </Space>
     ), [ServerUrlChecker, ApiChooser, installCommand, copyToClipboard, selectedApiKey]);
 
@@ -297,7 +297,7 @@ ${agentCmd} version`;
     }, []);
 
     // 服务管理命令组件
-    const ServiceHelper = useCallback(({os}: { os: string }) => (
+    const ServiceHelper = useCallback(({ os }: { os: string }) => (
         <Card type="inner" title="服务管理命令">
             <Paragraph type="secondary" className="mb-3 text-gray-600 dark:text-slate-400">
                 注册完成后，您可以使用以下命令管理探针服务：
@@ -335,10 +335,10 @@ ${agentCmd} version`;
                 {
                     title: '1. 下载探针',
                     command: `# 使用 PowerShell 下载
-Invoke-WebRequest -Uri "${backendServerUrl}${config.downloadUrl}" -OutFile "${AGENT_NAME_EXE}"
+Invoke-WebRequest -Uri "${backendServerUrl}${config.downloadUrl}?key=${selectedApiKey}" -OutFile "${AGENT_NAME_EXE}"
 
 # 或者使用浏览器直接下载
-# ${backendServerUrl}${config.downloadUrl}`
+# ${backendServerUrl}${config.downloadUrl}?key=${selectedApiKey}`
                 },
                 {
                     title: '2. 注册探针',
@@ -355,10 +355,10 @@ Invoke-WebRequest -Uri "${backendServerUrl}${config.downloadUrl}" -OutFile "${AG
             {
                 title: '1. 下载探针',
                 command: `# 使用 wget 下载
-wget ${backendServerUrl}${config.downloadUrl} -O ${AGENT_NAME}
+wget "${backendServerUrl}${config.downloadUrl}?key=${selectedApiKey}" -O ${AGENT_NAME}
 
 # 或使用 curl 下载
-curl -L ${backendServerUrl}${config.downloadUrl} -o ${AGENT_NAME}`
+curl -L "${backendServerUrl}${config.downloadUrl}?key=${selectedApiKey}" -o ${AGENT_NAME}`
             },
             {
                 title: '2. 赋予执行权限',
@@ -382,8 +382,8 @@ curl -L ${backendServerUrl}${config.downloadUrl} -o ${AGENT_NAME}`
     // 手动安装组件
     const InstallByManual = useCallback(() => (
         <Space direction="vertical" className="w-full">
-            <ServerUrlChecker/>
-            <ApiChooser/>
+            <ServerUrlChecker />
+            <ApiChooser />
             <Tabs
                 activeKey={selectedOS}
                 onChange={(key) => setSelectedOS(key as OSType)}
@@ -404,7 +404,7 @@ curl -L ${backendServerUrl}${config.downloadUrl} -o ${AGENT_NAME}`
                                     {getManualInstallSteps(key as OSType).map((step, index) => (
                                         <div key={index}>
                                             <Text strong
-                                                  className="block mb-2 text-gray-900 dark:text-slate-100">{step.title}</Text>
+                                                className="block mb-2 text-gray-900 dark:text-slate-100">{step.title}</Text>
                                             <pre
                                                 className="m-0 overflow-auto text-sm bg-gray-50 dark:bg-slate-800 p-3 rounded text-gray-900 dark:text-slate-100">
                                                 <code>{step.command}</code>
@@ -412,9 +412,9 @@ curl -L ${backendServerUrl}${config.downloadUrl} -o ${AGENT_NAME}`
                                             <Button
                                                 type="link"
                                                 onClick={() => void copyToClipboard(step.command)}
-                                                icon={<CopyIcon className="h-4 w-4"/>}
+                                                icon={<CopyIcon className="h-4 w-4" />}
                                                 size="small"
-                                                style={{margin: 0, padding: 0}}
+                                                style={{ margin: 0, padding: 0 }}
                                                 disabled={!selectedApiKey}
                                             >
                                                 复制
@@ -424,8 +424,8 @@ curl -L ${backendServerUrl}${config.downloadUrl} -o ${AGENT_NAME}`
                                 </Space>
                             </Card>
 
-                            <ServiceHelper os={key}/>
-                            <ConfigHelper/>
+                            <ServiceHelper os={key} />
+                            <ConfigHelper />
                         </Space>
                     </TabPane>
                 ))}
@@ -438,12 +438,12 @@ curl -L ${backendServerUrl}${config.downloadUrl} -o ${AGENT_NAME}`
         {
             label: '一键安装',
             key: 'one-click',
-            children: <InstallByOneClick/>
+            children: <InstallByOneClick />
         },
         {
             label: '手动安装',
             key: 'manual',
-            children: <InstallByManual/>
+            children: <InstallByManual />
         },
     ], [InstallByOneClick, InstallByManual]);
 
@@ -463,7 +463,7 @@ curl -L ${backendServerUrl}${config.downloadUrl} -o ${AGENT_NAME}`
             </div>
 
             <Tabs
-                style={{marginTop: 24}}
+                style={{ marginTop: 24 }}
                 tabPosition="left"
                 items={tabItems}
             />

@@ -43,7 +43,7 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 	tamperService := service.NewTamperService(logger, db, manager, notificationService)
 	ddnsService := service.NewDDNSService(logger, db, propertyService, manager)
 	sshLoginService := service.NewSSHLoginService(logger, db, manager, geoIPService, notificationService)
-	agentHandler := handler.NewAgentHandler(logger, agentService, trafficService, metricService, monitorService, tamperService, ddnsService, sshLoginService, manager)
+	agentHandler := handler.NewAgentHandler(logger, agentService, trafficService, metricService, monitorService, tamperService, ddnsService, sshLoginService, apiKeyService, manager)
 	apiKeyHandler := handler.NewApiKeyHandler(logger, apiKeyService)
 	alertService := service.NewAlertService(logger, db, propertyService, monitorService, notifier)
 	alertHandler := handler.NewAlertHandler(logger, alertService)

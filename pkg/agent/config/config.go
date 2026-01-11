@@ -275,7 +275,7 @@ func (c *Config) GetDownloadURL() string {
 	if runtime.GOOS == "windows" {
 		filename += ".exe"
 	}
-	return c.Endpoint() + "/api/agent/downloads/" + filename
+	return c.Endpoint() + "/api/agent/downloads/" + filename + "?key=" + c.Server.APIKey
 }
 
 func (c *Config) Endpoint() string {
