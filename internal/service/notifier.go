@@ -266,7 +266,7 @@ func (n *Notifier) buildNoticeMessage(
 	lines := []string{
 		fmt.Sprintf("%s %s通知", levelIcon, metadata.Name),
 		"",
-		fmt.Sprintf("探针: %s (%s)", agent.Name, agent.ID),
+		fmt.Sprintf("探针: %s", agent.Name),
 		fmt.Sprintf("主机: %s", agent.Hostname),
 		fmt.Sprintf("IP: %s", displayIP),
 		fmt.Sprintf("告警类型: %s", record.AlertType),
