@@ -1,11 +1,12 @@
 package collector
 
 import (
+	"net"
 	"time"
 
 	"github.com/dushixiang/pika/internal/protocol"
 	"github.com/dushixiang/pika/pkg/agent/config"
-	"github.com/shirou/gopsutil/v4/net"
+	gopsutilNet "github.com/shirou/gopsutil/v4/net"
 )
 
 // NetworkCollector 网络监控采集器
@@ -57,6 +58,17 @@ func (n *NetworkCollector) Collect() ([]protocol.NetworkData, error) {
 		// 获取 IP 地址列表
 		var addrs []string
 		for _, addr := range iface.Addrs {
+			// 过滤 fe80::/10 (Link-Local) 地址
+			ip := net.ParseIP(addr.Addr)
+			if ip == nil {
+				// 尝试处理带有 CIDR 的字符串
+				if parsedIP, _, err := net.ParseCIDR(addr.Addr); err == nil {
+					ip = parsedIP
+				}
+			}
+			if ip != nil && ip.IsLinkLocalUnicast() {
+				continue
+			}
 			addrs = append(addrs, addr.Addr)
 		}
 
@@ -68,7 +80,7 @@ func (n *NetworkCollector) Collect() ([]protocol.NetworkData, error) {
 	}
 
 	// 创建第一次采集的统计数据映射
-	firstStatsMap := make(map[string]net.IOCountersStat)
+	firstStatsMap := make(map[string]gopsutilNet.IOCountersStat)
 	for _, counter := range firstCounters {
 		firstStatsMap[counter.Name] = counter
 	}
@@ -113,15 +125,15 @@ func (n *NetworkCollector) Collect() ([]protocol.NetworkData, error) {
 }
 
 // collectOnce 执行一次网络数据采集
-func (n *NetworkCollector) collectOnce() ([]net.IOCountersStat, []net.InterfaceStat, error) {
+func (n *NetworkCollector) collectOnce() ([]gopsutilNet.IOCountersStat, []gopsutilNet.InterfaceStat, error) {
 	// 获取网络接口信息
-	interfaces, err := net.Interfaces()
+	interfaces, err := gopsutilNet.Interfaces()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// 获取网络 IO 统计
-	ioCounters, err := net.IOCounters(true)
+	ioCounters, err := gopsutilNet.IOCounters(true)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -3,6 +3,7 @@ package audit
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"strings"
@@ -177,6 +178,16 @@ func (nac *NetworkAssetsCollector) collectInterfaces() []protocol.NetworkInterfa
 
 		// 提取IP地址
 		for _, addr := range iface.Addrs {
+			// 过滤 fe80::/10 (Link-Local) 地址
+			ip := net.ParseIP(addr.Addr)
+			if ip == nil {
+				if parsedIP, _, err := net.ParseCIDR(addr.Addr); err == nil {
+					ip = parsedIP
+				}
+			}
+			if ip != nil && ip.IsLinkLocalUnicast() {
+				continue
+			}
 			netInterface.Addresses = append(netInterface.Addresses, addr.Addr)
 		}
 

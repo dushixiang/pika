@@ -136,6 +136,20 @@ func (s *AgentService) ListOnlineAgents(ctx context.Context) ([]models.Agent, er
 	return s.AgentRepo.FindOnlineAgents(ctx)
 }
 
+// IsAgentOnlineByIP 检查指定IP是否存在在线的探针
+func (s *AgentService) IsAgentOnlineByIP(ctx context.Context, ip string) (bool, error) {
+	agent, err := s.AgentRepo.FindByIP(ctx, ip)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	// 状态 1 表示在线
+	return agent.Status == 1, nil
+}
+
 // HandleCommandResponse 处理指令响应
 func (s *AgentService) HandleCommandResponse(ctx context.Context, agentID string, resp *protocol.CommandResponse) error {
 	s.logger.Info("command response received",

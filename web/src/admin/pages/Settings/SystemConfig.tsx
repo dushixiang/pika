@@ -158,8 +158,16 @@ const SystemConfigComponent = () => {
                             <Form.Item
                                 label="系统英文名称"
                                 name="systemNameEn"
+                                dependencies={['systemNameZh']}
                                 rules={[
-                                    { required: true, message: '请输入系统英文名称' },
+                                    ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                            if (!value && !getFieldValue('systemNameZh')) {
+                                                return Promise.reject(new Error('系统英文名称和中文名称不能同时为空'));
+                                            }
+                                            return Promise.resolve();
+                                        },
+                                    }),
                                     { max: 50, message: '系统名称不能超过 50 个字符' },
                                 ]}
                             >
@@ -169,8 +177,16 @@ const SystemConfigComponent = () => {
                             <Form.Item
                                 label="系统中文名称"
                                 name="systemNameZh"
+                                dependencies={['systemNameEn']}
                                 rules={[
-                                    { required: true, message: '请输入系统中文名称' },
+                                    ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                            if (!value && !getFieldValue('systemNameEn')) {
+                                                return Promise.reject(new Error('系统英文名称和中文名称不能同时为空'));
+                                            }
+                                            return Promise.resolve();
+                                        },
+                                    }),
                                     { max: 50, message: '系统名称不能超过 50 个字符' },
                                 ]}
                             >

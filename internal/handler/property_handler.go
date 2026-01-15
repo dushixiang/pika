@@ -71,6 +71,27 @@ func (h *PropertyHandler) SetProperty(c echo.Context) error {
 		})
 	}
 
+	// 特殊校验：系统配置
+	if id == service.PropertyIDSystemConfig {
+		// 将 map 转为 SystemConfig 结构体进行校验 (或者直接校验 map)
+		// 这里 req.Value 是 map[string]interface{}
+		if valMap, ok := req.Value.(map[string]interface{}); ok {
+			var nameZh, nameEn string
+			if v, ok := valMap["systemNameZh"].(string); ok {
+				nameZh = v
+			}
+			if v, ok := valMap["systemNameEn"].(string); ok {
+				nameEn = v
+			}
+
+			if nameZh == "" && nameEn == "" {
+				return c.JSON(http.StatusBadRequest, map[string]string{
+					"message": "系统名称（中文）和系统名称（英文）不能同时为空",
+				})
+			}
+		}
+	}
+
 	if err := h.service.Set(c.Request().Context(), id, req.Name, req.Value); err != nil {
 		h.logger.Error("设置属性失败", zap.String("id", id), zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, map[string]string{
