@@ -1,7 +1,6 @@
-import {useRef, useState} from 'react';
-import type {ActionType, ProColumns} from '@ant-design/pro-components';
-import {ProTable} from '@ant-design/pro-components';
-import {App, Divider, Select, Space, Tag} from 'antd';
+import React, {useState, useEffect} from 'react';
+import {App, Divider, Select, Space, Table, Tag} from 'antd';
+import type {ColumnsType} from 'antd/es/table';
 import {Trash2} from 'lucide-react';
 import {clearAlertRecords, getAlertRecords} from '@/api/alert.ts';
 import type {AlertRecord} from '@/types';
@@ -13,8 +12,14 @@ import {useQuery} from '@tanstack/react-query';
 
 const AlertRecordList = () => {
     const {message: messageApi, modal} = App.useApp();
-    const actionRef = useRef<ActionType>(null);
     const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+    const [loading, setLoading] = useState(false);
+    const [dataSource, setDataSource] = useState<AlertRecord[]>([]);
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 20,
+        total: 0,
+    });
 
     // 使用 react-query 获取探针列表
     const {data: agentsData} = useQuery({
@@ -91,6 +96,36 @@ const AlertRecordList = () => {
         value: agent.id,
     })) || [];
 
+    // 加载数据
+    const loadData = async (page: number = pagination.current, pageSize: number = pagination.pageSize, agentId: string = selectedAgentId) => {
+        setLoading(true);
+        try {
+            const result = await getAlertRecords(page, pageSize, agentId || undefined);
+            setDataSource(result.items || []);
+            setPagination({
+                current: page,
+                pageSize: pageSize,
+                total: result.total || 0,
+            });
+        } catch (error) {
+            messageApi.error(getErrorMessage(error, '获取告警记录失败'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 处理表格变化
+    const handleTableChange = (newPagination: any) => {
+        loadData(newPagination.current, newPagination.pageSize);
+    };
+
+    // 处理探针筛选变化
+    const handleAgentChange = (value: string) => {
+        setSelectedAgentId(value || '');
+        loadData(1, pagination.pageSize, value || '');
+    };
+
+    // 清空记录
     const handleClear = () => {
         modal.confirm({
             title: '确认清空',
@@ -104,7 +139,7 @@ const AlertRecordList = () => {
                 try {
                     await clearAlertRecords(selectedAgentId || undefined);
                     messageApi.success('清空成功');
-                    actionRef.current?.reload();
+                    loadData();
                 } catch (error: unknown) {
                     messageApi.error(getErrorMessage(error, '清空失败'));
                 }
@@ -112,32 +147,34 @@ const AlertRecordList = () => {
         });
     };
 
-    const columns: ProColumns<AlertRecord>[] = [
+    // 初始加载
+    useEffect(() => {
+        loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const columns: ColumnsType<AlertRecord> = [
         {
             title: 'ID',
             dataIndex: 'id',
             width: 80,
-            search: false,
         },
         {
             title: '探针',
             dataIndex: 'agentName',
             width: 200,
             ellipsis: true,
-            search: false,
         },
         {
             title: '告警类型',
             dataIndex: 'alertType',
             width: 120,
             render: (_, record) => alertTypeMap[record.alertType] || record.alertType,
-            search: false,
         },
         {
             title: '告警消息',
             dataIndex: 'message',
             ellipsis: true,
-            search: false,
         },
         {
             title: '阈值',
@@ -155,7 +192,6 @@ const AlertRecordList = () => {
                 }
                 return `${record.threshold.toFixed(2)}%`;
             },
-            search: false,
         },
         {
             title: '实际值',
@@ -173,29 +209,24 @@ const AlertRecordList = () => {
                 }
                 return `${record.actualValue.toFixed(2)}%`;
             },
-            search: false,
         },
         {
             title: '告警级别',
             dataIndex: 'level',
             width: 100,
             render: (_, record) => getLevelTag(record.level),
-            search: false,
         },
         {
             title: '状态',
             dataIndex: 'status',
             width: 100,
             render: (_, record) => getStatusTag(record.status),
-            search: false,
         },
         {
             title: '触发时间',
             dataIndex: 'firedAt',
             width: 180,
             render: (_, record) => dayjs(record.firedAt).format('YYYY-MM-DD HH:mm:ss'),
-            search: false,
-            sorter: true,
         },
         {
             title: '恢复时间',
@@ -203,14 +234,12 @@ const AlertRecordList = () => {
             width: 180,
             render: (_, record) =>
                 record.resolvedAt ? dayjs(record.resolvedAt).format('YYYY-MM-DD HH:mm:ss') : '-',
-            search: false,
         },
         {
             title: '持续时间',
             dataIndex: 'duration',
             width: 130,
             render: (_, record) => formatDuration(record.firedAt, record.resolvedAt, record.status),
-            search: false,
         },
     ];
 
@@ -233,64 +262,38 @@ const AlertRecordList = () => {
 
             <Divider/>
 
-            <ProTable<AlertRecord>
+            <div style={{marginBottom: 16}}>
+                <Space>
+                    <Select
+                        placeholder="选择探针"
+                        allowClear
+                        showSearch
+                        style={{width: 200}}
+                        value={selectedAgentId || undefined}
+                        onChange={handleAgentChange}
+                        filterOption={(input, option) =>
+                            (option?.label?.toString() ?? '')
+                                .toLowerCase()
+                                .includes(input.toLowerCase())
+                        }
+                        options={agentOptions}
+                    />
+                </Space>
+            </div>
+
+            <Table<AlertRecord>
                 columns={columns}
-                actionRef={actionRef}
+                dataSource={dataSource}
+                loading={loading}
                 rowKey="id"
-                request={async (params, sort) => {
-                    try {
-                        const {pageSize = 20, current = 1} = params;
-
-                        const result = await getAlertRecords(
-                            current,
-                            pageSize,
-                            selectedAgentId || undefined,
-                        );
-
-                        return {
-                            data: result.items || [],
-                            success: true,
-                            total: result.total || 0,
-                        };
-                    } catch (error) {
-                        messageApi.error(getErrorMessage(error, '获取告警记录失败'));
-                        return {
-                            data: [],
-                            success: false,
-                            total: 0,
-                        };
-                    }
-                }}
-                search={false}
-                toolbar={{
-                    actions: [
-                        <Space key="toolbar">
-                            <Select
-                                placeholder="选择探针"
-                                allowClear
-                                showSearch
-                                style={{width: 200}}
-                                value={selectedAgentId || undefined}
-                                onChange={(value) => {
-                                    setSelectedAgentId(value || '');
-                                    actionRef.current?.reload();
-                                }}
-                                filterOption={(input, option) =>
-                                    (option?.label?.toString() ?? '')
-                                        .toLowerCase()
-                                        .includes(input.toLowerCase())
-                                }
-                                options={agentOptions}
-                            />
-                        </Space>,
-                    ],
-                }}
                 pagination={{
-                    defaultPageSize: 20,
+                    ...pagination,
                     showSizeChanger: true,
                     showQuickJumper: true,
                     pageSizeOptions: ['10', '20', '50', '100'],
+                    showTotal: (total) => `共 ${total} 条`,
                 }}
+                onChange={handleTableChange}
             />
         </div>
     );

@@ -1,7 +1,7 @@
-import {useRef, useState} from 'react';
-import type {ActionType, ProColumns} from '@ant-design/pro-components';
-import {ProTable} from '@ant-design/pro-components';
-import {App, Button, Divider, Input, Space, Tag, Tooltip} from 'antd';
+import {useState, useEffect} from 'react';
+import {useSearchParams} from 'react-router-dom';
+import {App, Button, Divider, Input, Space, Table, Tag, Tooltip} from 'antd';
+import type {ColumnsType} from 'antd/es/table';
 import {PageHeader} from '@admin/components';
 import {Globe, Plus, Settings} from 'lucide-react';
 import dayjs from 'dayjs';
@@ -14,13 +14,72 @@ import DNSProviderModal from './DNSProviderModal.tsx';
 
 const DDNSPage = () => {
     const {message, modal} = App.useApp();
-    const actionRef = useRef<ActionType>(null);
-
+    const [loading, setLoading] = useState(false);
+    const [dataSource, setDataSource] = useState<DDNSConfig[]>([]);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [total, setTotal] = useState(0);
+    const [searchValue, setSearchValue] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [recordsDrawerOpen, setRecordsDrawerOpen] = useState(false);
     const [providerModalOpen, setProviderModalOpen] = useState(false);
     const [selectedConfig, setSelectedConfig] = useState<DDNSConfig | null>(null);
-    const [keyword, setKeyword] = useState('');
+
+    const providerNames: Record<string, string> = {
+        aliyun: '阿里云',
+        tencentcloud: '腾讯云',
+        cloudflare: 'Cloudflare',
+        huaweicloud: '华为云',
+    };
+
+    const current = Number(searchParams.get('page')) || 1;
+    const pageSize = Number(searchParams.get('pageSize')) || 10;
+    const keyword = searchParams.get('keyword') ?? '';
+
+    // 加载数据
+    const loadData = async (page: number, size: number, kw: string) => {
+        setLoading(true);
+        try {
+            const response = await getDDNSConfigs(page, size, kw || undefined);
+            setDataSource(response.data.items || []);
+            setTotal(response.data.total || 0);
+        } catch (error: unknown) {
+            message.error(getErrorMessage(error, '获取 DDNS 配置列表失败'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        setSearchValue(keyword);
+    }, [keyword]);
+
+    useEffect(() => {
+        loadData(current, pageSize, keyword);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [current, pageSize, keyword]);
+
+    // 处理表格变化
+    const handleTableChange = (newPagination: any) => {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('page', String(newPagination.current || 1));
+        nextParams.set('pageSize', String(newPagination.pageSize || pageSize));
+        setSearchParams(nextParams);
+    };
+
+    // 处理搜索
+    const handleSearch = (value: string) => {
+        const trimmedValue = value.trim();
+        setSearchValue(trimmedValue);
+        const nextParams = new URLSearchParams(searchParams);
+        if (trimmedValue) {
+            nextParams.set('keyword', trimmedValue);
+        } else {
+            nextParams.delete('keyword');
+        }
+        nextParams.set('page', '1');
+        nextParams.set('pageSize', String(pageSize));
+        setSearchParams(nextParams);
+    };
 
     const handleCreate = () => {
         setSelectedConfig(null);
@@ -46,7 +105,7 @@ const DDNSPage = () => {
                 await enableDDNSConfig(config.id);
                 message.success('已启用');
             }
-            actionRef.current?.reload();
+            loadData(current, pageSize, keyword);
         } catch (error: unknown) {
             message.error(getErrorMessage(error, '操作失败'));
         }
@@ -61,7 +120,7 @@ const DDNSPage = () => {
                 try {
                     await deleteDDNSConfig(config.id);
                     message.success('删除成功');
-                    actionRef.current?.reload();
+                    loadData(current, pageSize, keyword);
                 } catch (error: unknown) {
                     message.error(getErrorMessage(error, '删除失败'));
                 }
@@ -78,14 +137,7 @@ const DDNSPage = () => {
         }
     };
 
-    const providerNames: Record<string, string> = {
-        aliyun: '阿里云',
-        tencentcloud: '腾讯云',
-        cloudflare: 'Cloudflare',
-        huaweicloud: '华为云',
-    };
-
-    const columns: ProColumns<DDNSConfig>[] = [
+    const columns: ColumnsType<DDNSConfig> = [
         {
             title: '配置名称',
             dataIndex: 'name',
@@ -160,7 +212,7 @@ const DDNSPage = () => {
         },
         {
             title: '操作',
-            valueType: 'option',
+            key: 'action',
             width: 240,
             render: (_, record) => [
                 <Button
@@ -232,48 +284,38 @@ const DDNSPage = () => {
 
             <Divider/>
 
-            <ProTable<DDNSConfig>
+            <div style={{marginBottom: 16, display: 'flex', justifyContent: 'space-between'}}>
+                <Input.Search
+                    placeholder="按配置名称搜索"
+                    allowClear
+                    value={searchValue}
+                    onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setSearchValue(nextValue);
+                        if (!nextValue) {
+                            handleSearch('');
+                        }
+                    }}
+                    onSearch={handleSearch}
+                    style={{width: 260}}
+                />
+                <Button type="primary" icon={<Plus size={16}/>} onClick={handleCreate}>
+                    新建配置
+                </Button>
+            </div>
+
+            <Table<DDNSConfig>
                 columns={columns}
+                dataSource={dataSource}
+                loading={loading}
                 rowKey="id"
-                actionRef={actionRef}
-                search={false}
-                params={{keyword}}
                 pagination={{
-                    defaultPageSize: 10,
+                    current,
+                    pageSize,
+                    total,
                     showSizeChanger: true,
                 }}
-                toolBarRender={() => [
-                    <Input.Search
-                        key="search"
-                        placeholder="按配置名称搜索"
-                        allowClear
-                        onSearch={(value) => {
-                            setKeyword(value.trim());
-                            actionRef.current?.reload();
-                        }}
-                        style={{width: 260}}
-                    />,
-                    <Button key="add" type="primary" icon={<Plus size={16}/>} onClick={handleCreate}>
-                        新建配置
-                    </Button>,
-                ]}
-                request={async (params) => {
-                    const {current = 1, pageSize = 10, keyword: kw = ''} = params;
-                    try {
-                        const response = await getDDNSConfigs(current, pageSize, kw as string | undefined);
-                        return {
-                            data: response.data.items || [],
-                            success: true,
-                            total: response.data.total,
-                        };
-                    } catch (error: unknown) {
-                        message.error(getErrorMessage(error, '获取 DDNS 配置列表失败'));
-                        return {
-                            data: [],
-                            success: false,
-                        };
-                    }
-                }}
+                onChange={handleTableChange}
             />
 
             <DDNSModal
@@ -286,7 +328,7 @@ const DDNSPage = () => {
                 onSuccess={() => {
                     setModalOpen(false);
                     setSelectedConfig(null);
-                    actionRef.current?.reload();
+                    loadData(current, pageSize, keyword);
                 }}
             />
 
@@ -305,8 +347,7 @@ const DDNSPage = () => {
                 open={providerModalOpen}
                 onCancel={() => setProviderModalOpen(false)}
                 onSuccess={() => {
-                    // Provider 配置更新后，可能需要刷新 DDNS 列表
-                    actionRef.current?.reload();
+                    loadData(current, pageSize, keyword);
                 }}
             />
         </div>

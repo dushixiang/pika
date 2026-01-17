@@ -1,8 +1,7 @@
-import React, {useRef} from 'react';
-import {App, Button, Tag, Tooltip} from 'antd';
+import React, {useState, useEffect} from 'react';
+import {App, Button, Table, Tag, Tooltip} from 'antd';
+import type {ColumnsType} from 'antd/es/table';
 import {FileWarning} from 'lucide-react';
-import type {ActionType, ProColumns} from '@ant-design/pro-components';
-import {ProTable} from '@ant-design/pro-components';
 import {useMutation} from '@tanstack/react-query';
 import {deleteTamperEvents, getTamperEvents, type TamperEvent} from '@/api/tamper';
 import {getErrorMessage} from '@/lib/utils';
@@ -14,17 +13,21 @@ interface TamperProtectionEventsProps {
 
 const TamperProtectionEvents: React.FC<TamperProtectionEventsProps> = ({agentId}) => {
     const {message, modal} = App.useApp();
-    const actionRef = useRef<ActionType>(null);
+    const [loading, setLoading] = useState(false);
+    const [dataSource, setDataSource] = useState<TamperEvent[]>([]);
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 20,
+        total: 0,
+    });
 
     // 定义表格列
-    const columns: ProColumns<TamperEvent>[] = [
+    const columns: ColumnsType<TamperEvent> = [
         {
             title: '时间',
             dataIndex: 'timestamp',
             key: 'timestamp',
             width: 180,
-            valueType: 'dateTime',
-            hideInSearch: true,
             render: (_, record) => (
                 <span className="text-sm">
                     {dayjs(record.timestamp).format('YYYY-MM-DD HH:mm:ss')}
@@ -36,14 +39,6 @@ const TamperProtectionEvents: React.FC<TamperProtectionEventsProps> = ({agentId}
             dataIndex: 'operation',
             key: 'operation',
             width: 120,
-            valueType: 'select',
-            valueEnum: {
-                CREATE: {text: '创建', status: 'Processing'},
-                MODIFY: {text: '修改', status: 'Warning'},
-                DELETE: {text: '删除', status: 'Error'},
-                RENAME: {text: '重命名', status: 'Default'},
-                CHMOD: {text: '权限变更', status: 'Default'},
-            },
             render: (_, record) => {
                 const operationColors: Record<string, string> = {
                     CREATE: 'blue',
@@ -85,12 +80,47 @@ const TamperProtectionEvents: React.FC<TamperProtectionEventsProps> = ({agentId}
         },
     ];
 
+    // 加载数据
+    const loadData = async (page: number = pagination.current, pageSize: number = pagination.pageSize) => {
+        setLoading(true);
+        try {
+            const response = await getTamperEvents(agentId, {
+                pageIndex: page,
+                pageSize: pageSize,
+                sortField: 'createdAt',
+                sortOrder: 'descend',
+            });
+            setDataSource(response.data.items || []);
+            setPagination({
+                current: page,
+                pageSize: pageSize,
+                total: response.data.total || 0,
+            });
+        } catch (error) {
+            console.error('Failed to load tamper events:', error);
+            message.error(getErrorMessage(error, '加载失败'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 初始加载
+    useEffect(() => {
+        loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [agentId]);
+
+    // 处理表格变化
+    const handleTableChange = (newPagination: any) => {
+        loadData(newPagination.current, newPagination.pageSize);
+    };
+
     // 删除所有事件 mutation
     const deleteMutation = useMutation({
         mutationFn: () => deleteTamperEvents(agentId),
         onSuccess: () => {
             message.success('所有事件已删除');
-            actionRef.current?.reload();
+            loadData(1);
         },
         onError: (error: unknown) => {
             console.error('Failed to delete tamper events:', error);
@@ -111,67 +141,40 @@ const TamperProtectionEvents: React.FC<TamperProtectionEventsProps> = ({agentId}
     };
 
     return (
-        <ProTable<TamperEvent>
-            columns={columns}
-            actionRef={actionRef}
-            cardBordered
-            request={async (params) => {
-                try {
-                    const response = await getTamperEvents(agentId, {
-                        pageIndex: params.current || 1,
-                        pageSize: params.pageSize || 20,
-                        path: params.path,
-                        operation: params.operation,
-                        details: params.details,
-                        sortField: 'createdAt',
-                        sortOrder: 'descend',
-                    });
-                    return {
-                        data: response.data.items || [],
-                        success: true,
-                        total: response.data.total || 0,
-                    };
-                } catch (error) {
-                    console.error('Failed to load tamper events:', error);
-                    return {
-                        data: [],
-                        success: false,
-                        total: 0,
-                    };
-                }
-            }}
-            rowKey="id"
-            search={{
-                labelWidth: 'auto',
-            }}
-            pagination={{
-                showSizeChanger: true,
-                showTotal: (total) => `共 ${total} 条`,
-            }}
-            dateFormatter="string"
-            headerTitle="文件事件"
-            toolBarRender={() => [
-                <Tooltip key="delete" title="删除所有事件">
-                    <Button
-                        onClick={handleDeleteAllEvents}
-                        danger={true}
-                    >
+        <div className="space-y-4">
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                <h3 className="text-lg font-medium">文件事件</h3>
+                <Tooltip title="删除所有事件">
+                    <Button onClick={handleDeleteAllEvents} danger>
                         删除所有事件
                     </Button>
-                </Tooltip>,
-            ]}
-            locale={{
-                emptyText: (
-                    <div className="py-8 text-center text-gray-500">
-                        <FileWarning size={48} className="mx-auto mb-2 opacity-20"/>
-                        <p>暂无防篡改事件</p>
-                        <p className="text-sm mt-2">
-                            请先在"保护配置"中启用保护功能并配置目录
-                        </p>
-                    </div>
-                ),
-            }}
-        />
+                </Tooltip>
+            </div>
+
+            <Table<TamperEvent>
+                columns={columns}
+                dataSource={dataSource}
+                loading={loading}
+                rowKey="id"
+                pagination={{
+                    ...pagination,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
+                }}
+                onChange={handleTableChange}
+                locale={{
+                    emptyText: (
+                        <div className="py-8 text-center text-gray-500">
+                            <FileWarning size={48} className="mx-auto mb-2 opacity-20"/>
+                            <p>暂无防篡改事件</p>
+                            <p className="text-sm mt-2">
+                                请先在"保护配置"中启用保护功能并配置目录
+                            </p>
+                        </div>
+                    ),
+                }}
+            />
+        </div>
     );
 };
 

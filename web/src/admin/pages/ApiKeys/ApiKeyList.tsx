@@ -1,44 +1,87 @@
-import {useRef, useState} from 'react';
-import type {ActionType, ProColumns} from '@ant-design/pro-components';
-import {ProTable} from '@ant-design/pro-components';
-import {App, Button, Divider, Form, Input, Modal, Popconfirm, Tag,} from 'antd';
+import {useState, useEffect} from 'react';
+import {useSearchParams} from 'react-router-dom';
+import {App, Button, Divider, Input, Popconfirm, Space, Table, Tag} from 'antd';
+import type {ColumnsType} from 'antd/es/table';
 import {Copy, Edit, Eye, EyeOff, Plus, Power, PowerOff, RefreshCw, Trash2} from 'lucide-react';
-import {
-    deleteApiKey,
-    disableApiKey,
-    enableApiKey,
-    generateApiKey,
-    listApiKeys,
-    updateApiKeyName,
-} from '@/api/apiKey.ts';
-import type {ApiKey, GenerateApiKeyRequest} from '@/types';
+import {deleteApiKey, disableApiKey, enableApiKey, listApiKeys} from '@/api/apiKey.ts';
+import type {ApiKey} from '@/types';
 import dayjs from 'dayjs';
 import {getErrorMessage} from '@/lib/utils';
 import {PageHeader} from '@admin/components';
-import copy from "copy-to-clipboard";
+import copy from 'copy-to-clipboard';
+import ApiKeyModal from './ApiKeyModal';
+import ShowApiKeyModal from './ShowApiKeyModal';
 
 const ApiKeyList = () => {
     const {message: messageApi} = App.useApp();
-    const actionRef = useRef<ActionType>(null);
-    const [submitting, setSubmitting] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [dataSource, setDataSource] = useState<ApiKey[]>([]);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [total, setTotal] = useState(0);
+    const [searchValue, setSearchValue] = useState('');
     const [isModalVisible, setIsModalVisible] = useState(false);
-    const [editingApiKey, setEditingApiKey] = useState<ApiKey | null>(null);
+    const [editingApiKeyId, setEditingApiKeyId] = useState<string | undefined>(undefined);
     const [newApiKeyData, setNewApiKeyData] = useState<ApiKey | null>(null);
     const [showApiKeyModal, setShowApiKeyModal] = useState(false);
     const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
-    const [form] = Form.useForm();
+
+    // 加载数据
+    const current = Number(searchParams.get('page')) || 1;
+    const pageSize = Number(searchParams.get('pageSize')) || 10;
+    const name = searchParams.get('name') ?? '';
+
+    const loadData = async (page: number, size: number, keyword: string) => {
+        setLoading(true);
+        try {
+            const response = await listApiKeys(page, size, keyword || undefined);
+            setDataSource(response.data.items || []);
+            setTotal(response.data.total || 0);
+        } catch (error: unknown) {
+            messageApi.error(getErrorMessage(error, '获取API密钥列表失败'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        setSearchValue(name);
+    }, [name]);
+
+    useEffect(() => {
+        loadData(current, pageSize, name);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [current, pageSize, name]);
+
+    // 处理表格变化
+    const handleTableChange = (newPagination: any) => {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('page', String(newPagination.current || 1));
+        nextParams.set('pageSize', String(newPagination.pageSize || pageSize));
+        setSearchParams(nextParams);
+    };
+
+    // 处理搜索
+    const handleSearch = (value: string) => {
+        const keyword = value.trim();
+        setSearchValue(keyword);
+        const nextParams = new URLSearchParams(searchParams);
+        if (keyword) {
+            nextParams.set('name', keyword);
+        } else {
+            nextParams.delete('name');
+        }
+        nextParams.set('page', '1');
+        nextParams.set('pageSize', String(pageSize));
+        setSearchParams(nextParams);
+    };
 
     const handleCreate = () => {
-        setEditingApiKey(null);
+        setEditingApiKeyId(undefined);
         setIsModalVisible(true);
-        form.resetFields();
     };
 
     const handleEdit = (apiKey: ApiKey) => {
-        setEditingApiKey(apiKey);
-        form.setFieldsValue({
-            name: apiKey.name,
-        });
+        setEditingApiKeyId(apiKey.id);
         setIsModalVisible(true);
     };
 
@@ -51,7 +94,7 @@ const ApiKeyList = () => {
                 await enableApiKey(apiKey.id);
                 messageApi.success('API密钥已启用');
             }
-            actionRef.current?.reload();
+            loadData(current, pageSize, name);
         } catch (error: unknown) {
             messageApi.error(getErrorMessage(error, '操作失败'));
         }
@@ -61,57 +104,24 @@ const ApiKeyList = () => {
         try {
             await deleteApiKey(id);
             messageApi.success('删除成功');
-            actionRef.current?.reload();
+            loadData(current, pageSize, name);
         } catch (error: unknown) {
             messageApi.error(getErrorMessage(error, '删除失败'));
         }
     };
 
-    const handleModalOk = async () => {
-        try {
-            const values = await form.validateFields();
-            const name = values.name?.trim();
-
-            if (!name) {
-                messageApi.warning('名称不能为空');
-                return;
-            }
-
-            setSubmitting(true);
-
-            if (editingApiKey) {
-                // 编辑模式
-                if (name === editingApiKey.name) {
-                    messageApi.info('名称未发生变化');
-                    return;
-                }
-                await updateApiKeyName(editingApiKey.id, {name});
-                messageApi.success('更新成功');
-                setIsModalVisible(false);
-            } else {
-                // 创建模式
-                const createData: GenerateApiKeyRequest = {name};
-                const response = await generateApiKey(createData);
-                setNewApiKeyData(response.data);
-                messageApi.success('API密钥生成成功');
-                setIsModalVisible(false);
-                setShowApiKeyModal(true);
-            }
-
-            form.resetFields();
-            actionRef.current?.reload();
-        } catch (error: unknown) {
-            if (typeof error === 'object' && error !== null && 'errorFields' in error) {
-                return;
-            }
-            messageApi.error(getErrorMessage(error, '操作失败'));
-        } finally {
-            setSubmitting(false);
+    const handleModalSuccess = (apiKey?: ApiKey) => {
+        setIsModalVisible(false);
+        if (apiKey) {
+            // 新建成功，显示生成的密钥
+            setNewApiKeyData(apiKey);
+            setShowApiKeyModal(true);
         }
+        loadData(current, pageSize, name);
     };
 
     const handleCopyApiKey = (key: string) => {
-        copy(key)
+        copy(key);
         messageApi.success('复制成功');
     };
 
@@ -122,7 +132,7 @@ const ApiKeyList = () => {
         }));
     };
 
-    const columns: ProColumns<ApiKey>[] = [
+    const columns: ColumnsType<ApiKey> = [
         {
             title: '名称',
             dataIndex: 'name',
@@ -133,7 +143,6 @@ const ApiKeyList = () => {
             title: 'API密钥',
             dataIndex: 'key',
             key: 'key',
-            hideInSearch: true,
             render: (_, record) => {
                 const fullKey = record.key || '';
                 const isVisible = visibleKeys[record.id];
@@ -166,7 +175,6 @@ const ApiKeyList = () => {
             title: '状态',
             dataIndex: 'enabled',
             key: 'enabled',
-            hideInSearch: true,
             render: (enabled) => (
                 <Tag color={enabled ? 'green' : 'red'}>{enabled ? '启用' : '禁用'}</Tag>
             ),
@@ -176,7 +184,6 @@ const ApiKeyList = () => {
             title: '创建时间',
             dataIndex: 'createdAt',
             key: 'createdAt',
-            hideInSearch: true,
             render: (value: number) => (
                 <span className="text-gray-600 dark:text-gray-400">{dayjs(value).format('YYYY-MM-DD HH:mm')}</span>
             ),
@@ -186,7 +193,6 @@ const ApiKeyList = () => {
             title: '更新时间',
             dataIndex: 'updatedAt',
             key: 'updatedAt',
-            hideInSearch: true,
             render: (value: number) => (
                 <span className="text-gray-600 dark:text-gray-400">{dayjs(value).format('YYYY-MM-DD HH:mm')}</span>
             ),
@@ -195,7 +201,6 @@ const ApiKeyList = () => {
         {
             title: '操作',
             key: 'action',
-            valueType: 'option',
             width: 200,
             render: (_, record) => [
                 <Button
@@ -240,7 +245,6 @@ const ApiKeyList = () => {
 
     return (
         <div className="space-y-6">
-            {/* 页面头部 */}
             <PageHeader
                 title="API密钥管理"
                 description="管理探针连接所需的API密钥,用于验证探针注册"
@@ -256,131 +260,59 @@ const ApiKeyList = () => {
                         key: 'refresh',
                         label: '刷新',
                         icon: <RefreshCw size={16}/>,
-                        onClick: () => actionRef.current?.reload(),
+                        onClick: () => loadData(current, pageSize, name),
                     },
                 ]}
             />
 
             <Divider/>
 
-            {/* API密钥列表 */}
-            <ProTable<ApiKey>
+            <div style={{marginBottom: 16}}>
+                <Input.Search
+                    placeholder="按名称搜索"
+                    allowClear
+                    value={searchValue}
+                    onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setSearchValue(nextValue);
+                        if (!nextValue) {
+                            handleSearch('');
+                        }
+                    }}
+                    onSearch={handleSearch}
+                    style={{width: 260}}
+                />
+            </div>
 
-                actionRef={actionRef}
-                rowKey="id"
-                search={{labelWidth: 80}}
+            <Table<ApiKey>
                 columns={columns}
+                dataSource={dataSource}
+                loading={loading}
+                rowKey="id"
                 pagination={{
-                    defaultPageSize: 10,
+                    current,
+                    pageSize,
+                    total,
                     showSizeChanger: true,
                 }}
-                options={false}
-                request={async (params) => {
-                    const {current = 1, pageSize = 10, name} = params;
-                    try {
-                        const response = await listApiKeys(current, pageSize, name);
-                        return {
-                            data: response.data.items || [],
-                            success: true,
-                            total: response.data.total,
-                        };
-                    } catch (error: unknown) {
-                        messageApi.error(getErrorMessage(error, '获取API密钥列表失败'));
-                        return {
-                            data: [],
-                            success: false,
-                        };
-                    }
-                }}
+                onChange={handleTableChange}
             />
 
-            {/* 新建/编辑API密钥弹窗 */}
-            <Modal
-                title={editingApiKey ? '编辑API密钥' : '生成API密钥'}
+            <ApiKeyModal
                 open={isModalVisible}
-                onOk={handleModalOk}
-                onCancel={() => {
-                    setIsModalVisible(false);
-                    form.resetFields();
-                }}
-                okText={editingApiKey ? '保存' : '生成'}
-                cancelText="取消"
-                confirmLoading={submitting}
-                destroyOnHidden={true}
-            >
-                <Form form={form} layout="vertical" autoComplete="off">
-                    <Form.Item
-                        label="密钥名称"
-                        name="name"
-                        rules={[
-                            {required: true, message: '请输入密钥名称'},
-                            {min: 2, message: '密钥名称至少2个字符'},
-                        ]}
-                    >
-                        <Input placeholder="例如: 生产环境、测试环境等"/>
-                    </Form.Item>
-                </Form>
-            </Modal>
+                apiKeyId={editingApiKeyId}
+                onCancel={() => setIsModalVisible(false)}
+                onSuccess={handleModalSuccess}
+            />
 
-            {/* 显示新生成的API密钥 */}
-            <Modal
-                title="API密钥已生成"
+            <ShowApiKeyModal
                 open={showApiKeyModal}
-                onOk={() => {
+                apiKey={newApiKeyData}
+                onClose={() => {
                     setShowApiKeyModal(false);
                     setNewApiKeyData(null);
                 }}
-                onCancel={() => {
-                    setShowApiKeyModal(false);
-                    setNewApiKeyData(null);
-                }}
-                footer={[
-                    <Button
-                        key="copy"
-                        type="primary"
-                        icon={<Copy size={14}/>}
-                        onClick={() => {
-                            if (newApiKeyData) {
-                                handleCopyApiKey(newApiKeyData.key);
-                            }
-                        }}
-                    >
-                        复制密钥
-                    </Button>,
-                    <Button
-                        key="ok"
-                        onClick={() => {
-                            setShowApiKeyModal(false);
-                            setNewApiKeyData(null);
-                        }}
-                    >
-                        关闭
-                    </Button>,
-                ]}
-            >
-                <div className="space-y-4">
-                    <div
-                        className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-                        <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
-                            ⚠️ 重要提示:请妥善保管此密钥,关闭后将无法再次查看完整密钥!
-                        </p>
-                    </div>
-                    <div>
-                        <label
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">密钥名称</label>
-                        <div
-                            className="text-base font-semibold text-gray-900 dark:text-white">{newApiKeyData?.name}</div>
-                    </div>
-                    <div>
-                        <label
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">API密钥</label>
-                        <code
-                            className="block w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 dark:text-gray-200 rounded px-3 py-2 text-sm font-mono break-all">
-                            {newApiKeyData?.key}
-                        </code>
-                    </div>
-                </div>
-            </Modal>
+            />
         </div>
     );
 };

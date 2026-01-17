@@ -1,10 +1,9 @@
-import {useRef} from 'react';
+import {useEffect} from 'react';
 import {App, Form, Input, Modal, Select, Switch} from 'antd';
 import {createDDNSConfig, getDDNSConfig, updateDDNSConfig} from '@/api/ddns.ts';
 import {getDNSProviders} from '@/api/dnsProvider.ts';
 import type {CreateDDNSConfigRequest, UpdateDDNSConfigRequest} from '@/types/ddns.ts';
 import {getAgentPaging} from '@/api/agent.ts';
-import {ProForm, ProFormDependency, type ProFormInstance} from "@ant-design/pro-components";
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 
 interface DDNSModalProps {
@@ -33,7 +32,7 @@ const defaultIPv6APIs = [
 
 const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
     const {message: messageApi} = App.useApp();
-    const formRef = useRef<ProFormInstance>(null);
+    const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
     const isEditMode = !!id;
@@ -62,21 +61,30 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
     const agents = agentsData || [];
     const providers = providersData || [];
 
-    const get = async () => {
-        if (id) {
-            const resp = await getDDNSConfig(id);
-            let config = resp.data;
-            config.domainsIpv4 = (config.domainsIpv4 as string[])?.join('\n');
-            config.domainsIpv6 = (config.domainsIpv6 as string[])?.join('\n');
-            return config;
+    // 加载配置数据
+    useEffect(() => {
+        if (open) {
+            const loadConfig = async () => {
+                if (id) {
+                    const resp = await getDDNSConfig(id);
+                    let config = resp.data;
+                    form.setFieldsValue({
+                        ...config,
+                        domainsIpv4: (config.domainsIpv4 as string[])?.join('\n'),
+                        domainsIpv6: (config.domainsIpv6 as string[])?.join('\n'),
+                    });
+                } else {
+                    form.setFieldsValue({
+                        enableIpv4: true,
+                        enableIpv6: false,
+                        ipv4GetMethod: 'api',
+                        ipv6GetMethod: 'api',
+                    });
+                }
+            };
+            loadConfig();
         }
-        return {
-            enableIpv4: true,
-            enableIpv6: false,
-            ipv4GetMethod: 'api',
-            ipv6GetMethod: 'api',
-        };
-    };
+    }, [open, id, form]);
 
     // 创建 DDNS 配置的 mutation
     const createMutation = useMutation({
@@ -84,7 +92,7 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
         onSuccess: () => {
             messageApi.success('创建成功');
             queryClient.invalidateQueries({queryKey: ['ddns-configs']});
-            formRef?.current.resetFields();
+            form.resetFields();
             onSuccess();
         },
         onError: (error: any) => {
@@ -100,7 +108,7 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
             messageApi.success('更新成功');
             queryClient.invalidateQueries({queryKey: ['ddns-configs']});
             queryClient.invalidateQueries({queryKey: ['ddns-config', id]});
-            formRef?.current.resetFields();
+            form.resetFields();
             onSuccess();
         },
         onError: (error: any) => {
@@ -110,7 +118,7 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
 
     const handleOk = async () => {
         try {
-            const values = await formRef?.current.validateFields();
+            const values = await form.validateFields();
             // 处理 IPv4 域名列表
             const domainsIpv4Text = values.domainsIpv4 || '';
             const domainsIpv4 = domainsIpv4Text
@@ -146,7 +154,7 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
     };
 
     const handleCancel = () => {
-        formRef?.current.resetFields();
+        form.resetFields();
         onCancel();
     };
 
@@ -167,7 +175,7 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
             width={700}
             destroyOnHidden
         >
-            <ProForm formRef={formRef} request={get} submitter={false}>
+            <Form form={form} layout="vertical">
                 <Form.Item label="配置名称" name="name" rules={[{required: true, message: '请输入配置名称'}]}>
                     <Input placeholder="例如:生产环境 DDNS"/>
                 </Form.Item>
@@ -210,8 +218,9 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
                             </Form.Item>
                         </div>
 
-                        <ProFormDependency name={['enableIpv4']}>
-                            {({enableIpv4}) => {
+                        <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.enableIpv4 !== currentValues.enableIpv4}>
+                            {() => {
+                                const enableIpv4 = form.getFieldValue('enableIpv4');
                                 if (!enableIpv4) {
                                     return null;
                                 }
@@ -258,7 +267,7 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
                                     </Form.Item>
                                 </>
                             }}
-                        </ProFormDependency>
+                        </Form.Item>
                     </div>
 
                     {/* IPv6 配置卡片 */}
@@ -270,8 +279,9 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
                             </Form.Item>
                         </div>
 
-                        <ProFormDependency name={['enableIpv6']}>
-                            {({enableIpv6}) => {
+                        <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.enableIpv6 !== currentValues.enableIpv6}>
+                            {() => {
+                                const enableIpv6 = form.getFieldValue('enableIpv6');
                                 if (!enableIpv6) {
                                     return null;
                                 }
@@ -318,10 +328,10 @@ const DDNSModal = ({open, id, onCancel, onSuccess}: DDNSModalProps) => {
                                     </Form.Item>
                                 </>
                             }}
-                        </ProFormDependency>
+                        </Form.Item>
                     </div>
                 </div>
-            </ProForm>
+            </Form>
         </Modal>
     );
 };

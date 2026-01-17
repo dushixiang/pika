@@ -1,8 +1,7 @@
-import React, {useRef} from 'react';
-import {App, Button, Tag, Tooltip} from 'antd';
+import React, {useState, useEffect} from 'react';
+import {App, Button, Table, Tag, Tooltip} from 'antd';
+import type {ColumnsType} from 'antd/es/table';
 import {Terminal} from 'lucide-react';
-import type {ActionType, ProColumns} from '@ant-design/pro-components';
-import {ProTable} from '@ant-design/pro-components';
 import {useMutation} from '@tanstack/react-query';
 import type {SSHLoginEvent} from '@/types';
 import {deleteSSHLoginEvents, getSSHLoginEvents} from '@/api/agent';
@@ -15,17 +14,26 @@ interface SSHLoginEventsProps {
 
 const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
     const {message, modal} = App.useApp();
-    const actionRef = useRef<ActionType>(null);
+    const [loading, setLoading] = useState(false);
+    const [dataSource, setDataSource] = useState<SSHLoginEvent[]>([]);
+    const [pagination, setPagination] = useState({
+        current: 1,
+        pageSize: 20,
+        total: 0,
+    });
+    const [searchParams, setSearchParams] = useState({
+        username: '',
+        ip: '',
+        status: '',
+    });
 
     // 定义表格列
-    const columns: ProColumns<SSHLoginEvent>[] = [
+    const columns: ColumnsType<SSHLoginEvent> = [
         {
             title: '时间',
             dataIndex: 'timestamp',
             key: 'timestamp',
             width: 180,
-            valueType: 'dateTime',
-            hideInSearch: true,
             render: (_, record) => (
                 <span className="text-sm">
                     {dayjs(record.timestamp).format('YYYY-MM-DD HH:mm:ss')}
@@ -37,11 +45,6 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
             dataIndex: 'status',
             key: 'status',
             width: 100,
-            valueType: 'select',
-            valueEnum: {
-                success: {text: '成功', status: 'Success'},
-                failed: {text: '失败', status: 'Error'},
-            },
             render: (_, record) => (
                 record.status === 'success' ? (
                     <Tag variant={'filled'} color="success">成功</Tag>
@@ -73,7 +76,6 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
             dataIndex: 'port',
             key: 'port',
             width: 80,
-            hideInSearch: true,
             render: (_, record) => record.port || '-',
         },
         {
@@ -81,7 +83,6 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
             dataIndex: 'tty',
             key: 'tty',
             width: 100,
-            hideInSearch: true,
             render: (_, record) => record.tty ? <span className="font-mono text-sm">{record.tty}</span> : '-',
         },
         {
@@ -90,7 +91,6 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
             key: 'sessionId',
             width: 120,
             ellipsis: true,
-            hideInSearch: true,
             render: (_, record) => record.sessionId ? (
                 <Tooltip title={record.sessionId}>
                     <span className="font-mono text-xs text-gray-500">{record.sessionId}</span>
@@ -99,12 +99,50 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
         },
     ];
 
+    // 加载数据
+    const loadData = async (page: number = pagination.current, pageSize: number = pagination.pageSize) => {
+        setLoading(true);
+        try {
+            const response = await getSSHLoginEvents(agentId, {
+                pageIndex: page,
+                pageSize: pageSize,
+                username: searchParams.username || undefined,
+                ip: searchParams.ip || undefined,
+                status: searchParams.status || undefined,
+                sortField: 'createdAt',
+                sortOrder: 'descend',
+            });
+            setDataSource(response.items || []);
+            setPagination({
+                current: page,
+                pageSize: pageSize,
+                total: response.total || 0,
+            });
+        } catch (error) {
+            console.error('Failed to load SSH login events:', error);
+            message.error(getErrorMessage(error, '加载失败'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 初始加载
+    useEffect(() => {
+        loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [agentId]);
+
+    // 处理表格变化
+    const handleTableChange = (newPagination: any) => {
+        loadData(newPagination.current, newPagination.pageSize);
+    };
+
     // 删除所有事件 mutation
     const deleteMutation = useMutation({
         mutationFn: () => deleteSSHLoginEvents(agentId),
         onSuccess: () => {
             message.success('所有事件已删除');
-            actionRef.current?.reload();
+            loadData(1);
         },
         onError: (error: unknown) => {
             console.error('Failed to delete SSH login events:', error);
@@ -125,67 +163,40 @@ const SSHLoginEvents: React.FC<SSHLoginEventsProps> = ({agentId}) => {
     };
 
     return (
-        <ProTable<SSHLoginEvent>
-            columns={columns}
-            actionRef={actionRef}
-            cardBordered
-            request={async (params) => {
-                try {
-                    const response = await getSSHLoginEvents(agentId, {
-                        pageIndex: params.current || 1,
-                        pageSize: params.pageSize || 20,
-                        username: params.username,
-                        ip: params.ip,
-                        status: params.status,
-                        sortField: 'createdAt',
-                        sortOrder: 'descend',
-                    });
-                    return {
-                        data: response.items || [],
-                        success: true,
-                        total: response.total || 0,
-                    };
-                } catch (error) {
-                    console.error('Failed to load SSH login events:', error);
-                    return {
-                        data: [],
-                        success: false,
-                        total: 0,
-                    };
-                }
-            }}
-            rowKey="id"
-            search={{
-                labelWidth: 'auto',
-            }}
-            pagination={{
-                showSizeChanger: true,
-                showTotal: (total) => `共 ${total} 条`,
-            }}
-            dateFormatter="string"
-            headerTitle="登录事件"
-            toolBarRender={() => [
-                <Tooltip key="delete" title="删除所有事件">
-                    <Button
-                        onClick={handleDeleteAllEvents}
-                        danger={true}
-                    >
+        <div className="space-y-4">
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                <h3 className="text-lg font-medium">登录事件</h3>
+                <Tooltip title="删除所有事件">
+                    <Button onClick={handleDeleteAllEvents} danger>
                         删除所有事件
                     </Button>
-                </Tooltip>,
-            ]}
-            locale={{
-                emptyText: (
-                    <div className="py-8 text-center text-gray-500">
-                        <Terminal size={48} className="mx-auto mb-2 opacity-20"/>
-                        <p>暂无 SSH 登录事件</p>
-                        <p className="text-sm mt-2">
-                            请先在"监控配置"中启用监控功能
-                        </p>
-                    </div>
-                ),
-            }}
-        />
+                </Tooltip>
+            </div>
+
+            <Table<SSHLoginEvent>
+                columns={columns}
+                dataSource={dataSource}
+                loading={loading}
+                rowKey="id"
+                pagination={{
+                    ...pagination,
+                    showSizeChanger: true,
+                    showTotal: (total) => `共 ${total} 条`,
+                }}
+                onChange={handleTableChange}
+                locale={{
+                    emptyText: (
+                        <div className="py-8 text-center text-gray-500">
+                            <Terminal size={48} className="mx-auto mb-2 opacity-20"/>
+                            <p>暂无 SSH 登录事件</p>
+                            <p className="text-sm mt-2">
+                                请先在"监控配置"中启用监控功能
+                            </p>
+                        </div>
+                    ),
+                }}
+            />
+        </div>
     );
 };
 

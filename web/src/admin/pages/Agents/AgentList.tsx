@@ -1,92 +1,174 @@
-import {useEffect, useRef, useState} from 'react';
-import {Link, useNavigate} from 'react-router-dom';
-import type {ActionType, ProColumns} from '@ant-design/pro-components';
-import {ProTable} from '@ant-design/pro-components';
+import {useEffect, useState} from 'react';
+import {Link, useNavigate, useSearchParams} from 'react-router-dom';
 import type {MenuProps} from 'antd';
-import {App, Button, DatePicker, Divider, Dropdown, Form, Input, InputNumber, Modal, Radio, Select, Space, Tag} from 'antd';
+import {App, Button, Divider, Dropdown, Form, Input, Select, Space, Table, Tag} from 'antd';
+import type {ColumnsType, TablePaginationConfig} from 'antd/es/table';
 import {Edit, Eye, MoreVertical, Plus, RefreshCw, Shield, Tags, Trash2} from 'lucide-react';
-import {batchUpdateTags, deleteAgent, getAgentPaging, getTags, updateAgentInfo} from '@/api/agent.ts';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import {deleteAgent, getAgentPaging, getTags} from '@/api/agent.ts';
 import type {Agent} from '@/types';
 import {getErrorMessage} from '@/lib/utils';
-import dayjs from 'dayjs';
 import {PageHeader} from '@admin/components';
+import AgentEditModal from './AgentEditModal';
+import BatchTagsModal from './BatchTagsModal';
+
+interface AgentFilters {
+    name?: string;
+    hostname?: string;
+    ip?: string;
+    status?: string;
+}
 
 const AgentList = () => {
     const navigate = useNavigate();
     const {message: messageApi, modal} = App.useApp();
-    const actionRef = useRef<ActionType>(null);
-    const [form] = Form.useForm();
-    const [batchForm] = Form.useForm();
+    const queryClient = useQueryClient();
+
+    const [searchForm] = Form.useForm();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [batchTagModalVisible, setBatchTagModalVisible] = useState(false);
-    const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [batchLoading, setBatchLoading] = useState(false);
-    const [existingTags, setExistingTags] = useState<string[]>([]);
-    const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+    const [editingAgentId, setEditingAgentId] = useState<string | undefined>(undefined);
 
-    // 加载已有的标签
+    const current = Number(searchParams.get('page')) || 1;
+    const pageSize = Number(searchParams.get('pageSize')) || 10;
+    const name = searchParams.get('name') ?? '';
+    const hostname = searchParams.get('hostname') ?? '';
+    const ip = searchParams.get('ip') ?? '';
+    const status = searchParams.get('status') ?? '';
+
+    const filters: AgentFilters = {
+        name: name || undefined,
+        hostname: hostname || undefined,
+        ip: ip || undefined,
+        status: status || undefined,
+    };
+
+    const {data: tags = [], isError: tagsError, error: tagsErrorDetail} = useQuery({
+        queryKey: ['admin', 'agents', 'tags'],
+        queryFn: async () => {
+            const response = await getTags();
+            return response.data.tags || [];
+        },
+    });
+
+    const {
+        data: agentPaging,
+        isLoading,
+        isFetching,
+        isError: agentsError,
+        error: agentsErrorDetail,
+        refetch,
+    } = useQuery({
+        queryKey: ['admin', 'agents', current, pageSize, filters.name, filters.hostname, filters.ip, filters.status],
+        queryFn: async () => {
+            const response = await getAgentPaging(
+                current,
+                pageSize,
+                filters.name,
+                filters.hostname,
+                filters.ip,
+                filters.status,
+            );
+            return response.data;
+        },
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (agentId: string) => deleteAgent(agentId),
+        onSuccess: () => {
+            messageApi.success('探针删除成功');
+            queryClient.invalidateQueries({queryKey: ['admin', 'agents']});
+        },
+        onError: (error: unknown) => {
+            messageApi.error(getErrorMessage(error, '删除探针失败'));
+        },
+    });
+
     useEffect(() => {
-        const loadTags = async () => {
-            try {
-                const response = await getTags();
-                setExistingTags(response.data.tags || []);
-            } catch (error) {
-                console.error('加载标签失败:', error);
-            }
-        };
-        loadTags();
-    }, []);
+        if (tagsError && tagsErrorDetail) {
+            messageApi.error(getErrorMessage(tagsErrorDetail, '加载标签失败'));
+        }
+    }, [tagsError, tagsErrorDetail, messageApi]);
 
-    // 打开编辑模态框
-    const handleEdit = (agent: Agent) => {
-        setCurrentAgent(agent);
-        form.setFieldsValue({
-            name: agent.name,
-            tags: agent.tags || [],
-            expireTime: agent.expireTime ? dayjs(agent.expireTime) : null,
-            visibility: agent.visibility || 'public',
-            weight: agent.weight || 0,
-            remark: agent.remark || '',
+    useEffect(() => {
+        if (agentsError && agentsErrorDetail) {
+            messageApi.error(getErrorMessage(agentsErrorDetail, '获取探针列表失败'));
+        }
+    }, [agentsError, agentsErrorDetail, messageApi]);
+
+    useEffect(() => {
+        searchForm.setFieldsValue({
+            name: name || undefined,
+            hostname: hostname || undefined,
+            ip: ip || undefined,
+            status: status || undefined,
         });
+    }, [searchForm, name, hostname, ip, status]);
+
+    const handleSearch = () => {
+        const values = searchForm.getFieldsValue();
+        const nextParams = new URLSearchParams(searchParams);
+        const nextName = values.name?.trim();
+        const nextHostname = values.hostname?.trim();
+        const nextIp = values.ip?.trim();
+        const nextStatus = values.status;
+
+        if (nextName) {
+            nextParams.set('name', nextName);
+        } else {
+            nextParams.delete('name');
+        }
+
+        if (nextHostname) {
+            nextParams.set('hostname', nextHostname);
+        } else {
+            nextParams.delete('hostname');
+        }
+
+        if (nextIp) {
+            nextParams.set('ip', nextIp);
+        } else {
+            nextParams.delete('ip');
+        }
+
+        if (nextStatus) {
+            nextParams.set('status', nextStatus);
+        } else {
+            nextParams.delete('status');
+        }
+
+        nextParams.set('page', '1');
+        nextParams.set('pageSize', String(pageSize));
+        setSearchParams(nextParams);
+    };
+
+    const handleReset = () => {
+        searchForm.resetFields();
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('name');
+        nextParams.delete('hostname');
+        nextParams.delete('ip');
+        nextParams.delete('status');
+        nextParams.set('page', '1');
+        nextParams.set('pageSize', String(pageSize));
+        setSearchParams(nextParams);
+    };
+
+    const handleTableChange = (nextPagination: TablePaginationConfig) => {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('page', String(nextPagination.current || 1));
+        nextParams.set('pageSize', String(nextPagination.pageSize || pageSize));
+        setSearchParams(nextParams);
+    };
+
+    const handleEdit = (agent: Agent) => {
+        setEditingAgentId(agent.id);
         setEditModalVisible(true);
     };
 
-
-    // 保存探针信息
-    const handleSave = async () => {
-        if (!currentAgent) return;
-
-        try {
-            const values = await form.validateFields();
-            setLoading(true);
-
-            // 转换到期时间为时间戳（设置为当天的23:59:59）
-            const data: any = {
-                name: values.name,
-                visibility: values.visibility || 'public',
-                tags: values.tags || [],
-                weight: values.weight || 0,
-                remark: values.remark || '',
-            };
-
-            if (values.expireTime) {
-                data.expireTime = values.expireTime.endOf('day').valueOf();
-            }
-
-            await updateAgentInfo(currentAgent.id, data);
-
-            messageApi.success('探针信息更新成功');
-            setEditModalVisible(false);
-            actionRef.current?.reload();
-        } catch (error: unknown) {
-            messageApi.error(getErrorMessage(error, '更新探针信息失败'));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // 删除探针
     const handleDelete = (agent: Agent) => {
         modal.confirm({
             title: '删除探针',
@@ -104,53 +186,23 @@ const AgentList = () => {
             centered: true,
             onOk: async () => {
                 try {
-                    await deleteAgent(agent.id);
-                    messageApi.success('探针删除成功');
-                    actionRef.current?.reload();
-                } catch (error: unknown) {
-                    messageApi.error(getErrorMessage(error, '删除探针失败'));
+                    await deleteMutation.mutateAsync(agent.id);
+                } catch {
+                    // 错误提示已在 mutation 中处理
                 }
             },
         });
     };
 
-    // 打开批量操作标签模态框
     const handleBatchTags = () => {
         if (selectedRowKeys.length === 0) {
             messageApi.warning('请先选择要操作的探针');
             return;
         }
-        batchForm.setFieldsValue({
-            operation: 'add',
-            tags: [],
-        });
         setBatchTagModalVisible(true);
     };
 
-    // 批量更新标签
-    const handleBatchSave = async () => {
-        try {
-            const values = await batchForm.validateFields();
-            setBatchLoading(true);
-
-            await batchUpdateTags({
-                agentIds: selectedRowKeys as string[],
-                tags: values.tags || [],
-                operation: values.operation,
-            });
-
-            messageApi.success(`成功${values.operation === 'add' ? '添加' : values.operation === 'remove' ? '移除' : '替换'}了 ${selectedRowKeys.length} 个探针的标签`);
-            setBatchTagModalVisible(false);
-            setSelectedRowKeys([]);
-            actionRef.current?.reload();
-        } catch (error: unknown) {
-            messageApi.error(getErrorMessage(error, '批量更新标签失败'));
-        } finally {
-            setBatchLoading(false);
-        }
-    };
-
-    const columns: ProColumns<Agent>[] = [
+    const columns: ColumnsType<Agent> = [
         {
             title: '名称',
             dataIndex: 'name',
@@ -171,7 +223,6 @@ const AgentList = () => {
             title: '标签',
             dataIndex: 'tags',
             key: 'tags',
-            hideInSearch: true,
             width: 200,
             render: (_, record) => (
                 <div className={'flex items-center gap-1'}>
@@ -187,7 +238,6 @@ const AgentList = () => {
             title: '状态',
             dataIndex: 'status',
             key: 'status',
-            hideInSearch: true,
             width: 80,
             render: (_, record) => (
                 <Tag color={record.status === 1 ? 'success' : 'default'}>
@@ -199,7 +249,6 @@ const AgentList = () => {
             title: '可见性',
             dataIndex: 'visibility',
             key: 'visibility',
-            hideInSearch: true,
             width: 100,
             render: (visibility) => (
                 <Tag color={visibility === 'public' ? 'green' : 'orange'}>
@@ -215,26 +264,14 @@ const AgentList = () => {
             width: 150,
         },
         {
-            title: '状态筛选',
-            dataIndex: 'status',
-            valueType: 'select',
-            hideInTable: true,
-            valueEnum: {
-                online: {text: '在线'},
-                offline: {text: '离线'},
-            },
-        },
-        {
             title: '版本',
             dataIndex: 'version',
             key: 'version',
-            hideInSearch: true,
         },
         {
             title: '到期时间',
             dataIndex: 'expireTime',
             key: 'expireTime',
-            hideInSearch: true,
             width: 100,
             render: (val) => {
                 if (!val) return '-';
@@ -260,7 +297,6 @@ const AgentList = () => {
         {
             title: '流量统计',
             key: 'trafficStats',
-            hideInSearch: true,
             width: 120,
             render: (_, record) => {
                 const trafficStats = record.trafficStats;
@@ -282,7 +318,6 @@ const AgentList = () => {
         {
             title: '防篡改保护',
             key: 'tamperProtect',
-            hideInSearch: true,
             width: 120,
             render: (_, record) => {
                 const config = record.tamperProtectConfig;
@@ -302,7 +337,6 @@ const AgentList = () => {
         {
             title: 'SSH登录监控',
             key: 'sshLogin',
-            hideInSearch: true,
             width: 120,
             render: (_, record) => {
                 const config = record.sshLoginConfig;
@@ -316,21 +350,17 @@ const AgentList = () => {
             title: '排序权重',
             dataIndex: 'weight',
             key: 'weight',
-            hideInSearch: true,
-            sorter: true,
         },
         {
             title: '最后活跃时间',
             dataIndex: 'lastSeenAt',
             key: 'lastSeenAt',
-            hideInSearch: true,
-            valueType: 'dateTime',
             width: 180,
+            render: (value) => (value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-'),
         },
         {
             title: '操作',
             key: 'action',
-            valueType: 'option',
             width: 150,
             fixed: 'right',
             render: (_, record) => {
@@ -388,9 +418,11 @@ const AgentList = () => {
         },
     ];
 
+    const dataSource = agentPaging?.items || [];
+    const total = agentPaging?.total || 0;
+
     return (
         <div className="space-y-6">
-            {/* 页面头部 */}
             <PageHeader
                 title="探针管理"
                 description="管理和监控系统探针状态"
@@ -413,184 +445,94 @@ const AgentList = () => {
                         key: 'refresh',
                         label: '刷新',
                         icon: <RefreshCw size={16}/>,
-                        onClick: () => actionRef.current?.reload(),
+                        onClick: () => refetch(),
                     },
                 ]}
             />
 
             <Divider/>
 
-            {/* 探针列表 */}
-            <ProTable<Agent>
-                actionRef={actionRef}
-                rowKey="id"
-                search={{labelWidth: 80}}
+            <Form form={searchForm} layout="inline" onFinish={handleSearch}>
+                <Form.Item label="名称" name="name">
+                    <Input placeholder="请输入名称" style={{width: 180}}/>
+                </Form.Item>
+                <Form.Item label="主机名" name="hostname">
+                    <Input placeholder="请输入主机名" style={{width: 180}}/>
+                </Form.Item>
+                <Form.Item label="IP" name="ip">
+                    <Input placeholder="请输入IP" style={{width: 180}}/>
+                </Form.Item>
+                <Form.Item label="状态" name="status">
+                    <Select
+                        placeholder="请选择状态"
+                        allowClear
+                        style={{width: 160}}
+                        options={[
+                            {label: '在线', value: 'online'},
+                            {label: '离线', value: 'offline'},
+                        ]}
+                    />
+                </Form.Item>
+                <Form.Item>
+                    <Space>
+                        <Button type="primary" htmlType="submit">
+                            查询
+                        </Button>
+                        <Button onClick={handleReset}>
+                            重置
+                        </Button>
+                    </Space>
+                </Form.Item>
+            </Form>
+
+            <Table<Agent>
                 columns={columns}
+                dataSource={dataSource}
+                loading={isLoading || isFetching}
+                rowKey="id"
                 scroll={{x: 'max-content'}}
-                pagination={{
-                    defaultPageSize: 10,
-                    showSizeChanger: true,
-                }}
-                options={false}
                 rowSelection={{
                     selectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys),
                     preserveSelectedRowKeys: true,
                 }}
-                tableAlertRender={({selectedRowKeys}) => (
-                    <Space size={16}>
-                        <span>已选择 <strong>{selectedRowKeys.length}</strong> 项</span>
-                    </Space>
-                )}
-                tableAlertOptionRender={() => (
-                    <Space size={16}>
-                        <a onClick={() => setSelectedRowKeys([])}>取消选择</a>
-                    </Space>
-                )}
-                request={async (params) => {
-                    const {current = 1, pageSize = 10, name, hostname, ip, status} = params;
-                    try {
-                        const response = await getAgentPaging(
-                            current,
-                            pageSize,
-                            name,
-                            hostname,
-                            ip,
-                            status as string | undefined
-                        );
-                        const items = response.data.items || [];
-                        return {
-                            data: items,
-                            success: true,
-                            total: response.data.total,
-                        };
-                    } catch (error: unknown) {
-                        messageApi.error(getErrorMessage(error, '获取探针列表失败'));
-                        return {
-                            data: [],
-                            success: false,
-                        };
-                    }
+                pagination={{
+                    current,
+                    pageSize,
+                    total,
+                    showSizeChanger: true,
+                    showTotal: (count) => `共 ${count} 条`,
+                }}
+                onChange={handleTableChange}
+                style={{
+                    marginTop: 16,
                 }}
             />
 
-            {/* 编辑探针信息模态框 */}
-            <Modal
-                title="编辑探针信息"
+            <AgentEditModal
                 open={editModalVisible}
-                onOk={handleSave}
-                onCancel={() => setEditModalVisible(false)}
-                confirmLoading={loading}
-                width={600}
-            >
-                <Form form={form} layout="vertical">
-                    <Form.Item
-                        label="名称"
-                        name="name"
-                        rules={[{required: true, message: '请输入探针名称'}]}
-                    >
-                        <Input placeholder="请输入探针名称"/>
-                    </Form.Item>
-                    <Form.Item
-                        label="标签"
-                        name="tags"
-                        extra="可以从已有标签中选择，或输入新标签后按回车添加"
-                    >
-                        <Select
-                            mode="tags"
-                            placeholder="请选择或输入标签"
-                            options={existingTags?.map(tag => ({label: tag, value: tag}))}
-                            tokenSeparators={[',']}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label="到期时间"
-                        name="expireTime"
-                    >
-                        <DatePicker
-                            style={{width: '100%'}}
-                            format="YYYY-MM-DD"
-                            placeholder="请选择到期时间"
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label="可见性"
-                        name="visibility"
-                        rules={[{required: true, message: '请选择可见性'}]}
-                        extra="控制探针在公开页面的可见性"
-                    >
-                        <Select
-                            placeholder="请选择可见性"
-                            options={[
-                                {label: '匿名可见', value: 'public'},
-                                {label: '登录可见', value: 'private'},
-                            ]}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label="权重排序"
-                        name="weight"
-                        extra="数字越大排序越靠前，默认为0"
-                    >
-                        <InputNumber
-                            min={0}
-                            step={1}
-                            precision={0}
-                            placeholder="请输入权重"
-                            style={{width: '100%'}}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label="备注"
-                        name="remark"
-                        extra="备注信息"
-                    >
-                        <Input.TextArea
-                            rows={3}
-                            placeholder="请输入备注信息"
-                            maxLength={500}
-                            showCount
-                        />
-                    </Form.Item>
-                </Form>
-            </Modal>
+                agentId={editingAgentId}
+                existingTags={tags}
+                onCancel={() => {
+                    setEditModalVisible(false);
+                    setEditingAgentId(undefined);
+                }}
+                onSuccess={() => {
+                    setEditModalVisible(false);
+                    setEditingAgentId(undefined);
+                }}
+            />
 
-            {/* 批量操作标签模态框 */}
-            <Modal
-                title={`批量操作标签 (已选择 ${selectedRowKeys.length} 个探针)`}
+            <BatchTagsModal
                 open={batchTagModalVisible}
-                onOk={handleBatchSave}
+                agentIds={selectedRowKeys as string[]}
+                existingTags={tags}
                 onCancel={() => setBatchTagModalVisible(false)}
-                confirmLoading={batchLoading}
-                width={600}
-            >
-                <Form form={batchForm} layout="vertical">
-                    <Form.Item
-                        label="操作类型"
-                        name="operation"
-                        rules={[{required: true, message: '请选择操作类型'}]}
-                    >
-                        <Radio.Group>
-                            <Radio value="add">添加标签（保留原有标签）</Radio>
-                            <Radio value="remove">移除标签（从原有标签中移除）</Radio>
-                            <Radio value="replace">替换标签（完全替换为新标签）</Radio>
-                        </Radio.Group>
-                    </Form.Item>
-                    <Form.Item
-                        label="标签"
-                        name="tags"
-                        rules={[{required: true, message: '请输入或选择标签'}]}
-                        extra="可以从已有标签中选择，或输入新标签后按回车添加"
-                    >
-                        <Select
-                            mode="tags"
-                            placeholder="请选择或输入标签"
-                            options={existingTags?.map(tag => ({label: tag, value: tag}))}
-                            tokenSeparators={[',']}
-                        />
-                    </Form.Item>
-                </Form>
-            </Modal>
+                onSuccess={() => {
+                    setBatchTagModalVisible(false);
+                    setSelectedRowKeys([]);
+                }}
+            />
         </div>
     );
 };
