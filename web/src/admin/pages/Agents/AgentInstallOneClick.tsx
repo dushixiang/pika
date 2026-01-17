@@ -34,7 +34,7 @@ const AgentInstallOneClick = () => {
         }
         const trimmedName = customAgentName.trim();
         const nameParam = trimmedName ? `&name=${encodeURIComponent(trimmedName)}` : '';
-        return `curl -fsSL ${backendServerUrl}/api/agent/install.sh?token=${selectedApiKey}${nameParam} | sudo bash`;
+        return `curl -fsSL '${backendServerUrl}/api/agent/install.sh?token=${selectedApiKey}${nameParam}' | sudo bash`;
     }, [backendServerUrl, selectedApiKey, customAgentName]);
 
     const copyToClipboard = (text: string) => {

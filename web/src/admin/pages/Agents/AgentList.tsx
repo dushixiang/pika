@@ -1,15 +1,15 @@
-import {useEffect, useState} from 'react';
-import {Link, useNavigate, useSearchParams} from 'react-router-dom';
-import type {MenuProps} from 'antd';
-import {App, Button, Divider, Dropdown, Form, Input, Select, Space, Table, Tag} from 'antd';
-import type {ColumnsType, TablePaginationConfig} from 'antd/es/table';
-import {Edit, Eye, FileWarning, Lock, MoreVertical, Plus, RefreshCw, Shield, Tags, Trash2} from 'lucide-react';
-import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import type { MenuProps } from 'antd';
+import { App, Button, Divider, Dropdown, Form, Input, Select, Space, Table, Tag } from 'antd';
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import { Edit, Eye, FileWarning, Lock, MoreVertical, Plus, RefreshCw, Shield, Tags, Trash2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import {deleteAgent, getAgentPaging, getTags} from '@/api/agent.ts';
-import type {Agent} from '@/types';
-import {getErrorMessage} from '@/lib/utils';
-import {PageHeader} from '@admin/components';
+import { deleteAgent, getAgentPaging, getTags } from '@/api/agent.ts';
+import type { Agent } from '@/types';
+import { getErrorMessage } from '@/lib/utils';
+import { PageHeader } from '@admin/components';
 import AgentEditModal from './AgentEditModal';
 import BatchTagsModal from './BatchTagsModal';
 import BatchTamperProtectionModal from './BatchTamperProtectionModal';
@@ -22,7 +22,7 @@ interface AgentFilters {
 
 const AgentList = () => {
     const navigate = useNavigate();
-    const {message: messageApi, modal} = App.useApp();
+    const { message: messageApi, modal } = App.useApp();
     const queryClient = useQueryClient();
 
     const [searchForm] = Form.useForm();
@@ -44,7 +44,7 @@ const AgentList = () => {
         status: status || undefined,
     };
 
-    const {data: tags = [], isError: tagsError, error: tagsErrorDetail} = useQuery({
+    const { data: tags = [], isError: tagsError, error: tagsErrorDetail } = useQuery({
         queryKey: ['admin', 'agents', 'tags'],
         queryFn: async () => {
             const response = await getTags();
@@ -76,7 +76,7 @@ const AgentList = () => {
         mutationFn: (agentId: string) => deleteAgent(agentId),
         onSuccess: () => {
             messageApi.success('探针删除成功');
-            queryClient.invalidateQueries({queryKey: ['admin', 'agents']});
+            queryClient.invalidateQueries({ queryKey: ['admin', 'agents'] });
         },
         onError: (error: unknown) => {
             messageApi.error(getErrorMessage(error, '删除探针失败'));
@@ -137,7 +137,7 @@ const AgentList = () => {
 
     const handleTableChange = (nextPagination: TablePaginationConfig) => {
         const nextParams = new URLSearchParams(searchParams);
-        nextParams.set('page', String(nextPagination.current || 1));
+        nextParams.set('pageIndex', String(nextPagination.current || 1));
         nextParams.set('pageSize', String(nextPagination.pageSize || pageSize));
         setSearchParams(nextParams);
     };
@@ -160,7 +160,7 @@ const AgentList = () => {
             ),
             okText: '确认删除',
             cancelText: '取消',
-            okButtonProps: {danger: true},
+            okButtonProps: { danger: true },
             centered: true,
             onOk: async () => {
                 try {
@@ -392,31 +392,31 @@ const AgentList = () => {
                     {
                         key: 'view',
                         label: '查看详情',
-                        icon: <Eye size={14}/>,
+                        icon: <Eye size={14} />,
                         onClick: () => navigate(`/admin/agents/${record.id}`),
                     },
                     {
                         key: 'audit',
                         label: '安全审计',
-                        icon: <Shield size={14}/>,
+                        icon: <Shield size={14} />,
                         onClick: () => navigate(`/admin/agents/${record.id}?tab=audit`),
                     },
                     {
                         key: 'tamper',
                         label: '防篡改保护',
-                        icon: <FileWarning size={14}/>,
+                        icon: <FileWarning size={14} />,
                         onClick: () => navigate(`/admin/agents/${record.id}?tab=tamper`),
                     },
                     {
                         key: 'ssh-login',
                         label: 'SSH 登录监控',
-                        icon: <Lock size={14}/>,
+                        icon: <Lock size={14} />,
                         onClick: () => navigate(`/admin/agents/${record.id}?tab=ssh-login`),
                     },
                     {
                         key: 'edit',
                         label: '编辑信息',
-                        icon: <Edit size={14}/>,
+                        icon: <Edit size={14} />,
                         onClick: () => handleEdit(record),
                     },
                     {
@@ -425,7 +425,7 @@ const AgentList = () => {
                     {
                         key: 'delete',
                         label: '删除探针',
-                        icon: <Trash2 size={14}/>,
+                        icon: <Trash2 size={14} />,
                         danger: true,
                         onClick: () => handleDelete(record),
                     },
@@ -435,17 +435,17 @@ const AgentList = () => {
                     <Space size="small">
                         <Button
                             type="link"
-                            icon={<Eye size={14}/>}
+                            icon={<Eye size={14} />}
                             onClick={() => navigate(`/admin/agents/${record.id}`)}
-                            style={{padding: 0}}
+                            style={{ padding: 0 }}
                         >
                             详情
                         </Button>
-                        <Dropdown menu={{items: menuItems}} trigger={['click']} placement="bottomRight">
+                        <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomRight">
                             <Button
                                 type="link"
-                                icon={<MoreVertical size={14}/>}
-                                style={{padding: 0}}
+                                icon={<MoreVertical size={14} />}
+                                style={{ padding: 0 }}
                             />
                         </Dropdown>
                     </Space>
@@ -466,54 +466,54 @@ const AgentList = () => {
                     {
                         key: 'batch-tags',
                         label: `批量操作标签${selectedRowKeys.length > 0 ? ` (${selectedRowKeys.length})` : ''}`,
-                        icon: <Tags size={16}/>,
+                        icon: <Tags size={16} />,
                         onClick: handleBatchTags,
                         disabled: selectedRowKeys.length === 0,
                     },
                     {
                         key: 'batch-tamper',
                         label: `批量配置防篡改保护${selectedRowKeys.length > 0 ? ` (${selectedRowKeys.length})` : ''}`,
-                        icon: <FileWarning size={16}/>,
+                        icon: <FileWarning size={16} />,
                         onClick: handleBatchTamperConfig,
                         disabled: selectedRowKeys.length === 0,
                     },
                     {
                         key: 'batch-ssh',
                         label: `批量配置 SSH 登录监控${selectedRowKeys.length > 0 ? ` (${selectedRowKeys.length})` : ''}`,
-                        icon: <Lock size={16}/>,
+                        icon: <Lock size={16} />,
                         onClick: handleBatchSSHConfig,
                         disabled: selectedRowKeys.length === 0,
                     },
                     {
                         key: 'register',
                         label: '注册探针',
-                        icon: <Plus size={16}/>,
+                        icon: <Plus size={16} />,
                         onClick: () => navigate('/admin/agents-install/one-click'),
                         type: 'primary',
                     },
                     {
                         key: 'refresh',
                         label: '刷新',
-                        icon: <RefreshCw size={16}/>,
+                        icon: <RefreshCw size={16} />,
                         onClick: () => refetch(),
                     },
                 ]}
             />
 
-            <Divider/>
+            <Divider />
 
             <Form form={searchForm} layout="inline" onFinish={handleSearch}>
                 <Form.Item label="关键字" name="keyword">
-                    <Input placeholder="名称/主机名/通信地址/IPv4/IPv6" style={{width: 225}}/>
+                    <Input placeholder="名称/主机名/通信地址/IPv4/IPv6" style={{ width: 225 }} />
                 </Form.Item>
                 <Form.Item label="状态" name="status">
                     <Select
                         placeholder="请选择状态"
                         allowClear
-                        style={{width: 160}}
+                        style={{ width: 160 }}
                         options={[
-                            {label: '在线', value: 'online'},
-                            {label: '离线', value: 'offline'},
+                            { label: '在线', value: 'online' },
+                            { label: '离线', value: 'offline' },
                         ]}
                     />
                 </Form.Item>
@@ -534,7 +534,7 @@ const AgentList = () => {
                 dataSource={dataSource}
                 loading={isLoading || isFetching}
                 rowKey="id"
-                scroll={{x: 'max-content'}}
+                scroll={{ x: 'max-content' }}
                 rowSelection={{
                     selectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys),
