@@ -7,6 +7,7 @@ type SSHLoginEvent struct {
 	Username   string `gorm:"index" json:"username"`             // 用户名
 	IP         string `gorm:"index" json:"ip"`                   // 来源IP
 	IPLocation string `gorm:"index" json:"ipLocation,omitempty"` // IP归属地
+	Hostname   string `gorm:"index" json:"hostname,omitempty"`   // 主机名 (反向解析)
 	Port       string `json:"port,omitempty"`                    // 来源端口
 	Status     string `gorm:"index" json:"status"`               // 状态: success
 	TTY        string `json:"tty,omitempty"`                     // 终端

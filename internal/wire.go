@@ -39,6 +39,7 @@ func InitializeApp(logger *zap.Logger, db *gorm.DB, cfg *config.AppConfig) (*App
 		service.NewDDNSService,
 		service.NewSSHLoginService,
 		service.NewPublicIPService,
+		service.NewHostLookupService,
 
 		service.NewNotifier,
 		// WebSocket Manager

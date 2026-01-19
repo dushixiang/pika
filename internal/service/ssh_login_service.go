@@ -24,17 +24,19 @@ type SSHLoginService struct {
 	agentRepo         *repo.AgentRepo
 	wsManager         *websocket.Manager
 	geoIPSvc          *GeoIPService
+	hostLookupSvc     *HostLookupService
 	notificationSvc   *NotificationService
 }
 
 // NewSSHLoginService 创建服务
-func NewSSHLoginService(logger *zap.Logger, db *gorm.DB, wsManager *websocket.Manager, geoIPSvc *GeoIPService, notificationSvc *NotificationService) *SSHLoginService {
+func NewSSHLoginService(logger *zap.Logger, db *gorm.DB, wsManager *websocket.Manager, geoIPSvc *GeoIPService, hostLookupSvc *HostLookupService, notificationSvc *NotificationService) *SSHLoginService {
 	return &SSHLoginService{
 		logger:            logger,
 		SSHLoginEventRepo: repo.NewSSHLoginEventRepo(db),
 		agentRepo:         repo.NewAgentRepo(db),
 		wsManager:         wsManager,
 		geoIPSvc:          geoIPSvc,
+		hostLookupSvc:     hostLookupSvc,
 		notificationSvc:   notificationSvc,
 	}
 }
@@ -142,6 +144,11 @@ func (s *SSHLoginService) HandleEvent(ctx context.Context, agentID string, event
 		ipLocation = s.geoIPSvc.LookupIP(eventData.IP)
 	}
 
+	hostname := ""
+	if s.hostLookupSvc != nil && eventData.IP != "" {
+		hostname = s.hostLookupSvc.Lookup(eventData.IP)
+	}
+
 	// 保存事件到数据库
 	event := &models.SSHLoginEvent{
 		ID:         uuid.NewString(),
@@ -149,6 +156,7 @@ func (s *SSHLoginService) HandleEvent(ctx context.Context, agentID string, event
 		Username:   eventData.Username,
 		IP:         eventData.IP,
 		IPLocation: ipLocation,
+		Hostname:   hostname,
 		Port:       eventData.Port,
 		Status:     eventData.Status,
 		TTY:        eventData.TTY,
@@ -172,12 +180,12 @@ func (s *SSHLoginService) HandleEvent(ctx context.Context, agentID string, event
 		s.logger.Info("IP在白名单中，忽略事件", zap.String("agentId", agentID), zap.String("ip", eventData.IP))
 		return nil
 	}
-	s.sendLoginSuccessNotification(agentID, eventData, ipLocation)
+	s.sendLoginSuccessNotification(agentID, eventData, ipLocation, hostname)
 
 	return nil
 }
 
-func (s *SSHLoginService) sendLoginSuccessNotification(agentID string, eventData protocol.SSHLoginEvent, ipLocation string) {
+func (s *SSHLoginService) sendLoginSuccessNotification(agentID string, eventData protocol.SSHLoginEvent, ipLocation, hostname string) {
 	if s.notificationSvc == nil {
 		return
 	}
@@ -210,11 +218,16 @@ func (s *SSHLoginService) sendLoginSuccessNotification(agentID string, eventData
 		locationText = "未知"
 	}
 
+	srcInfo := sourceAddr
+	if hostname != "" {
+		srcInfo = fmt.Sprintf("%s (%s)", sourceAddr, hostname)
+	}
+
 	record := &models.AlertRecord{
 		AgentID:     agentID,
 		AgentName:   agent.Name,
 		AlertType:   "ssh_login",
-		Message:     fmt.Sprintf("SSH登录成功：用户 %s，来源 %s，归属地 %s，终端 %s，会话 %s", eventData.Username, sourceAddr, locationText, eventData.TTY, eventData.SessionID),
+		Message:     fmt.Sprintf("SSH登录成功：用户 %s，来源 %s，归属地 %s，终端 %s，会话 %s", eventData.Username, srcInfo, locationText, eventData.TTY, eventData.SessionID),
 		Threshold:   0,
 		ActualValue: 0,
 		Level:       "warning",
