@@ -199,8 +199,9 @@ func (lac *LoginAssetsCollector) collectFailedLoginsFromAuthLog() []protocol.Log
 
 	// 尝试读取不同的认证日志文件
 	authLogPaths := []string{
-		"/var/log/auth.log",
-		"/var/log/secure",
+		"/var/log/auth.log", // Debian/Ubuntu
+		"/var/log/secure",   // RHEL/CentOS/Fedora
+		"/var/log/messages", // 某些系统的备用位置
 	}
 
 	var authLog string
@@ -215,27 +216,36 @@ func (lac *LoginAssetsCollector) collectFailedLoginsFromAuthLog() []protocol.Log
 		return records
 	}
 
+	// 读取文件所有行
 	file, err := os.Open(authLog)
 	if err != nil {
 		return records
 	}
 	defer file.Close()
 
+	// 先收集所有匹配的行
+	// 只匹配信息最完整的日志类型，避免同一会话的重复记录
+	var matchedLines []string
 	scanner := bufio.NewScanner(file)
-	count := 0
-
-	for scanner.Scan() && count < 100 {
+	for scanner.Scan() {
 		line := scanner.Text()
+		// 只匹配 Failed password 和 Invalid user，这两种日志包含完整信息
+		// 不匹配 authentication failure，因为它和上面两种是同一会话的重复记录
+		if strings.Contains(line, "Failed password") {
+			matchedLines = append(matchedLines, line)
+		}
+	}
 
-		// 查找失败的SSH登录
-		if strings.Contains(line, "Failed password") ||
-			strings.Contains(line, "authentication failure") {
+	// 从末尾取最新的 100 条记录
+	startIdx := 0
+	if len(matchedLines) > 100 {
+		startIdx = len(matchedLines) - 100
+	}
 
-			record := lac.parseFailedLoginFromLog(line)
-			if record != nil {
-				records = append(records, *record)
-				count++
-			}
+	for i := len(matchedLines) - 1; i >= startIdx; i-- {
+		record := lac.parseFailedLoginFromLog(matchedLines[i])
+		if record != nil {
+			records = append(records, *record)
 		}
 	}
 
@@ -249,12 +259,14 @@ func (lac *LoginAssetsCollector) parseFailedLoginFromLog(line string) *protocol.
 	ip := "unknown"
 
 	// 提取用户名
+	// 格式1: "Invalid user xxx from" 或 "Failed password for invalid user xxx from"
 	if idx := strings.Index(line, "user "); idx != -1 {
 		rest := line[idx+5:]
 		if spaceIdx := strings.Index(rest, " "); spaceIdx != -1 {
 			username = rest[:spaceIdx]
 		}
 	} else if idx := strings.Index(line, "for "); idx != -1 {
+		// 格式2: "Failed password for xxx from"
 		rest := line[idx+4:]
 		if spaceIdx := strings.Index(rest, " "); spaceIdx != -1 {
 			username = rest[:spaceIdx]
@@ -262,6 +274,7 @@ func (lac *LoginAssetsCollector) parseFailedLoginFromLog(line string) *protocol.
 	}
 
 	// 提取IP地址
+	// 格式1: "from 192.168.1.1 port"
 	if idx := strings.Index(line, "from "); idx != -1 {
 		rest := line[idx+5:]
 		if spaceIdx := strings.Index(rest, " "); spaceIdx != -1 {
@@ -271,8 +284,33 @@ func (lac *LoginAssetsCollector) parseFailedLoginFromLog(line string) *protocol.
 		}
 	}
 
+	// 格式2: pam_unix 格式 "rhost=192.168.1.1"
+	if ip == "unknown" {
+		if idx := strings.Index(line, "rhost="); idx != -1 {
+			rest := line[idx+6:]
+			// rhost 可能在行尾或后面有空格
+			if spaceIdx := strings.Index(rest, " "); spaceIdx != -1 {
+				ip = rest[:spaceIdx]
+			} else {
+				ip = strings.TrimSpace(rest)
+			}
+		}
+	}
+
+	// 格式2: pam_unix 格式 "ruser=xxx" (如果前面没找到用户名)
+	if username == "unknown" {
+		if idx := strings.Index(line, "ruser="); idx != -1 {
+			rest := line[idx+6:]
+			if spaceIdx := strings.Index(rest, " "); spaceIdx != -1 {
+				user := rest[:spaceIdx]
+				if user != "" {
+					username = user
+				}
+			}
+		}
+	}
+
 	// 尝试解析日志时间
-	// syslog 格式: Dec 25 10:30:00
 	timestamp := lac.parseSyslogTime(line)
 
 	return &protocol.LoginRecord{
@@ -286,8 +324,30 @@ func (lac *LoginAssetsCollector) parseFailedLoginFromLog(line string) *protocol.
 
 // parseSyslogTime 解析syslog时间格式
 func (lac *LoginAssetsCollector) parseSyslogTime(line string) int64 {
-	// syslog 时间格式通常在行首: Dec 25 10:30:00
 	fields := strings.Fields(line)
+	if len(fields) < 1 {
+		return time.Now().UnixMilli()
+	}
+
+	// 首先尝试解析 ISO 8601 格式 (Ubuntu 等现代系统)
+	// 格式: 2026-01-18T00:10:04.454913+08:00
+	if len(fields[0]) > 10 && strings.Contains(fields[0], "T") {
+		// 尝试多种 ISO 8601 变体
+		isoFormats := []string{
+			time.RFC3339Nano,                   // 2006-01-02T15:04:05.999999999Z07:00
+			time.RFC3339,                       // 2006-01-02T15:04:05Z07:00
+			"2006-01-02T15:04:05.000000-07:00", // 带微秒
+			"2006-01-02T15:04:05.000000+08:00", // 带微秒和时区
+			"2006-01-02T15:04:05-07:00",        // 不带微秒
+		}
+		for _, format := range isoFormats {
+			if t, err := time.Parse(format, fields[0]); err == nil {
+				return t.UnixMilli()
+			}
+		}
+	}
+
+	// 回退到传统 syslog 格式: Dec 25 10:30:00
 	if len(fields) < 3 {
 		return time.Now().UnixMilli()
 	}

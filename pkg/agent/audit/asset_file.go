@@ -66,11 +66,58 @@ func (fac *FileAssetsCollector) collectCronJobs() []protocol.CronJob {
 		jobs = append(jobs, fac.parseCronFile(file, "root")...)
 	}
 
-	// 收集用户crontab
+	// 收集用户crontab (RHEL/CentOS/Fedora)
 	userCronFiles, _ := filepath.Glob("/var/spool/cron/*")
 	for _, file := range userCronFiles {
+		info, err := os.Stat(file)
+		if err != nil || info.IsDir() {
+			continue
+		}
 		username := filepath.Base(file)
 		jobs = append(jobs, fac.parseCronFile(file, username)...)
+	}
+
+	// 收集用户crontab (Debian/Ubuntu)
+	userCronFilesDebian, _ := filepath.Glob("/var/spool/cron/crontabs/*")
+	for _, file := range userCronFilesDebian {
+		info, err := os.Stat(file)
+		if err != nil || info.IsDir() {
+			continue
+		}
+		username := filepath.Base(file)
+		jobs = append(jobs, fac.parseCronFile(file, username)...)
+	}
+
+	// 收集周期性脚本目录 (cron.hourly/daily/weekly/monthly)
+	periodicDirs := []struct {
+		path     string
+		schedule string
+	}{
+		{"/etc/cron.hourly", "@hourly"},
+		{"/etc/cron.daily", "@daily"},
+		{"/etc/cron.weekly", "@weekly"},
+		{"/etc/cron.monthly", "@monthly"},
+	}
+
+	for _, dir := range periodicDirs {
+		files, _ := filepath.Glob(dir.path + "/*")
+		for _, file := range files {
+			info, err := os.Stat(file)
+			if err != nil || info.IsDir() {
+				continue
+			}
+			// 跳过非可执行文件
+			if info.Mode()&0111 == 0 {
+				continue
+			}
+			job := protocol.CronJob{
+				User:     "root",
+				Schedule: dir.schedule,
+				Command:  file,
+				FilePath: file,
+			}
+			jobs = append(jobs, job)
+		}
 	}
 
 	// 限制数量
