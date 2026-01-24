@@ -3,7 +3,6 @@ import {Activity} from 'lucide-react';
 import {Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import {ChartPlaceholder} from '@portal/components/ChartPlaceholder';
 import {CustomTooltip} from '@portal/components/CustomTooltip';
-import {MobileLegend} from '@portal/components/MobileLegend';
 import {useMetricsQuery} from '@portal/hooks/server';
 import {useIsMobile} from '@portal/hooks/use-mobile';
 import {ChartContainer} from './ChartContainer';
@@ -106,7 +105,8 @@ export const MonitorChart = ({agentId, timeRange, start, end}: MonitorChartProps
                                     </linearGradient>
                                 ))}
                             </defs>
-                            <CartesianGrid stroke="currentColor" strokeDasharray="4 4" className="stroke-slate-200 dark:stroke-cyan-900/30"/>
+                            <CartesianGrid stroke="currentColor" strokeDasharray="4 4"
+                                           className="stroke-slate-200 dark:stroke-cyan-900/30"/>
                             <XAxis
                                 dataKey="timestamp"
                                 type="number"
@@ -148,8 +148,6 @@ export const MonitorChart = ({agentId, timeRange, start, end}: MonitorChartProps
                             ))}
                         </AreaChart>
                     </ResponsiveContainer>
-
-                    <MobileLegend items={legendItems} show={isMobile}/>
                 </>
             ) : (
                 <ChartPlaceholder/>

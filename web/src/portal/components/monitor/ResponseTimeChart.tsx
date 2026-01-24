@@ -9,7 +9,6 @@ import type {AgentMonitorStat} from '@/types';
 import CyberCard from "@portal/components/CyberCard.tsx";
 import {ChartPlaceholder} from "@portal/components/ChartPlaceholder";
 import {CustomTooltip} from "@portal/components/CustomTooltip";
-import {MobileLegend} from "@portal/components/MobileLegend";
 import {TimeRangeSelector} from "@portal/components/TimeRangeSelector";
 import {formatChartTime} from '@portal/utils/util';
 
@@ -227,8 +226,6 @@ export const ResponseTimeChart = ({monitorId, monitorStats}: ResponseTimeChartPr
                             })}
                         </AreaChart>
                     </ResponsiveContainer>
-
-                    <MobileLegend items={legendItems} show={isMobile}/>
                 </div>
             ) : (
                 <ChartPlaceholder
