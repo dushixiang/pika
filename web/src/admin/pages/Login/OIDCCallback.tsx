@@ -51,10 +51,10 @@ const OIDCCallback = () => {
     }, []);
 
     return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0a0a0a] transition-colors duration-300">
             <div className="text-center">
-                <div className="text-lg mb-2">正在处理 OIDC 认证...</div>
-                <div className="text-gray-500">请稍候</div>
+                <div className="text-lg mb-2 text-slate-900 dark:text-white">正在处理 OIDC 认证...</div>
+                <div className="text-slate-500 dark:text-slate-400">请稍候</div>
             </div>
         </div>
     );
