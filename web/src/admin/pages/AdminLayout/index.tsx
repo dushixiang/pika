@@ -22,6 +22,7 @@ import {cn} from '@/lib/utils';
 import {getServerVersion, type VersionInfo} from "@/api/version.ts";
 import {flushSync} from "react-dom";
 import {ScrollArea} from "@radix-ui/react-scroll-area";
+import {useTheme} from '@/portal/contexts/ThemeContext';
 
 interface NavItem {
     key: string;
@@ -39,8 +40,8 @@ const AdminLayout = () => {
     const {message: messageApi, modal} = AntApp.useApp();
     const [userInfo, setUserInfo] = useState<User | null>(null);
     const [version, setVersion] = useState<VersionInfo>();
-    const [isDarkMode, setIsDarkMode] = useState(false);
-    const darkModeButtonRef = useRef<HTMLButtonElement>(null);
+    const {appliedTheme, setTheme} = useTheme();
+    const themeButtonRef = useRef<HTMLButtonElement>(null);
 
     const menuItems: NavItem[] = useMemo(
         () => [
@@ -105,20 +106,6 @@ const AdminLayout = () => {
             });
     }, [navigate, location]);
 
-    // 初始化暗色主题
-    useEffect(() => {
-        const savedTheme = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-
-        setIsDarkMode(shouldBeDark);
-        if (shouldBeDark) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    }, []);
-
     const handleLogout = () => {
         modal.confirm({
             title: '确认退出',
@@ -149,37 +136,27 @@ const AdminLayout = () => {
         navigate(item.path);
     };
 
-    // 切换暗色主题的函数，带动画效果
-    const toggleDarkMode = async (newIsDarkMode: boolean) => {
+    // 切换主题的函数，带动画效果
+    const toggleTheme = async () => {
+        const newTheme = appliedTheme === 'dark' ? 'light' : 'dark';
+
         if (
-            !darkModeButtonRef.current ||
+            !themeButtonRef.current ||
             !document.startViewTransition ||
             window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ) {
             // 如果不支持 View Transition API 或用户偏好减少动画，直接切换
-            setIsDarkMode(newIsDarkMode);
-            if (newIsDarkMode) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-            localStorage.setItem('theme', newIsDarkMode ? 'dark' : 'light');
+            setTheme(newTheme);
             return;
         }
 
         await document.startViewTransition(() => {
             flushSync(() => {
-                setIsDarkMode(newIsDarkMode);
-                if (newIsDarkMode) {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
-                localStorage.setItem('theme', newIsDarkMode ? 'dark' : 'light');
+                setTheme(newTheme);
             });
         }).ready;
 
-        const {top, left, width, height} = darkModeButtonRef.current.getBoundingClientRect();
+        const {top, left, width, height} = themeButtonRef.current.getBoundingClientRect();
         const x = left + width / 2;
         const y = top + height / 2;
         const right = window.innerWidth - left;
@@ -207,7 +184,7 @@ const AdminLayout = () => {
     return (
         <ConfigProvider
             theme={{
-                algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                algorithm: appliedTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
             }}
         >
             <AntApp>
@@ -250,19 +227,22 @@ const AdminLayout = () => {
                                 >
                                     部署指南
                                 </Button>
+
+                                {/* 主题切换按钮 */}
                                 <button
-                                    ref={darkModeButtonRef}
+                                    ref={themeButtonRef}
                                     type="button"
-                                    onClick={() => toggleDarkMode(!isDarkMode)}
+                                    onClick={toggleTheme}
                                     className="inline-flex h-9 items-center rounded-full p-2 text-white/80 hover:bg-white/10 transition-all"
-                                    title={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
+                                    title={appliedTheme === 'dark' ? "切换到浅色模式" : "切换到暗黑模式"}
                                 >
-                                    {isDarkMode ? (
+                                    {appliedTheme === 'dark' ? (
                                         <Sun className="h-4 w-4" strokeWidth={2}/>
                                     ) : (
                                         <Moon className="h-4 w-4" strokeWidth={2}/>
                                     )}
                                 </button>
+
                                 <Dropdown menu={{items: userMenuItems}} placement="bottomRight" trigger={['click']}>
                                     <button
                                         type="button"

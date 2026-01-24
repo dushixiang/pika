@@ -1,6 +1,5 @@
 import {useEffect, useState} from 'react';
-import {Activity, ChevronDown, LogIn, Menu, Monitor, Moon, ServerIcon, Settings, Sun, X} from 'lucide-react';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import {Activity, LogIn, Menu, Moon, ServerIcon, Settings, Sun, X} from 'lucide-react';
 import {Link, useLocation} from "react-router-dom";
 import {useTheme} from '../contexts/ThemeContext';
 import {getCurrentUser} from "@/api/auth.ts";
@@ -9,7 +8,7 @@ const PublicHeader = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const {theme, setTheme} = useTheme();
+    const {appliedTheme, setTheme} = useTheme();
     let location = useLocation();
 
 
@@ -135,54 +134,18 @@ const PublicHeader = () => {
                         </div>
                         <div className="h-6 w-[1px] bg-slate-300 dark:bg-cyan-900/50 hidden lg:block"></div>
 
-                        {/* 主题切换下拉框 - Desktop */}
-                        <DropdownMenu.Root>
-                            <DropdownMenu.Trigger asChild>
-                                <button
-                                    className="flex items-center gap-2 px-3 py-2 cursor-pointer rounded transition-all text-xs font-bold tracking-wider uppercase focus:outline-none focus-visible:outline-none"
-                                >
-                                    {theme === 'light' && <Sun className="w-3 h-3"/>}
-                                    {theme === 'dark' && <Moon className="w-3 h-3"/>}
-                                    {theme === 'auto' && <Monitor className="w-3 h-3"/>}
-                                    <span className="hidden xl:inline">
-                                        {theme === 'light' ? '浅色主题' : theme === 'dark' ? '暗黑主题' : '跟随系统'}
-                                    </span>
-                                    <ChevronDown className="w-3 h-3"/>
-                                </button>
-                            </DropdownMenu.Trigger>
-
-                            <DropdownMenu.Portal>
-                                <DropdownMenu.Content
-                                    className="min-w-[140px] bg-white dark:bg-[#0f1016] border border-slate-200 dark:border-cyan-500/30 rounded-lg shadow-lg p-1 z-50"
-                                    sideOffset={5}
-                                >
-                                    <DropdownMenu.Item
-                                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-cyan-500/20 rounded cursor-pointer outline-none font-mono"
-                                        onSelect={() => setTheme('auto')}
-                                    >
-                                        <Monitor className="w-3 h-3"/>
-                                        <span>跟随系统</span>
-                                        {theme === 'auto' && <span className="ml-auto text-cyan-500">✓</span>}
-                                    </DropdownMenu.Item>
-                                    <DropdownMenu.Item
-                                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-cyan-500/20 rounded cursor-pointer outline-none font-mono"
-                                        onSelect={() => setTheme('light')}
-                                    >
-                                        <Sun className="w-3 h-3"/>
-                                        <span>浅色主题</span>
-                                        {theme === 'light' && <span className="ml-auto text-cyan-500">✓</span>}
-                                    </DropdownMenu.Item>
-                                    <DropdownMenu.Item
-                                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-cyan-500/20 rounded cursor-pointer outline-none font-mono"
-                                        onSelect={() => setTheme('dark')}
-                                    >
-                                        <Moon className="w-3 h-3"/>
-                                        <span>暗黑主题</span>
-                                        {theme === 'dark' && <span className="ml-auto text-cyan-500">✓</span>}
-                                    </DropdownMenu.Item>
-                                </DropdownMenu.Content>
-                            </DropdownMenu.Portal>
-                        </DropdownMenu.Root>
+                        {/* 主题切换按钮 - Desktop */}
+                        <button
+                            onClick={() => setTheme(appliedTheme === 'dark' ? 'light' : 'dark')}
+                            className="flex items-center gap-2 px-3 py-2 cursor-pointer rounded transition-all text-slate-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-cyan-500/10"
+                            title={appliedTheme === 'dark' ? '切换到浅色模式' : '切换到暗黑模式'}
+                        >
+                            {appliedTheme === 'dark' ? (
+                                <Sun className="w-4 h-4"/>
+                            ) : (
+                                <Moon className="w-4 h-4"/>
+                            )}
+                        </button>
 
                         {/* 登录/管理后台按钮 - Desktop */}
                         {isLoggedIn ? (
@@ -252,52 +215,23 @@ const PublicHeader = () => {
                         {/* Divider */}
                         <div className="h-[1px] bg-slate-200 dark:bg-cyan-900/50 my-2"></div>
 
-                        {/* Mobile Theme Toggle DropdownMenu */}
-                        <DropdownMenu.Root>
-                            <DropdownMenu.Trigger asChild>
-                                <button
-                                    className="w-full flex items-center justify-center gap-3 p-4 bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 text-cyan-500 rounded-lg transition-all font-bold tracking-wider uppercase focus:outline-none focus-visible:outline-none"
-                                >
-                                    {theme === 'light' && <Sun className="w-5 h-5"/>}
-                                    {theme === 'dark' && <Moon className="w-5 h-5"/>}
-                                    {theme === 'auto' && <Monitor className="w-5 h-5"/>}
-                                    <span>主题: {theme === 'light' ? '浅色' : theme === 'dark' ? '暗黑' : '跟随'}</span>
-                                    <ChevronDown className="w-5 h-5"/>
-                                </button>
-                            </DropdownMenu.Trigger>
-
-                            <DropdownMenu.Portal>
-                                <DropdownMenu.Content
-                                    className="w-[calc(100vw-2rem)] max-w-md bg-white dark:bg-[#0f1016] border border-slate-200 dark:border-cyan-500/30 rounded-lg shadow-lg p-2 z-50"
-                                    sideOffset={5}
-                                >
-                                    <DropdownMenu.Item
-                                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-cyan-500/20 rounded-lg cursor-pointer outline-none"
-                                        onSelect={() => setTheme('auto')}
-                                    >
-                                        <Monitor className="w-5 h-5"/>
-                                        <span>跟随系统</span>
-                                        {theme === 'auto' && <span className="ml-auto text-cyan-500 text-lg">✓</span>}
-                                    </DropdownMenu.Item>
-                                    <DropdownMenu.Item
-                                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-cyan-500/20 rounded-lg cursor-pointer outline-none"
-                                        onSelect={() => setTheme('light')}
-                                    >
-                                        <Sun className="w-5 h-5"/>
-                                        <span>浅色主题</span>
-                                        {theme === 'light' && <span className="ml-auto text-cyan-500 text-lg">✓</span>}
-                                    </DropdownMenu.Item>
-                                    <DropdownMenu.Item
-                                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 dark:text-cyan-300 hover:bg-slate-100 dark:hover:bg-cyan-500/20 rounded-lg cursor-pointer outline-none"
-                                        onSelect={() => setTheme('dark')}
-                                    >
-                                        <Moon className="w-5 h-5"/>
-                                        <span>暗黑主题</span>
-                                        {theme === 'dark' && <span className="ml-auto text-cyan-500 text-lg">✓</span>}
-                                    </DropdownMenu.Item>
-                                </DropdownMenu.Content>
-                            </DropdownMenu.Portal>
-                        </DropdownMenu.Root>
+                        {/* Mobile Theme Toggle Button */}
+                        <button
+                            onClick={() => setTheme(appliedTheme === 'dark' ? 'light' : 'dark')}
+                            className="w-full flex items-center justify-center gap-3 p-4 bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 text-cyan-500 rounded-lg transition-all font-bold tracking-wider uppercase"
+                        >
+                            {appliedTheme === 'dark' ? (
+                                <>
+                                    <Sun className="w-5 h-5"/>
+                                    <span>切换到浅色模式</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Moon className="w-5 h-5"/>
+                                    <span>切换到暗黑模式</span>
+                                </>
+                            )}
+                        </button>
 
                         {/* Mobile Login/Admin Button */}
                         {isLoggedIn ? (
