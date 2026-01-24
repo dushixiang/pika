@@ -304,7 +304,7 @@ const DNSProviderModal = ({open, onCancel, onSuccess}: DNSProviderModalProps) =>
             onCancel={onCancel}
             footer={null}
             width={700}
-            destroyOnClose
+            destroyOnHidden
         >
             <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
         </Modal>

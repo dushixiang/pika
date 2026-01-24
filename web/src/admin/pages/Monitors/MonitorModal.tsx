@@ -6,12 +6,13 @@ import {getAgentPaging} from '@/api/agent.ts';
 import {createMonitor, getMonitor, updateMonitor} from '@/api/monitor.ts';
 import type {Agent, MonitorTaskRequest} from '@/types';
 import {getErrorMessage} from '@/lib/utils';
+import {hasText} from "@/lib/strings.ts";
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
 interface MonitorModalProps {
     open: boolean;
-    monitorId?: number;
+    monitorId?: string;
     onCancel: () => void;
     onSuccess: () => void;
 }
@@ -20,7 +21,7 @@ const MonitorModal = ({open, monitorId, onCancel, onSuccess}: MonitorModalProps)
     const {message} = App.useApp();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
-    const isEditMode = typeof monitorId === 'number';
+    const isEditMode = hasText(monitorId);
 
     const {
         data: agents = [],
@@ -44,7 +45,7 @@ const MonitorModal = ({open, monitorId, onCancel, onSuccess}: MonitorModalProps)
     } = useQuery({
         queryKey: ['admin', 'monitors', 'detail', monitorId],
         queryFn: async () => {
-            const response = await getMonitor(monitorId as number);
+            const response = await getMonitor(monitorId);
             return response.data;
         },
         enabled: open && isEditMode,
@@ -141,7 +142,7 @@ const MonitorModal = ({open, monitorId, onCancel, onSuccess}: MonitorModalProps)
     });
 
     const updateMutation = useMutation({
-        mutationFn: (payload: MonitorTaskRequest) => updateMonitor(monitorId as number, payload),
+        mutationFn: (payload: MonitorTaskRequest) => updateMonitor(monitorId, payload),
         onSuccess: () => {
             message.success('更新成功');
             queryClient.invalidateQueries({queryKey: ['admin', 'monitors']});

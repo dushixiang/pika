@@ -17,15 +17,15 @@ export const createMonitor = (data: MonitorTaskRequest) => {
     return post<MonitorTask>('/admin/monitors', data);
 };
 
-export const getMonitor = (id: number) => {
+export const getMonitor = (id: string) => {
     return get<MonitorTask>(`/admin/monitors/${id}`);
 };
 
-export const updateMonitor = (id: number, data: MonitorTaskRequest) => {
+export const updateMonitor = (id: string, data: MonitorTaskRequest) => {
     return put<MonitorTask>(`/admin/monitors/${id}`, data);
 };
 
-export const deleteMonitor = (id: number) => {
+export const deleteMonitor = (id: string) => {
     return del(`/admin/monitors/${id}`);
 };
 

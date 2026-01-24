@@ -74,7 +74,7 @@ const ApiKeyModal = ({open, apiKeyId, onCancel, onSuccess}: ApiKeyModalProps) =>
             onCancel={onCancel}
             okText={isEditMode ? '保存' : '生成'}
             cancelText="取消"
-            destroyOnClose
+            destroyOnHidden
         >
             <Form form={form} layout="vertical" autoComplete="off">
                 <Form.Item

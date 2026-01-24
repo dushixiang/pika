@@ -8,11 +8,6 @@
     scrollbar-width: thin;
 }
 
-/* 防止滚动条出现/消失时页面宽度变化 */
-html {
-    scrollbar-gutter: stable;
-}
-
 /* 全局背景色 */
 body {
     background-color: white;
