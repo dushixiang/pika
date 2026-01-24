@@ -69,14 +69,14 @@ export const MonitorHero = ({monitor, onBack}: MonitorHeroProps) => {
 
             {/* 证书信息（如果存在证书数据）*/}
             {monitor.certExpiryTime > 0 && (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-4 border-t border-slate-200 dark:border-cyan-900/50">
+                <div className="flex flex-col gap-3 pt-4 border-t border-slate-200 dark:border-cyan-900/50">
                     <span className="text-xs text-gray-600 dark:text-cyan-500 font-mono">SSL 证书:</span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                         <CertBadge
                             expiryTime={monitor.certExpiryTime}
                             daysLeft={monitor.certDaysLeft}
                         />
-                        <span className="text-xs text-gray-500 dark:text-cyan-600 font-mono">
+                        <span className="text-xs text-gray-500 dark:text-cyan-600 font-mono break-all sm:break-normal">
                             到期时间: {formatDateTime(monitor.certExpiryTime)}
                         </span>
                     </div>

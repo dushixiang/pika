@@ -109,7 +109,7 @@ const MonitorCard = ({monitor, displayMode}: {
                     ) : (
                         <>
                             <p className="text-xs text-gray-600 dark:text-cyan-500 mb-1">上次检测</p>
-                            <p className="text-sm font-medium text-gray-700 dark:text-cyan-300 font-mono">
+                            <p className="md:text-sm text-xs text-gray-700 dark:text-cyan-300 font-mono">
                                 {formatDateTime(monitor.lastCheckTime)}
                             </p>
                         </>
