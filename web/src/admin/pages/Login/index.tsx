@@ -123,30 +123,30 @@ const Login = () => {
                 algorithm: appliedTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
             }}
         >
-            {/* 背景：浅色模式灰白色，暗黑模式深色 */}
-            <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#0a0a0a] px-4 transition-colors duration-300">
+            {/* 背景：浅色模式柔和灰色，暗黑模式深黑色 */}
+            <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 px-4 transition-colors duration-300">
 
                 {/* 主题切换按钮 - 右上角 */}
                 <button
                     ref={themeButtonRef}
                     type="button"
                     onClick={toggleTheme}
-                    className="fixed top-6 right-6 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all z-50 border border-slate-200 dark:border-slate-700"
+                    className="fixed top-6 right-6 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all z-50 border border-slate-200 dark:border-zinc-700"
                     title={appliedTheme === 'dark' ? "切换到浅色模式" : "切换到暗黑模式"}
                 >
                     {appliedTheme === 'dark' ? (
-                        <Sun className="h-5 w-5" strokeWidth={2}/>
+                        <Sun className="h-5 w-5" strokeWidth={2.5}/>
                     ) : (
-                        <Moon className="h-5 w-5" strokeWidth={2}/>
+                        <Moon className="h-5 w-5" strokeWidth={2.5}/>
                     )}
                 </button>
 
-                {/* 卡片：简洁设计，无阴影，小圆角 */}
-                <div className="w-full max-w-[400px] bg-white dark:bg-[#141414] p-8 sm:p-10 rounded-lg transition-colors duration-300">
+                {/* 卡片：浅色模式纯白，暗黑模式深灰色以提供对比 */}
+                <div className="w-full max-w-[400px] bg-white dark:bg-zinc-900 p-8 sm:p-10 rounded-lg border border-slate-200 dark:border-zinc-800 transition-colors duration-300">
 
                     {/* 头部：品牌名称 */}
                     <div className="mb-10 text-center">
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">
                             {window.SystemConfig.SystemNameZh}
                         </h1>
                     </div>
@@ -165,7 +165,7 @@ const Login = () => {
                                 className="mb-4"
                             >
                                 <Input
-                                    prefix={<UserOutlined className="text-slate-400 dark:text-slate-500 mr-1" />}
+                                    prefix={<UserOutlined className="text-slate-400 dark:text-zinc-500 mr-1" />}
                                     placeholder="用户名"
                                     className="px-4 py-2.5"
                                     size="large"
@@ -178,7 +178,7 @@ const Login = () => {
                                 className="mb-6"
                             >
                                 <Input.Password
-                                    prefix={<LockOutlined className="text-slate-400 dark:text-slate-500 mr-1" />}
+                                    prefix={<LockOutlined className="text-slate-400 dark:text-zinc-500 mr-1" />}
                                     placeholder="密码"
                                     className="px-4 py-2.5"
                                     size="large"
@@ -205,10 +205,10 @@ const Login = () => {
                         <div className="mt-8">
                             <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+                                    <span className="w-full border-t border-slate-200 dark:border-zinc-800" />
                                 </div>
                                 <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-white dark:bg-[#141414] px-2 text-slate-400 dark:text-slate-500">
+                                    <span className="bg-white dark:bg-zinc-900 px-2 text-slate-400 dark:text-zinc-500">
                                         {passwordEnabled ? 'OR' : '使用第三方登录'}
                                     </span>
                                 </div>
