@@ -18,7 +18,7 @@ export const GpuMonitorSection = ({latestMetrics}: GpuMonitorSectionProps) => {
     }
 
     return (
-        <Card title="GPU 监控" description="显卡使用情况和温度监控" variant="dark">
+        <Card title="GPU 监控" description="显卡使用情况和温度监控">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {latestMetrics.gpu.map((gpu) => (
                     <div

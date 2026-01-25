@@ -211,22 +211,6 @@ const ServerCard: FC<ServerCardProps> = ({server}) => {
                             </div>
                         )}
                     </div>
-
-                    {/* 流量限制 */}
-                    {server.traffic?.enabled && (
-                        <div className="pt-2 border-t border-slate-200 dark:border-cyan-900/30">
-                            <div className="flex justify-between text-xs text-gray-600 dark:text-cyan-500 mb-1">
-                                <span>TRAFFIC</span>
-                                <span>{Math.round((server.traffic?.used || 0) / server.traffic?.limit * 100)}%</span>
-                            </div>
-                            <div className="h-1.5 bg-slate-200 dark:bg-cyan-900/50 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gray-500 dark:bg-cyan-400 transition-all"
-                                    style={{width: `${((server.traffic?.used || 0) / server.traffic?.limit) * 100}%`}}
-                                />
-                            </div>
-                        </div>
-                    )}
                 </div>
             </CyberCard>
         </Link>

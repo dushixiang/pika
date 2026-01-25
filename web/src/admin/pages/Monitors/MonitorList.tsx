@@ -16,7 +16,7 @@ const MonitorList = () => {
     const queryClient = useQueryClient();
 
     const [modalVisible, setModalVisible] = useState(false);
-    const [editingMonitorId, setEditingMonitorId] = useState<number | undefined>(undefined);
+    const [editingMonitorId, setEditingMonitorId] = useState<string>(undefined);
     const [searchParams, setSearchParams] = useSearchParams();
     const [searchValue, setSearchValue] = useState('');
 
@@ -42,7 +42,7 @@ const MonitorList = () => {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (monitorId: number) => deleteMonitor(monitorId),
+        mutationFn: deleteMonitor,
         onSuccess: () => {
             message.success('删除成功');
             queryClient.invalidateQueries({queryKey: ['admin', 'monitors']});

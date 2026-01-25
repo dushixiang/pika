@@ -281,7 +281,7 @@ export interface MonitorIcmpConfig {
 }
 
 export interface MonitorTask {
-    id: number;
+    id: string;
     name: string;
     type: 'http' | 'https' | 'tcp' | 'icmp' | 'ping';
     target: string;
