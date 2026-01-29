@@ -452,16 +452,25 @@ func (s *AlertService) checkCertAlert(ctx context.Context, config *models.AlertC
 	s.logger.Info("触发证书告警",
 		zap.String("agentId", agent.ID),
 		zap.String("monitorId", monitor.MonitorId),
+		zap.String("monitorName", monitor.MonitorName),
 		zap.String("target", monitor.Target),
 		zap.Float64("certDaysLeft", certDaysLeft),
 		zap.Float64("threshold", config.Rules.CertThreshold),
 	)
 
+	// 构建告警消息，优先使用监控任务名称
+	var message string
+	if monitor.MonitorName != "" {
+		message = fmt.Sprintf("监控项 %s (%s) 的HTTPS证书剩余天数%.0f天，低于阈值%.0f天", monitor.MonitorName, monitor.Target, certDaysLeft, config.Rules.CertThreshold)
+	} else {
+		message = fmt.Sprintf("监控项 %s 的HTTPS证书剩余天数%.0f天，低于阈值%.0f天", monitor.Target, certDaysLeft, config.Rules.CertThreshold)
+	}
+
 	record := &models.AlertRecord{
 		AgentID:     agent.ID,
 		AgentName:   agent.Name,
 		AlertType:   "cert",
-		Message:     fmt.Sprintf("监控项 %s 的HTTPS证书剩余天数%.0f天，低于阈值%.0f天", monitor.Target, certDaysLeft, config.Rules.CertThreshold),
+		Message:     message,
 		Threshold:   config.Rules.CertThreshold,
 		ActualValue: certDaysLeft,
 		Level:       s.calculateCertLevel(certDaysLeft),
@@ -614,16 +623,25 @@ func (s *AlertService) fireServiceDownAlert(ctx context.Context, config *models.
 	s.logger.Info("触发服务下线告警",
 		zap.String("agentId", agent.ID),
 		zap.String("monitorId", monitor.MonitorId),
+		zap.String("monitorName", monitor.MonitorName),
 		zap.String("target", monitor.Target),
 		zap.Int("duration", state.Duration),
 	)
+
+	// 构建告警消息，优先使用监控任务名称
+	var message string
+	if monitor.MonitorName != "" {
+		message = fmt.Sprintf("监控项 %s (%s) 持续离线%d秒", monitor.MonitorName, monitor.Target, state.Duration)
+	} else {
+		message = fmt.Sprintf("监控项 %s 持续离线%d秒", monitor.Target, state.Duration)
+	}
 
 	// 创建告警记录
 	record := &models.AlertRecord{
 		AgentID:     agent.ID,
 		AgentName:   agent.Name,
 		AlertType:   "service",
-		Message:     fmt.Sprintf("监控项 %s 持续离线%d秒", monitor.Target, state.Duration),
+		Message:     message,
 		Threshold:   0,
 		ActualValue: float64(state.Duration),
 		Level:       "critical",

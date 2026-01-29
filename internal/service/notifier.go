@@ -139,15 +139,21 @@ func maskIPAddress(ip string) string {
 }
 
 func joinAgentIPs(ip string, ipv4 string, ipv6 string) string {
-	parts := make([]string, 0, 2)
-	if ip != "" {
+	parts := make([]string, 0, 3)
+	seen := make(map[string]bool)
+
+	// 按优先级添加，避免重复
+	if ip != "" && !seen[ip] {
 		parts = append(parts, ip)
+		seen[ip] = true
 	}
-	if ipv4 != "" {
+	if ipv4 != "" && !seen[ipv4] {
 		parts = append(parts, ipv4)
+		seen[ipv4] = true
 	}
-	if ipv6 != "" {
+	if ipv6 != "" && !seen[ipv6] {
 		parts = append(parts, ipv6)
+		seen[ipv6] = true
 	}
 	return strings.Join(parts, " / ")
 }

@@ -382,6 +382,10 @@ func (s *MonitorService) GetLatestMonitorMetricsByType(ctx context.Context, moni
 	var result []protocol.MonitorData
 	for _, task := range monitorTasks {
 		monitorData := s.metricService.GetMonitorAgentStats(task.ID)
+		// 填充监控任务名称
+		for i := range monitorData {
+			monitorData[i].MonitorName = task.Name
+		}
 		result = append(result, monitorData...)
 	}
 
@@ -400,6 +404,10 @@ func (s *MonitorService) GetAllLatestMonitorMetrics(ctx context.Context) ([]prot
 	var result []protocol.MonitorData
 	for _, task := range monitorTasks {
 		monitorData := s.metricService.GetMonitorAgentStats(task.ID)
+		// 填充监控任务名称
+		for i := range monitorData {
+			monitorData[i].MonitorName = task.Name
+		}
 		result = append(result, monitorData...)
 	}
 	return result, nil
