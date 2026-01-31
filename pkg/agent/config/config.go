@@ -299,6 +299,7 @@ func DefaultNetworkExcludePatterns() []string {
 		"^virbr.*",   // KVM/libvirt 网桥
 		"^flannel.*", // Kubernetes Flannel
 		"^cni.*",     // Container Network Interface
+		"^tap.*",     // PVE/KVM 虚拟机 TAP 网卡
 		// macOS 虚拟接口
 		"^anpi\\d+$",   // Apple Network Process Interface
 		"^ap\\d+$",     // Apple Wireless Access Point
