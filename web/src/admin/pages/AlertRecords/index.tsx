@@ -1,18 +1,18 @@
-import React, {useState} from 'react';
-import {useSearchParams} from 'react-router-dom';
-import {App, Divider, Select, Space, Table, Tag} from 'antd';
-import type {ColumnsType, TablePaginationConfig} from 'antd/es/table';
-import {Trash2} from 'lucide-react';
-import {clearAlertRecords, getAlertRecords} from '@/api/alert.ts';
-import type {AlertRecord} from '@/types';
+import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { App, Divider, Select, Space, Table, Tag } from 'antd';
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import { Trash2 } from 'lucide-react';
+import { clearAlertRecords, getAlertRecords } from '@/api/alert.ts';
+import type { AlertRecord } from '@/types';
 import dayjs from 'dayjs';
-import {getErrorMessage} from '@/lib/utils';
-import {PageHeader} from '@admin/components';
-import {useQuery, useQueryClient} from '@tanstack/react-query';
-import {listAgentsByAdmin} from "@/api/agent.ts";
+import { getErrorMessage } from '@/lib/utils';
+import { PageHeader } from '@admin/components';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { listAgentsByAdmin } from "@/api/agent.ts";
 
 const AlertRecordList = () => {
-    const {message: messageApi, modal} = App.useApp();
+    const { message: messageApi, modal } = App.useApp();
     const queryClient = useQueryClient();
     const [searchParams, setSearchParams] = useSearchParams();
     const [selectedAgentId, setSelectedAgentId] = useState<string>('');
@@ -21,7 +21,7 @@ const AlertRecordList = () => {
     const pageSize = Number(searchParams.get('pageSize')) || 20;
 
     // 使用 react-query 获取探针列表
-    const {data: agentsData} = useQuery({
+    const { data: agentsData } = useQuery({
         queryKey: ['agents-for-alert-filter'],
         queryFn: async () => {
             const response = await listAgentsByAdmin();
@@ -44,22 +44,22 @@ const AlertRecordList = () => {
     // 告警级别映射
     const getLevelTag = (level: string) => {
         const config = {
-            info: {color: 'blue', text: '信息'},
-            warning: {color: 'orange', text: '警告'},
-            critical: {color: 'red', text: '严重'},
+            info: { color: 'blue', text: '信息' },
+            warning: { color: 'orange', text: '警告' },
+            critical: { color: 'red', text: '严重' },
         };
-        const levelConfig = config[level as keyof typeof config] || {color: 'default', text: level};
+        const levelConfig = config[level as keyof typeof config] || { color: 'default', text: level };
         return <Tag color={levelConfig.color}>{levelConfig.text}</Tag>;
     };
 
     // 状态映射
     const getStatusTag = (status: string) => {
         const config = {
-            firing: {color: 'red', text: '告警中'},
-            resolved: {color: 'green', text: '已恢复'},
-            notice: {color: 'blue', text: '通知'},
+            firing: { color: 'red', text: '告警中' },
+            resolved: { color: 'green', text: '已恢复' },
+            notice: { color: 'blue', text: '通知' },
         };
-        const statusConfig = config[status as keyof typeof config] || {color: 'default', text: status};
+        const statusConfig = config[status as keyof typeof config] || { color: 'default', text: status };
         return <Tag color={statusConfig.color}>{statusConfig.text}</Tag>;
     };
 
@@ -135,7 +135,7 @@ const AlertRecordList = () => {
                 try {
                     await clearAlertRecords(selectedAgentId || undefined);
                     messageApi.success('清空成功');
-                    queryClient.invalidateQueries({queryKey: ['admin', 'alert-records']});
+                    queryClient.invalidateQueries({ queryKey: ['admin', 'alert-records'] });
                 } catch (error: unknown) {
                     messageApi.error(getErrorMessage(error, '清空失败'));
                 }
@@ -160,6 +160,13 @@ const AlertRecordList = () => {
             dataIndex: 'alertType',
             width: 120,
             render: (_, record) => alertTypeMap[record.alertType] || record.alertType,
+        },
+        {
+            title: '监控项',
+            dataIndex: 'configName',
+            width: 150,
+            ellipsis: true,
+            render: (_, record) => record.configName || '-',
         },
         {
             title: '告警消息',
@@ -242,7 +249,7 @@ const AlertRecordList = () => {
                     {
                         key: 'clear',
                         label: '清空记录',
-                        icon: <Trash2 className="h-4 w-4"/>,
+                        icon: <Trash2 className="h-4 w-4" />,
                         type: 'primary',
                         danger: true,
                         onClick: handleClear,
@@ -250,9 +257,9 @@ const AlertRecordList = () => {
                 ]}
             />
 
-            <Divider/>
+            <Divider />
 
-            <div style={{marginBottom: 16}}>
+            <div style={{ marginBottom: 16 }}>
                 <Space>
                     <Select
                         placeholder="选择探针"
@@ -263,7 +270,7 @@ const AlertRecordList = () => {
                                     .toLowerCase()
                                     .includes(inputValue.toLowerCase()),
                         }}
-                        style={{width: 200}}
+                        style={{ width: 200 }}
                         value={selectedAgentId || undefined}
                         onChange={handleAgentChange}
                         options={agentOptions}
