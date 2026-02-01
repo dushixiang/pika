@@ -469,6 +469,8 @@ func (s *AlertService) checkCertAlert(ctx context.Context, config *models.AlertC
 	record := &models.AlertRecord{
 		AgentID:     agent.ID,
 		AgentName:   agent.Name,
+		ConfigId:    monitor.MonitorId,
+		ConfigName:  monitor.MonitorName,
 		AlertType:   "cert",
 		Message:     message,
 		Threshold:   config.Rules.CertThreshold,
@@ -640,6 +642,8 @@ func (s *AlertService) fireServiceDownAlert(ctx context.Context, config *models.
 	record := &models.AlertRecord{
 		AgentID:     agent.ID,
 		AgentName:   agent.Name,
+		ConfigId:    monitor.MonitorId,
+		ConfigName:  monitor.MonitorName,
 		AlertType:   "service",
 		Message:     message,
 		Threshold:   0,

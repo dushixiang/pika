@@ -5,6 +5,8 @@ type AlertRecord struct {
 	ID          int64   `gorm:"primaryKey;autoIncrement" json:"id"`    // 记录ID
 	AgentID     string  `gorm:"index" json:"agentId"`                  // 探针ID
 	AgentName   string  `json:"agentName"`                             // 探针名称
+	ConfigId    string  `gorm:"index" json:"configId"`                 // 配置ID（监控项ID）
+	ConfigName  string  `json:"configName"`                            // 配置名称（监控项名称）
 	AlertType   string  `json:"alertType"`                             // 告警类型: cpu, memory, disk, network
 	Message     string  `json:"message"`                               // 告警消息
 	Threshold   float64 `json:"threshold"`                             // 告警阈值
