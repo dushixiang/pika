@@ -121,17 +121,10 @@ func (s *AgentService) UpdateAgentStatus(ctx context.Context, agentID string, st
 func (s *AgentService) UpdatePublicIP(ctx context.Context, agentID string, ipv4 string, ipv6 string) error {
 	updates := map[string]interface{}{
 		"updated_at": time.Now().UnixMilli(),
+		"ipv4":       ipv4,
+		"ipv6":       ipv6,
 	}
-	if ipv4 != "" {
-		updates["ipv4"] = ipv4
-	}
-	if ipv6 != "" {
-		updates["ipv6"] = ipv6
-	}
-	if len(updates) == 1 {
-		return nil
-	}
-	return s.AgentRepo.UpdateInfo(ctx, agentID, updates)
+	return s.AgentRepo.UpdateColumnsById(ctx, agentID, updates)
 }
 
 // GetAgent 获取探针信息

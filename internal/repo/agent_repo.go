@@ -122,14 +122,6 @@ func (r *AgentRepo) ListAuditResults(ctx context.Context, agentID string) ([]mod
 	return audits, err
 }
 
-// UpdateInfo 更新探针信息（名称、平台、位置、到期时间）
-func (r *AgentRepo) UpdateInfo(ctx context.Context, agentID string, updates map[string]interface{}) error {
-	return r.db.WithContext(ctx).
-		Model(&models.Agent{}).
-		Where("id = ?", agentID).
-		Updates(updates).Error
-}
-
 // GetStatistics 获取探针统计数据
 func (r *AgentRepo) GetStatistics(ctx context.Context) (total int64, online int64, err error) {
 	// 获取总数
