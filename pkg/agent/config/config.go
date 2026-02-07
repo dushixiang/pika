@@ -310,12 +310,14 @@ func DefaultNetworkExcludePatterns() []string {
 		"^stf\\d+$",    // 6to4 tunnel interface
 		"^utun\\d+$",   // User Tunnel (VPN)
 		"^vmenet\\d+$", // 虚拟机网络 (VMware/Parallels)
+		"^vmnet.*",     // 虚拟机网络 (VMware/Parallels/Fusion)
 		"^pktap\\d+$",  // Packet capture interface
 		"^ipsec\\d+$",  // IPSec interface
 		"^feth\\d+$",   // Fake ethernet interface
 		// Windows 虚拟接口
 		"^Loopback.*",
 		"^vEthernet.*",
+		".*[Tt]eredo.*", // Teredo 隧道伪接口 (IPv6 over IPv4)
 	}
 }
 
