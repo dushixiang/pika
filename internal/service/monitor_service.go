@@ -67,6 +67,8 @@ type MonitorTaskRequest struct {
 	TCPConfig        protocol.TCPMonitorConfig  `json:"tcpConfig,omitempty"`
 	ICMPConfig       protocol.ICMPMonitorConfig `json:"icmpConfig,omitempty"`
 	AgentIds         []string                   `json:"agentIds,omitempty"`
+	AgentMode        string                     `json:"agentMode,omitempty"`       // 探针模式: include-仅包含指定探针, exclude-排除指定探针
+	ExcludeAgentIds  []string                   `json:"excludeAgentIds,omitempty"` // 排除的探针 ID 列表
 }
 
 func (s *MonitorService) CreateMonitor(ctx context.Context, req *MonitorTaskRequest) (*models.MonitorTask, error) {
@@ -82,6 +84,12 @@ func (s *MonitorService) CreateMonitor(ctx context.Context, req *MonitorTaskRequ
 		visibility = "public" // 默认公开可见
 	}
 
+	// 设置默认探针模式
+	agentMode := req.AgentMode
+	if agentMode == "" {
+		agentMode = "include" // 默认包含模式
+	}
+
 	task := &models.MonitorTask{
 		ID:               uuid.NewString(),
 		Name:             strings.TrimSpace(req.Name),
@@ -93,6 +101,8 @@ func (s *MonitorService) CreateMonitor(ctx context.Context, req *MonitorTaskRequ
 		Visibility:       visibility,
 		Interval:         interval,
 		AgentIds:         datatypes.JSONSlice[string](req.AgentIds),
+		AgentMode:        agentMode,
+		ExcludeAgentIds:  datatypes.JSONSlice[string](req.ExcludeAgentIds),
 		HTTPConfig:       datatypes.NewJSONType(req.HTTPConfig),
 		TCPConfig:        datatypes.NewJSONType(req.TCPConfig),
 		ICMPConfig:       datatypes.NewJSONType(req.ICMPConfig),
@@ -141,7 +151,15 @@ func (s *MonitorService) UpdateMonitor(ctx context.Context, id string, req *Moni
 	}
 	task.Interval = interval
 
+	// 更新探针模式
+	agentMode := req.AgentMode
+	if agentMode == "" {
+		agentMode = "include" // 默认包含模式
+	}
+	task.AgentMode = agentMode
+
 	task.AgentIds = req.AgentIds
+	task.ExcludeAgentIds = req.ExcludeAgentIds
 	task.HTTPConfig = datatypes.NewJSONType(req.HTTPConfig)
 	task.TCPConfig = datatypes.NewJSONType(req.TCPConfig)
 	task.ICMPConfig = datatypes.NewJSONType(req.ICMPConfig)
@@ -278,12 +296,29 @@ func (s *MonitorService) sendMonitorConfigToAgent(agentID string, payload protoc
 func (s *MonitorService) SendMonitorTaskToAgents(ctx context.Context, monitor models.MonitorTask) error {
 	// 确定目标探针 ID 列表
 	var targetAgentIDs []string
-	if len(monitor.AgentIds) == 0 {
-		// 没有指定探针，向所有在线探针发送
-		targetAgentIDs = s.wsManager.GetAllClients()
+
+	// 根据探针模式确定目标探针
+	if monitor.AgentMode == "exclude" {
+		// 排除模式：获取所有在线探针，然后排除指定的探针
+		allClients := s.wsManager.GetAllClients()
+		excludeSet := make(map[string]bool)
+		for _, id := range monitor.ExcludeAgentIds {
+			excludeSet[id] = true
+		}
+		for _, id := range allClients {
+			if !excludeSet[id] {
+				targetAgentIDs = append(targetAgentIDs, id)
+			}
+		}
 	} else {
-		// 指定了探针
-		targetAgentIDs = monitor.AgentIds
+		// 包含模式（默认）
+		if len(monitor.AgentIds) == 0 {
+			// 没有指定探针，向所有在线探针发送
+			targetAgentIDs = s.wsManager.GetAllClients()
+		} else {
+			// 指定了探针
+			targetAgentIDs = monitor.AgentIds
+		}
 	}
 
 	if len(targetAgentIDs) == 0 {

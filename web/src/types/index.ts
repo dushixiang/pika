@@ -294,6 +294,8 @@ export interface MonitorTask {
     tcpConfig?: MonitorTcpConfig | null;
     icmpConfig?: MonitorIcmpConfig | null;
     agentIds?: string[];
+    agentMode?: 'include' | 'exclude';  // 探针模式: include-仅包含指定探针, exclude-排除指定探针
+    excludeAgentIds?: string[];          // 排除的探针 ID 列表
     agentNames?: string[];
     tags?: string[];       // 标签列表，拥有这些标签的探针都会执行此监控
     createdAt: number;
@@ -313,6 +315,8 @@ export interface MonitorTaskRequest {
     tcpConfig?: MonitorTcpConfig | null;
     icmpConfig?: MonitorIcmpConfig | null;
     agentIds?: string[];
+    agentMode?: 'include' | 'exclude';  // 探针模式: include-仅包含指定探针, exclude-排除指定探针
+    excludeAgentIds?: string[];          // 排除的探针 ID 列表
     tags?: string[];       // 标签列表
 }
 
