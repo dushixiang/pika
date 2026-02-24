@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -25,12 +24,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/jpillora/backoff"
 	"github.com/sourcegraph/conc"
-)
-
-// 定义特殊错误类型
-var (
-	// ErrConnectionEstablished 表示连接已建立后断开（需要立即重连）
-	ErrConnectionEstablished = errors.New("connection was established")
 )
 
 // safeConn 线程安全的 WebSocket 连接包装器
@@ -99,7 +92,7 @@ func (a *Agent) Start(ctx context.Context) error {
 
 	// 启动探针主循环
 	b := &backoff.Backoff{
-		Min:    5 * time.Second,
+		Min:    1 * time.Second,
 		Max:    1 * time.Minute,
 		Factor: 2,
 		Jitter: true,
@@ -147,8 +140,8 @@ func (a *Agent) Stop() {
 }
 
 // runOnce 运行一次探针连接
-// 返回 error 表示需要重连，返回 nil 可能是正常关闭或上下文取消
-func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
+// 返回 error 表示需要重连，返回 nil 表示上下文取消
+func (a *Agent) runOnce(ctx context.Context, onRegistered func()) error {
 	wsURL := a.cfg.GetWebSocketURL()
 	slog.Info("正在连接到服务器", "url", wsURL)
 
@@ -168,8 +161,6 @@ func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
 	}
 	defer rawConn.Close()
 
-	onConnected()
-
 	// 创建线程安全的连接包装器
 	conn := &safeConn{conn: rawConn}
 
@@ -187,6 +178,7 @@ func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
 	if err := a.registerAgent(conn); err != nil {
 		return fmt.Errorf("注册失败: %w", err)
 	}
+	onRegistered()
 
 	slog.Info("探针注册成功，开始监控...")
 
@@ -236,9 +228,8 @@ func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
 	var returnErr error
 	select {
 	case err := <-errChan:
-		// 连接已建立，无论什么原因断开都标记为已建立状态
 		slog.Info("连接断开", "error", err)
-		returnErr = ErrConnectionEstablished
+		returnErr = err
 	case <-ctx.Done():
 		// 收到取消信号
 		slog.Info("收到停止信号，准备关闭连接")
@@ -247,11 +238,15 @@ func (a *Agent) runOnce(ctx context.Context, onConnected func()) error {
 
 	// 关闭 done channel，通知所有 goroutine 退出
 	close(done)
+	a.setActiveConn(nil)
 
 	// 发送 WebSocket 关闭消息
 	closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
 	if err := conn.WriteMessage(websocket.CloseMessage, closeMsg); err != nil {
 		slog.Warn("发送关闭消息失败", "error", err)
+	}
+	if err := rawConn.Close(); err != nil && !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+		slog.Warn("关闭连接失败", "error", err)
 	}
 
 	// 等待所有 goroutine 优雅退出
