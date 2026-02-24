@@ -57,21 +57,15 @@ func (h *AgentHandler) DownloadAgent(c echo.Context) error {
 	return c.Stream(http.StatusOK, "application/octet-stream", agentFile)
 }
 
-// getServerURL 获取服务器地址（支持反向代理）
-func getServerURL(c echo.Context) string {
-	// 优先读取 X-Forwarded-Proto 和 X-Forwarded-Host
-	scheme := c.Request().Header.Get("X-Forwarded-Proto")
-	host := c.Request().Header.Get("X-Forwarded-Host")
-
-	// 如果没有反向代理头部，使用默认值
-	if scheme == "" {
-		scheme = c.Scheme()
-	}
-	if host == "" {
-		host = c.Request().Host
+// getServerURL 获取服务器地址（仅从配置读取）
+func (h *AgentHandler) getServerURL(c echo.Context) string {
+	// 优先读取配置的服务端地址
+	config, err := h.propertyService.GetAgentInstallConfig(c.Request().Context())
+	if err == nil && config.ServerURL != "" {
+		return config.ServerURL
 	}
 
-	return scheme + "://" + host
+	return ""
 }
 
 func bashSingleQuote(value string) string {
@@ -82,7 +76,7 @@ func bashSingleQuote(value string) string {
 }
 
 func (h *AgentHandler) GetServerUrl(c echo.Context) error {
-	serverUrl := getServerURL(c)
+	serverUrl := h.getServerURL(c)
 	return orz.Ok(c, orz.Map{
 		"serverUrl": serverUrl,
 	})
@@ -95,8 +89,11 @@ func (h *AgentHandler) GetInstallScript(c echo.Context) error {
 		return orz.NewError(400, "token不能为空")
 	}
 
-	// 使用统一的 getServerURL 函数获取服务器地址（支持反向代理）
-	serverUrl := getServerURL(c)
+	// 使用统一的 getServerURL 函数获取服务器地址（仅从配置读取）
+	serverUrl := strings.TrimSpace(h.getServerURL(c))
+	if serverUrl == "" {
+		return orz.NewError(400, "请先配置服务端地址")
+	}
 	customName := strings.TrimSpace(c.QueryParam("name"))
 	customNameLiteral := bashSingleQuote(customName)
 

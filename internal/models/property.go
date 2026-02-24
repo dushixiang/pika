@@ -156,3 +156,8 @@ type AlertNotifications struct {
 	SSHLoginSuccessEnabled bool `json:"sshLoginSuccessEnabled"` // SSH 登录成功通知
 	TamperEventEnabled     bool `json:"tamperEventEnabled"`     // 防篡改事件通知
 }
+
+// AgentInstallConfig 探针安装配置
+type AgentInstallConfig struct {
+	ServerURL string `json:"serverUrl"` // 服务端地址
+}

@@ -51,6 +51,7 @@ collector:
     - "^docker.*"      # 排除所有 docker 开头的接口
     - "^veth.*"        # 排除所有 veth 开头的虚拟接口
     - "^br-.*"         # 排除所有 br- 开头的网桥接口
+    - "^tap.*"         # 排除所有 tap 开头的接口（PVE/KVM 虚拟机）
 
   # 磁盘采集包含的挂载点列表（白名单）
   # 如果为空，默认采集系统主分区（Linux/macOS: "/"，Windows: "C:\"）

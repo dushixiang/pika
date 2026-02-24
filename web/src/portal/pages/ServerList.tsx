@@ -75,6 +75,13 @@ const getTemperatures = (metrics?: LatestMetrics) => {
     return metrics.temperature.sort((a, b) => a.type.localeCompare(b.type));
 };
 
+const getTrafficProgressColor = (percent: number) => {
+    if (percent >= 100) return 'bg-red-500';
+    if (percent >= 90) return 'bg-orange-500';
+    if (percent >= 80) return 'bg-yellow-500';
+    return 'bg-emerald-500';
+};
+
 const ServerList = () => {
     const navigate = useNavigate();
     const [selectedTag, setSelectedTag] = useState<string>('');
@@ -193,82 +200,6 @@ const ServerList = () => {
                 />
             </div>
 
-            {/* 流量统计卡片 */}
-            {agents.filter(a => a.trafficStats?.enabled).length > 0 && (
-                <div className="bg-white/80 dark:bg-[#0a0b10]/90 border border-slate-200 dark:border-cyan-900/50 rounded-xl overflow-hidden shadow-sm dark:shadow-2xl backdrop-blur-md p-4">
-                    <div className="flex items-center gap-2 mb-4 text-slate-800 dark:text-cyan-100 font-mono font-bold">
-                        <Activity className="w-4 h-4"/>
-                        <span className="text-sm uppercase tracking-wider">流量统计</span>
-                        <span className="text-xs text-gray-500 dark:text-cyan-500">({agents.filter(a => a.trafficStats?.enabled).length} 台设备已启用)</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {agents.filter(a => a.trafficStats?.enabled).map(agent => {
-                            const traffic = agent.trafficStats!;
-                            const usagePercent = traffic.limit > 0 ? Math.min(100, (traffic.used / traffic.limit) * 100) : 0;
-                            const getProgressColor = (percent: number) => {
-                                if (percent >= 100) return 'bg-red-500';
-                                if (percent >= 90) return 'bg-orange-500';
-                                if (percent >= 80) return 'bg-yellow-500';
-                                return 'bg-emerald-500';
-                            };
-                            const formatBytes = (bytes: number) => {
-                                if (bytes === 0) return '0 B';
-                                const k = 1024;
-                                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-                                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                                return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-                            };
-
-                            return (
-                                <div
-                                    key={agent.id}
-                                    onClick={() => handleNavigate(agent.id)}
-                                    className="bg-white dark:bg-black/40 border border-slate-200 dark:border-cyan-900/30 rounded-lg p-3 hover:border-cyan-500 dark:hover:border-cyan-500 transition-all cursor-pointer group"
-                                >
-                                    <div className="flex items-start justify-between mb-2">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-mono font-bold text-sm text-slate-800 dark:text-cyan-100 truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                                                {agent.name}
-                                            </div>
-                                            <div className="text-xs text-gray-500 dark:text-cyan-600 font-mono mt-0.5">
-                                                {traffic.type === 'recv' ? '进站' : traffic.type === 'send' ? '出站' : '全部'}流量
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {traffic.limit > 0 ? (
-                                        <>
-                                            <div className="flex items-baseline justify-between mb-1">
-                                                <span className="text-xs text-gray-600 dark:text-cyan-500 font-mono">
-                                                    {formatBytes(traffic.used)} / {formatBytes(traffic.limit)}
-                                                </span>
-                                                <span className="text-xs font-bold text-gray-700 dark:text-cyan-400 font-mono">
-                                                    {usagePercent.toFixed(1)}%
-                                                </span>
-                                            </div>
-                                            <div className="h-1.5 bg-slate-200 dark:bg-cyan-900/50 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full transition-all ${getProgressColor(usagePercent)}`}
-                                                    style={{width: `${usagePercent}%`}}
-                                                />
-                                            </div>
-                                            <div className="text-xs text-gray-500 dark:text-cyan-600 font-mono mt-1">
-                                                重置日期: 每月 {traffic.resetDay} 号
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="text-xs text-gray-500 dark:text-cyan-600 font-mono">
-                                            已使用: {formatBytes(traffic.used)}
-                                            <div className="text-xs text-gray-400 dark:text-cyan-700 mt-1">仅统计模式</div>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
             {/* 标签过滤器 */}
             {allTags.length > 1 && (
                 <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center">
@@ -322,6 +253,7 @@ const ServerList = () => {
                                 <th className="p-5 font-bold w-[250px]">Identity</th>
                                 <th className="p-5 font-bold">Telemetry</th>
                                 <th className="p-5 font-bold w-[220px]">I/O Rate</th>
+                                <th className="p-5 font-bold w-[240px]">Traffic</th>
                                 <th className="p-5 font-bold w-[150px]">Network</th>
                                 <th className="p-5 font-bold w-[200px]">Meta / Tags</th>
                             </tr>
@@ -339,6 +271,10 @@ const ServerList = () => {
                                 const {upload, download} = calculateNetworkSpeed(server.metrics);
                                 const temperatures = getTemperatures(server.metrics);
                                 const netConn = server.metrics?.networkConnection;
+                                const traffic = server.trafficStats;
+                                const trafficUsagePercent = traffic?.enabled && traffic.limit > 0
+                                    ? Math.min(100, (traffic.used / traffic.limit) * 100)
+                                    : 0;
 
                                 return (
                                     <tr
@@ -453,6 +389,45 @@ const ServerList = () => {
                                                     <span>{formatSpeed(upload)}</span>
                                                 </span>
                                             </div>
+                                        </td>
+
+                                        {/* Traffic */}
+                                        <td className="p-4 font-mono text-xs align-top">
+                                            {traffic?.enabled ? (
+                                                <div className="flex flex-col gap-1.5">
+                                                    <div className="text-xs text-gray-500 dark:text-cyan-600 font-mono">
+                                                        {traffic.type === 'recv' ? '进站' : traffic.type === 'send' ? '出站' : '全部'}流量
+                                                    </div>
+                                                    {traffic.limit > 0 ? (
+                                                        <>
+                                                            <div className="flex items-baseline justify-between">
+                                                                <span className="text-xs text-gray-600 dark:text-cyan-500 font-mono">
+                                                                    {formatBytes(traffic.used, 1)} / {formatBytes(traffic.limit, 1)}
+                                                                </span>
+                                                                <span className="text-xs font-bold text-gray-700 dark:text-cyan-400 font-mono">
+                                                                    {trafficUsagePercent.toFixed(1)}%
+                                                                </span>
+                                                            </div>
+                                                            <div className="h-1.5 bg-slate-200 dark:bg-cyan-900/50 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className={`h-full transition-all ${getTrafficProgressColor(trafficUsagePercent)}`}
+                                                                    style={{width: `${trafficUsagePercent}%`}}
+                                                                />
+                                                            </div>
+                                                            <div className="text-xs text-gray-500 dark:text-cyan-600 font-mono">
+                                                                重置日期: 每月 {traffic.resetDay} 号
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-xs text-gray-500 dark:text-cyan-600 font-mono">
+                                                            已使用: {formatBytes(traffic.used, 1)}
+                                                            <div className="text-xs text-gray-400 dark:text-cyan-700 mt-1">仅统计模式</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="text-gray-600 dark:text-cyan-500">-</div>
+                                            )}
                                         </td>
 
                                         {/* Connections */}

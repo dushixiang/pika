@@ -6,15 +6,6 @@
 /* Tailwind v4 暗色模式配置 */
 @variant dark (&:where(.dark, .dark *));
 
-/* 全局背景色 */
-body {
-    background-color: white;
-}
-
-body.dark {
-    background-color: #05050a;
-}
-
 /* 标签过滤器滚动条样式 */
 .tag-filter-scrollbar {
     scrollbar-width: thin;

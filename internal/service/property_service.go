@@ -28,6 +28,8 @@ const (
 	PropertyIDAlertConfig = "alert_config"
 	// PropertyIDDNSProviders DNS 服务商配置的固定 ID
 	PropertyIDDNSProviders = "dns_providers"
+	// PropertyIDAgentInstallConfig 探针安装配置的固定 ID
+	PropertyIDAgentInstallConfig = "agent_install_config"
 )
 
 var defaultPublicIPv4APIs = []string{
@@ -313,6 +315,21 @@ func (s *PropertyService) DeleteDNSProvider(ctx context.Context, providerType st
 	return s.SetDNSProviderConfigs(ctx, newProviders)
 }
 
+// GetAgentInstallConfig 获取探针安装配置
+func (s *PropertyService) GetAgentInstallConfig(ctx context.Context) (*models.AgentInstallConfig, error) {
+	var config models.AgentInstallConfig
+	err := s.GetValue(ctx, PropertyIDAgentInstallConfig, &config)
+	if err != nil {
+		return nil, fmt.Errorf("获取探针安装配置失败: %w", err)
+	}
+	return &config, nil
+}
+
+// SetAgentInstallConfig 设置探针安装配置
+func (s *PropertyService) SetAgentInstallConfig(ctx context.Context, config models.AgentInstallConfig) error {
+	return s.Set(ctx, PropertyIDAgentInstallConfig, "探针安装配置", config)
+}
+
 // defaultPropertyConfig 默认配置项定义
 type defaultPropertyConfig struct {
 	ID    string
@@ -392,6 +409,11 @@ func (s *PropertyService) InitializeDefaultConfigs(ctx context.Context) error {
 			ID:    PropertyIDDNSProviders,
 			Name:  "DNS 服务商配置",
 			Value: []models.DNSProviderConfig{}, // 默认为空数组
+		},
+		{
+			ID:    PropertyIDAgentInstallConfig,
+			Name:  "探针安装配置",
+			Value: models.AgentInstallConfig{ServerURL: ""}, // 默认空字符串，使用自动检测
 		},
 	}
 

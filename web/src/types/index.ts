@@ -245,7 +245,7 @@ export interface GPUMetric {
     memoryUsed: number;
     memoryFree: number;
     temperature: number;
-    powerDraw: number;
+    powerUsage: number;
     fanSpeed: number;
     performanceState: string;
     timestamp: number;

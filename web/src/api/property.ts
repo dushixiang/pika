@@ -173,3 +173,22 @@ export const getAlertConfig = async (): Promise<AlertConfig> => {
 export const saveAlertConfig = async (config: AlertConfig): Promise<void> => {
     return saveProperty(PROPERTY_ID_ALERT_CONFIG, '告警配置', config);
 };
+
+// ==================== 探针安装配置 ====================
+
+const PROPERTY_ID_AGENT_INSTALL_CONFIG = 'agent_install_config';
+
+// 探针安装配置
+export interface AgentInstallConfig {
+    serverUrl: string;  // 服务端地址
+}
+
+// 获取探针安装配置
+export const getAgentInstallConfig = async (): Promise<AgentInstallConfig> => {
+    return getProperty<AgentInstallConfig>(PROPERTY_ID_AGENT_INSTALL_CONFIG);
+};
+
+// 保存探针安装配置
+export const saveAgentInstallConfig = async (config: AgentInstallConfig): Promise<void> => {
+    return saveProperty(PROPERTY_ID_AGENT_INSTALL_CONFIG, '探针安装配置', config);
+};

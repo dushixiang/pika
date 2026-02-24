@@ -1,9 +1,10 @@
 import {useEffect, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
-import {App, Button, Divider, Input, Space, Table, Tag, Tooltip} from 'antd';
+import {App, Button, Divider, Dropdown, Input, Space, Table, Tag, Tooltip} from 'antd';
 import type {ColumnsType} from 'antd/es/table';
+import type {MenuProps} from 'antd';
 import {PageHeader} from '@admin/components';
-import {Globe, Plus, Settings} from 'lucide-react';
+import {Globe, MoreVertical, Plus, Settings} from 'lucide-react';
 import dayjs from 'dayjs';
 import type {DDNSConfig} from '@/types';
 import {deleteDDNSConfig, disableDDNSConfig, enableDDNSConfig, getDDNSConfigs, triggerDDNSUpdate,} from '@/api/ddns';
@@ -205,56 +206,61 @@ const DDNSPage = () => {
         {
             title: '操作',
             key: 'action',
-            width: 240,
-            render: (_, record) => [
-                <Button
-                    key="records"
-                    type="link"
-                    size="small"
-                    style={{margin: 0, padding: 0}}
-                    onClick={() => handleViewRecords(record)}
-                >
-                    记录
-                </Button>,
-                <Button
-                    key="trigger"
-                    type="link"
-                    size="small"
-                    style={{margin: 0, padding: 0}}
-                    onClick={() => handleTrigger(record)}
-                    disabled={!record.enabled}
-                >
-                    触发
-                </Button>,
-                <Button
-                    key="toggle"
-                    type="link"
-                    size="small"
-                    style={{margin: 0, padding: 0}}
-                    onClick={() => handleToggleStatus(record)}
-                >
-                    {record.enabled ? '禁用' : '启用'}
-                </Button>,
-                <Button
-                    key="edit"
-                    type="link"
-                    size="small"
-                    style={{margin: 0, padding: 0}}
-                    onClick={() => handleUpdate(record)}
-                >
-                    编辑
-                </Button>,
-                <Button
-                    key="delete"
-                    type="link"
-                    size="small"
-                    style={{margin: 0, padding: 0}}
-                    danger
-                    onClick={() => handleDelete(record)}
-                >
-                    删除
-                </Button>,
-            ],
+            width: 150,
+            fixed: 'right',
+            render: (_, record) => {
+                const menuItems: MenuProps['items'] = [
+                    {
+                        key: 'records',
+                        label: '查看记录',
+                        onClick: () => handleViewRecords(record),
+                    },
+                    {
+                        key: 'trigger',
+                        label: '触发更新',
+                        onClick: () => handleTrigger(record),
+                        disabled: !record.enabled,
+                    },
+                    {
+                        key: 'toggle',
+                        label: record.enabled ? '禁用' : '启用',
+                        onClick: () => handleToggleStatus(record),
+                    },
+                    {
+                        key: 'edit',
+                        label: '编辑',
+                        onClick: () => handleUpdate(record),
+                    },
+                    {
+                        type: 'divider',
+                    },
+                    {
+                        key: 'delete',
+                        label: '删除',
+                        danger: true,
+                        onClick: () => handleDelete(record),
+                    },
+                ];
+
+                return (
+                    <Space size="small">
+                        <Button
+                            type="link"
+                            onClick={() => handleViewRecords(record)}
+                            style={{padding: 0}}
+                        >
+                            记录
+                        </Button>
+                        <Dropdown menu={{items: menuItems}} trigger={['click']} placement="bottomRight">
+                            <Button
+                                type="link"
+                                icon={<MoreVertical size={14}/>}
+                                style={{padding: 0}}
+                            />
+                        </Dropdown>
+                    </Space>
+                );
+            },
         },
     ];
 

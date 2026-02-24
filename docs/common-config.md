@@ -71,8 +71,13 @@ https://tools.typesafe.cn/bcrypt
 
 ### 推荐使用第三方认证服务
 
+为什么推荐使用第三方认证服务？
+
+因为用户权限是一套非常通用的需求，例如登录、注销、修改密码、忘记密码、二次认证等等，这些都不是本系统的重点，没有必要去重新实现，使用第三方认证服务可以避免这个问题。
+
 - 优先推荐 Github OAuth 认证
-- 建议使用 [next-terminal](https://github.com/dushixiang/next-terminal) 作为 OIDC 认证服务，支持 OTP 认证，Passkey 认证
+- 建议使用 [next-terminal](https://github.com/dushixiang/next-terminal) 作为 OIDC 认证服务，支持 OTP 认证，Passkey 认证。
+  详细文档 https://docs.next-terminal.typesafe.cn/usage/oidc_server.html
 
 ### 修改配置文件后需要重启服务
 
@@ -166,6 +171,12 @@ ports:
 如果探针采集到了很多网卡，说明默认的过滤规则已经不适用于你的环境了。
 
 你可以参考 [agent.example.yaml](../cmd/agent/agent.example.yaml) 修改 `collector` 下的 `network_include` 或者 `network_exclude` 配置。
+
+### 多磁盘采集
+
+本系统默认只采集根目录和 C 盘，其他磁盘需要手动配置。
+
+你可以参考 [agent.example.yaml](../cmd/agent/agent.example.yaml) 修改 `collector` 下的 `disk_include` 配置。
 
 ### IP 归属地
 

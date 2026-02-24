@@ -9,7 +9,6 @@ import {
     AgentInstallLayout,
     ApiChooser,
     ConfigHelper,
-    ServerUrlChecker,
     ServiceHelper,
     AGENT_NAME,
     AGENT_NAME_EXE,
@@ -36,14 +35,11 @@ const DEFAULT_OS: OSType = 'linux-amd64';
 
 const AgentInstallManual = () => {
     const { message } = App.useApp();
-    const frontendUrl = useMemo(() => window.location.origin, []);
     const [selectedOS, setSelectedOS] = useState<OSType>(DEFAULT_OS);
     const {
         apiKeys,
         selectedApiKey,
         setSelectedApiKey,
-        customAgentName,
-        setCustomAgentName,
         loading,
         backendServerUrl,
         apiKeyOptions,
@@ -94,7 +90,6 @@ const AgentInstallManual = () => {
 
     const getManualInstallSteps = (os: OSType): InstallStep[] => {
         const config = osConfigs[os];
-        const trimmedName = customAgentName.trim();
 
         if (os.startsWith('windows')) {
             return [
@@ -108,7 +103,7 @@ Invoke-WebRequest -Uri "${backendServerUrl}${config.downloadUrl}?key=${selectedA
                 },
                 {
                     title: '2. 注册探针',
-                    command: `.\\${AGENT_NAME_EXE} register --endpoint "${backendServerUrl}" --token "${selectedApiKey}"${trimmedName ? ` --name "${trimmedName}"` : ''}`
+                    command: `.\\${AGENT_NAME_EXE} register --endpoint "${backendServerUrl}" --token "${selectedApiKey}"`
                 },
                 {
                     title: '3. 验证安装',
@@ -136,7 +131,7 @@ curl -L "${backendServerUrl}${config.downloadUrl}?key=${selectedApiKey}" -o ${AG
             },
             {
                 title: '4. 注册探针',
-                command: `sudo ${AGENT_NAME} register --endpoint "${backendServerUrl}" --token "${selectedApiKey}"${trimmedName ? ` --name "${trimmedName}"` : ''}`
+                command: `sudo ${AGENT_NAME} register --endpoint "${backendServerUrl}" --token "${selectedApiKey}"`
             },
             {
                 title: '5. 验证安装',
@@ -148,15 +143,12 @@ curl -L "${backendServerUrl}${config.downloadUrl}?key=${selectedApiKey}" -o ${AG
     return (
         <AgentInstallLayout activeKey="manual">
             <Space direction="vertical" className="w-full">
-                <ServerUrlChecker backendServerUrl={backendServerUrl} frontendUrl={frontendUrl} />
                 <ApiChooser
                     apiKeys={apiKeys}
                     selectedApiKey={selectedApiKey}
                     apiKeyOptions={apiKeyOptions}
                     loading={loading}
-                    customAgentName={customAgentName}
                     onSelectApiKey={setSelectedApiKey}
-                    onCustomNameBlur={setCustomAgentName}
                 />
                 <Tabs
                     activeKey={selectedOS}

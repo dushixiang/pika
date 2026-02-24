@@ -111,7 +111,8 @@ type ServiceManager struct {
 const systemdScript = `[Unit]
 Description={{.Description}}
 ConditionFileIsExecutable={{.Path|cmdEscape}}
-{{range .Dependencies}} {{.}} {{end}}
+{{range $i, $dep := .Dependencies}} 
+{{$dep}} {{end}}
 
 [Service]
 StartLimitInterval=5
@@ -122,13 +123,19 @@ ExecStart={{.Path|cmdEscape}}{{range .Arguments}} {{.|cmd}}{{end}}
 {{if .UserName}}User={{.UserName}}{{end}}
 {{if .ReloadSignal}}ExecReload=/bin/kill -{{.ReloadSignal}} "$MAINPID"{{end}}
 {{if .PIDFile}}PIDFile={{.PIDFile|cmd}}{{end}}
-{{if .LogOutput}}StandardOutput={{.LogOutput}}
-StandardError={{.LogOutput}}{{end}}
-{{if .LogDirectory}}LogsDirectory={{.LogDirectory}}{{end}}
-Restart=always
+{{if and .LogOutput .HasOutputFileSupport -}}
+StandardOutput=file:{{.LogDirectory}}/{{.Name}}.out
+StandardError=file:{{.LogDirectory}}/{{.Name}}.err
+{{- end}}
+{{if gt .LimitNOFILE -1 }}LimitNOFILE={{.LimitNOFILE}}{{end}}
+{{if .Restart}}Restart={{.Restart}}{{end}}
+{{if .SuccessExitStatus}}SuccessExitStatus={{.SuccessExitStatus}}{{end}}
 RestartSec=5
-KillMode=process
 EnvironmentFile=-/etc/sysconfig/{{.Name}}
+
+{{range $k, $v := .EnvVars -}}
+Environment={{$k}}={{$v}}
+{{end -}}
 
 [Install]
 WantedBy=multi-user.target

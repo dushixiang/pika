@@ -21,9 +21,7 @@ export type ApiChooserProps = {
     selectedApiKey: string;
     apiKeyOptions: ApiKeyOption[];
     loading: boolean;
-    customAgentName: string;
     onSelectApiKey: (value: string) => void;
-    onCustomNameBlur: (value: string) => void;
 };
 
 export const AgentInstallLayout = ({ activeKey, children }: { activeKey: InstallNavKey; children: ReactNode }) => {
@@ -64,124 +62,39 @@ export const AgentInstallLayout = ({ activeKey, children }: { activeKey: Install
     );
 };
 
-export const ServerUrlChecker = ({ backendServerUrl, frontendUrl }: { backendServerUrl: string; frontendUrl: string }) => {
-    const hasAddressMismatch = backendServerUrl && backendServerUrl !== frontendUrl;
-
-    if (!hasAddressMismatch) {
-        return null;
-    }
-
-    return (
-        <Alert
-            message="检测到地址不一致"
-            description={
-                <Space direction="vertical" className="w-full">
-                    <div>
-                        当前访问地址: <Text code>{frontendUrl}</Text>
-                        <br />
-                        后端检测地址: <Text code>{backendServerUrl}</Text>
-                    </div>
-                    <div>
-                        <Text strong>这通常是因为您使用了反向代理，但未正确配置转发头部。</Text>
-                    </div>
-                    <div>
-                        <Text>请在反向代理配置中添加以下头部：</Text>
-                    </div>
-                    <div>
-                        <Text strong>Nginx 配置示例：</Text>
-                        <pre className="m-0 mt-2 overflow-auto text-xs bg-gray-100 dark:bg-slate-900 p-2 rounded">
-                            {`location / {
-    proxy_pass http://backend;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-}`}
-                        </pre>
-                    </div>
-                    <div>
-                        <Text strong>Caddy 配置示例：</Text>
-                        <pre className="m-0 mt-2 overflow-auto text-xs bg-gray-100 dark:bg-slate-900 p-2 rounded">
-                            {`reverse_proxy backend:8080 {
-    header_up X-Forwarded-Proto {scheme}
-    header_up X-Forwarded-Host {host}
-}`}
-                        </pre>
-                    </div>
-                    <div>
-                        <Text strong>Traefik 配置说明：</Text>
-                        <pre className="m-0 mt-2 overflow-auto text-xs bg-gray-100 dark:bg-slate-900 p-2 rounded">
-                            {`# Traefik 默认会自动添加 X-Forwarded-* 头部
-# 无需额外配置`}
-                        </pre>
-                    </div>
-                    <div className="mt-2">
-                        <Text type="secondary">配置完成后，刷新页面即可生效。</Text>
-                    </div>
-                </Space>
-            }
-            type="warning"
-            showIcon
-            closable
-        />
-    );
-};
-
 export const ApiChooser = ({
     apiKeys,
     selectedApiKey,
     apiKeyOptions,
     loading,
-    customAgentName,
     onSelectApiKey,
-    onCustomNameBlur,
 }: ApiChooserProps) => (
     <Card type="inner" title="配置选项">
-        <Space direction="vertical" className="w-full">
-            <div>
-                <div className="mb-1 text-gray-600 dark:text-slate-400">选择 API Token</div>
-                {apiKeys.length === 0 ? (
-                    <Alert
-                        message="暂无可用的 API Token"
-                        description={
-                            <span>
-                                请先前往 <a href="/admin/api-keys">API密钥管理</a> 页面生成一个 API Token
-                            </span>
-                        }
-                        type="warning"
-                        showIcon
-                        className="mt-2"
-                    />
-                ) : (
-                    <Select
-                        className="w-full"
-                        value={selectedApiKey}
-                        onChange={onSelectApiKey}
-                        options={apiKeyOptions}
-                        loading={loading}
-                        placeholder="请选择 API Token"
-                    />
-                )}
-            </div>
-
-            <div>
-                <div className="mb-1 text-gray-600 dark:text-slate-400">
-                    自定义名称 <span className="text-xs text-gray-400">(可选，留空则使用主机名)</span>
-                </div>
-                <Input
-                    key={customAgentName}
-                    placeholder="请输入自定义名称，例如: my-server-01"
-                    defaultValue={customAgentName}
-                    onBlur={(e) => {
-                        const trimmed = e.currentTarget.value.trim();
-                        onCustomNameBlur(trimmed);
-                        e.currentTarget.value = trimmed;
-                    }}
-                    className="w-full"
-                    allowClear
+        <div>
+            <div className="mb-1 text-gray-600 dark:text-slate-400">选择 API Token</div>
+            {apiKeys.length === 0 ? (
+                <Alert
+                    message="暂无可用的 API Token"
+                    description={
+                        <span>
+                            请先前往 <a href="/admin/api-keys">API密钥管理</a> 页面生成一个 API Token
+                        </span>
+                    }
+                    type="warning"
+                    showIcon
+                    className="mt-2"
                 />
-            </div>
-        </Space>
+            ) : (
+                <Select
+                    className="w-full"
+                    value={selectedApiKey}
+                    onChange={onSelectApiKey}
+                    options={apiKeyOptions}
+                    loading={loading}
+                    placeholder="请选择 API Token"
+                />
+            )}
+        </div>
     </Card>
 );
 
