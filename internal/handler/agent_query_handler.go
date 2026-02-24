@@ -26,6 +26,7 @@ func (h *AgentHandler) Get(c echo.Context) error {
 
 	// 未登录时隐藏敏感信息
 	if !isAuthenticated {
+		agent.IP = ""
 		agent.IPv4 = ""
 		agent.IPv6 = ""
 		agent.Hostname = ""
