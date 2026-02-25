@@ -11,6 +11,12 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	serverPingInterval = 10 * time.Second
+	serverPongWait     = 30 * time.Second
+	serverWriteWait    = 10 * time.Second
+)
+
 // Client WebSocket客户端
 type Client struct {
 	ID         string          // 探针ID
@@ -31,10 +37,14 @@ type Manager struct {
 	mu         sync.RWMutex       // 读写锁
 	logger     *zap.Logger        // 日志
 	onMessage  MessageHandler     // 消息处理器
+	onPong     PongHandler        // Pong 处理器
 }
 
 // MessageHandler 消息处理器接口
 type MessageHandler func(ctx context.Context, probeID string, messageType string, data json.RawMessage) error
+
+// PongHandler Pong 处理器接口
+type PongHandler func(probeID string)
 
 // NewManager 创建新的WebSocket管理器
 func NewManager(logger *zap.Logger) *Manager {
@@ -50,6 +60,11 @@ func NewManager(logger *zap.Logger) *Manager {
 // SetMessageHandler 设置消息处理器
 func (m *Manager) SetMessageHandler(handler MessageHandler) {
 	m.onMessage = handler
+}
+
+// SetPongHandler 设置 Pong 处理器
+func (m *Manager) SetPongHandler(handler PongHandler) {
+	m.onPong = handler
 }
 
 // Run 启动管理器
@@ -202,10 +217,13 @@ func (c *Client) ReadPump(ctx context.Context) {
 		c.Conn.Close()
 	}()
 
-	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.Conn.SetReadDeadline(time.Now().Add(serverPongWait))
 	c.Conn.SetPongHandler(func(string) error {
-		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		c.Conn.SetReadDeadline(time.Now().Add(serverPongWait))
 		c.LastActive = time.Now()
+		if c.Manager.onPong != nil {
+			go c.Manager.onPong(c.ID)
+		}
 		return nil
 	})
 
@@ -238,7 +256,7 @@ func (c *Client) ReadPump(ctx context.Context) {
 
 // WritePump 向客户端写入消息
 func (c *Client) WritePump() {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(serverPingInterval)
 	defer func() {
 		ticker.Stop()
 		c.Conn.Close()
@@ -247,7 +265,7 @@ func (c *Client) WritePump() {
 	for {
 		select {
 		case message, ok := <-c.Send:
-			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			c.Conn.SetWriteDeadline(time.Now().Add(serverWriteWait))
 			if !ok {
 				// 通道已关闭
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
@@ -260,7 +278,7 @@ func (c *Client) WritePump() {
 			}
 
 		case <-ticker.C:
-			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			c.Conn.SetWriteDeadline(time.Now().Add(serverWriteWait))
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

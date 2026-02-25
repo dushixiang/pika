@@ -77,9 +77,6 @@ func (h *AgentHandler) HandleWebSocket(c echo.Context) error {
 // handleWebSocketMessage 处理WebSocket消息
 func (h *AgentHandler) handleWebSocketMessage(ctx context.Context, agentID string, messageType string, data json.RawMessage) error {
 	switch protocol.MessageType(messageType) {
-	case protocol.MessageTypeHeartbeat:
-		return h.handleHeartbeatMessage(ctx, agentID)
-
 	case protocol.MessageTypeMetrics:
 		return h.handleMetricsMessage(ctx, agentID, data)
 
@@ -154,8 +151,13 @@ func (h *AgentHandler) newClient(agentID string, conn *websocket.Conn) *ws.Clien
 	}
 }
 
-func (h *AgentHandler) handleHeartbeatMessage(ctx context.Context, agentID string) error {
-	return h.agentService.UpdateAgentStatus(ctx, agentID, 1)
+func (h *AgentHandler) handleWebSocketPong(agentID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := h.agentService.UpdateAgentStatus(ctx, agentID, 1); err != nil {
+		h.logger.Warn("failed to update agent status on pong", zap.String("agentID", agentID), zap.Error(err))
+	}
 }
 
 func (h *AgentHandler) handleMetricsMessage(ctx context.Context, agentID string, data json.RawMessage) error {

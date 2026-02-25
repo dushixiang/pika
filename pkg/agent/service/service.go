@@ -274,8 +274,7 @@ func (m *ServiceManager) Run() error {
 
 	slog.Info("配置加载成功",
 		"server_endpoint", m.cfg.Server.Endpoint,
-		"collector_interval", m.cfg.GetCollectorInterval(),
-		"heartbeat_interval", m.cfg.GetHeartbeatInterval())
+		"collector_interval", m.cfg.GetCollectorInterval())
 
 	// 初始化系统配置（Linux ICMP 权限等）
 	configureICMP()

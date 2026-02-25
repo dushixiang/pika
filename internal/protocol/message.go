@@ -50,7 +50,6 @@ const (
 	MessageTypeRegister    MessageType = "register"
 	MessageTypeRegisterAck MessageType = "register_ack"
 	MessageTypeRegisterErr MessageType = "register_error"
-	MessageTypeHeartbeat   MessageType = "heartbeat"
 	MessageTypeCommand     MessageType = "command"
 	MessageTypeCommandResp MessageType = "command_response"
 	MessageTypeUninstall   MessageType = "uninstall"

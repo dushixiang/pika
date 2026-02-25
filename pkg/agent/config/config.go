@@ -72,9 +72,6 @@ type CollectorConfig struct {
 	// 数据采集间隔（秒）
 	Interval int `yaml:"interval"`
 
-	// 心跳间隔（秒）
-	HeartbeatInterval int `yaml:"heartbeat_interval"`
-
 	// 网络采集包含的网卡列表（白名单，支持正则表达式）
 	// 如果配置了此项，则只采集匹配的网卡，忽略 NetworkExclude
 	// 例如: ["^eth0$", "^en0$", "^ens.*"]
@@ -120,8 +117,7 @@ func DefaultConfig() *Config {
 			LogCompress:   true,
 		},
 		Collector: CollectorConfig{
-			Interval:          5,
-			HeartbeatInterval: 30,
+			Interval: 5,
 		},
 		AutoUpdate: AutoUpdateConfig{
 			Enabled:       true,
@@ -205,10 +201,6 @@ func (c *Config) Validate() error {
 		c.Collector.Interval = 5
 	}
 
-	if c.Collector.HeartbeatInterval <= 0 {
-		c.Collector.HeartbeatInterval = 30
-	}
-
 	if c.AutoUpdate.Enabled {
 		if _, err := time.ParseDuration(c.AutoUpdate.CheckInterval); err != nil {
 			return fmt.Errorf("更新检查间隔格式错误: %w", err)
@@ -235,11 +227,6 @@ func (c *Config) Validate() error {
 // GetCollectorInterval 获取采集间隔时长
 func (c *Config) GetCollectorInterval() time.Duration {
 	return time.Duration(c.Collector.Interval) * time.Second
-}
-
-// GetHeartbeatInterval 获取心跳间隔时长
-func (c *Config) GetHeartbeatInterval() time.Duration {
-	return time.Duration(c.Collector.HeartbeatInterval) * time.Second
 }
 
 // GetUpdateCheckInterval 获取更新检查间隔时长

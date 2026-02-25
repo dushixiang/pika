@@ -49,6 +49,7 @@ func NewAgentHandler(logger *zap.Logger, agentService *service.AgentService, tra
 
 	// 设置WebSocket消息处理器
 	wsManager.SetMessageHandler(h.handleWebSocketMessage)
+	wsManager.SetPongHandler(h.handleWebSocketPong)
 
 	return h
 }

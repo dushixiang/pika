@@ -485,9 +485,8 @@ func registerAgent(cmd *cobra.Command, args []string) {
 			LogCompress:   true,
 		},
 		Collector: config.CollectorConfig{
-			Interval:          5,
-			HeartbeatInterval: 30,
-			NetworkExclude:    config.DefaultNetworkExcludePatterns(),
+			Interval:       5,
+			NetworkExclude: config.DefaultNetworkExcludePatterns(),
 		},
 		AutoUpdate: config.AutoUpdateConfig{
 			Enabled:       true,
@@ -569,7 +568,6 @@ func showInfo(cmd *cobra.Command, args []string) {
 	// 采集器配置
 	fmt.Println("📊 采集器配置:")
 	fmt.Printf("   采集间隔: %d 秒\n", cfg.Collector.Interval)
-	fmt.Printf("   心跳间隔: %d 秒\n", cfg.Collector.HeartbeatInterval)
 	if len(cfg.Collector.NetworkExclude) > 0 {
 		fmt.Printf("   网卡过滤规则: %v\n", cfg.Collector.NetworkExclude)
 	}

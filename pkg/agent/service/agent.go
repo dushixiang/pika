@@ -26,6 +26,12 @@ import (
 	"github.com/sourcegraph/conc"
 )
 
+const (
+	agentPingInterval = 10 * time.Second
+	agentPongWait     = 30 * time.Second
+	agentWriteWait    = 5 * time.Second
+)
+
 // safeConn 线程安全的 WebSocket 连接包装器
 type safeConn struct {
 	conn *websocket.Conn
@@ -164,14 +170,19 @@ func (a *Agent) runOnce(ctx context.Context, onRegistered func()) error {
 	// 创建线程安全的连接包装器
 	conn := &safeConn{conn: rawConn}
 
+	if err := rawConn.SetReadDeadline(time.Now().Add(agentPongWait)); err != nil {
+		return fmt.Errorf("设置读取超时失败: %w", err)
+	}
+	rawConn.SetPongHandler(func(string) error {
+		return rawConn.SetReadDeadline(time.Now().Add(agentPongWait))
+	})
+
 	// 设置 Ping 处理器，自动响应服务端的 Ping
 	rawConn.SetPingHandler(func(appData string) error {
-		// WriteControl 有内置锁，可以安全调用
-		err := rawConn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(time.Second))
-		if err == nil {
-			//slog.Info("收到 Ping，已发送 Pong")
+		if err := rawConn.SetReadDeadline(time.Now().Add(agentPongWait)); err != nil {
+			return err
 		}
-		return err
+		return rawConn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(agentWriteWait))
 	})
 
 	// 发送注册消息
@@ -204,11 +215,11 @@ func (a *Agent) runOnce(ctx context.Context, onRegistered func()) error {
 		}
 	})
 
-	// 启动心跳和数据发送
+	// 主动发送 Ping，快速检测断线
 	wg.Go(func() {
-		if err := a.heartbeatLoop(ctx, conn, done); err != nil {
+		if err := a.pingLoop(ctx, rawConn, done); err != nil {
 			select {
-			case errChan <- fmt.Errorf("心跳失败: %w", err):
+			case errChan <- fmt.Errorf("ping失败: %w", err):
 			default:
 			}
 		}
@@ -294,6 +305,24 @@ func (a *Agent) readLoop(conn *websocket.Conn, done chan struct{}) error {
 			go a.handleUninstall()
 		default:
 			// 忽略其他类型
+		}
+	}
+}
+
+func (a *Agent) pingLoop(ctx context.Context, conn *websocket.Conn, done chan struct{}) error {
+	ticker := time.NewTicker(agentPingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(agentWriteWait)); err != nil {
+				return err
+			}
+		case <-done:
+			return nil
+		case <-ctx.Done():
+			return nil
 		}
 	}
 }
@@ -393,29 +422,6 @@ func (a *Agent) handleMonitorConfig(data json.RawMessage) {
 		slog.Warn("监控检测失败", "error", err)
 	} else {
 		slog.Info("服务监控检测完成，已上报或缓存监控项结果", "count", len(payload.Items))
-	}
-}
-
-// heartbeatLoop 心跳循环
-func (a *Agent) heartbeatLoop(ctx context.Context, conn *safeConn, done chan struct{}) error {
-	ticker := time.NewTicker(a.cfg.GetHeartbeatInterval())
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			if err := conn.WriteJSON(protocol.OutboundMessage{
-				Type: protocol.MessageTypeHeartbeat,
-				Data: struct{}{},
-			}); err != nil {
-				return fmt.Errorf("发送心跳失败: %w", err)
-			}
-			//slog.Info("心跳已发送")
-		case <-done:
-			return nil
-		case <-ctx.Done():
-			return nil
-		}
 	}
 }
 
