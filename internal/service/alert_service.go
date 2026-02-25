@@ -226,6 +226,7 @@ func (s *AlertService) resolveAlert(ctx context.Context, config *models.AlertCon
 			} else {
 				now := time.Now().UnixMilli()
 				existingRecord.Status = "resolved"
+				existingRecord.ResolvedValue = state.Value
 				existingRecord.ResolvedAt = now
 				existingRecord.UpdatedAt = now
 
@@ -517,7 +518,7 @@ func (s *AlertService) resolveCertAlert(ctx context.Context, config *models.Aler
 		} else if existingRecord != nil && existingRecord.Status == "firing" {
 			now := time.Now().UnixMilli()
 			existingRecord.Status = "resolved"
-			existingRecord.ActualValue = certDaysLeft
+			existingRecord.ResolvedValue = certDaysLeft
 			existingRecord.ResolvedAt = now
 			existingRecord.UpdatedAt = now
 
@@ -680,6 +681,7 @@ func (s *AlertService) resolveServiceDownAlert(ctx context.Context, config *mode
 		} else if existingRecord != nil && existingRecord.Status == "firing" {
 			now := time.Now().UnixMilli()
 			existingRecord.Status = "resolved"
+			existingRecord.ResolvedValue = 0 // 服务已恢复在线
 			existingRecord.ResolvedAt = now
 			existingRecord.UpdatedAt = now
 
@@ -818,6 +820,7 @@ func (s *AlertService) resolveAgentOfflineAlert(ctx context.Context, config *mod
 		} else if existingRecord != nil && existingRecord.Status == "firing" {
 			now := time.Now().UnixMilli()
 			existingRecord.Status = "resolved"
+			existingRecord.ResolvedValue = 0 // 探针已恢复在线
 			existingRecord.ResolvedAt = now
 			existingRecord.UpdatedAt = now
 

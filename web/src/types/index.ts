@@ -496,6 +496,7 @@ export interface AlertRecord {
     message: string;
     threshold: number;
     actualValue: number;
+    resolvedValue?: number;
     level: string;
     status: string;
     firedAt: number;

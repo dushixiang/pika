@@ -184,7 +184,7 @@ const AlertRecordList = () => {
             },
         },
         {
-            title: '实际值',
+            title: '告警值',
             dataIndex: 'actualValue',
             width: 100,
             render: (_, record) => {
@@ -198,6 +198,27 @@ const AlertRecordList = () => {
                     return `${record.actualValue.toFixed(0)} 秒`;
                 }
                 return `${record.actualValue.toFixed(2)}%`;
+            },
+        },
+        {
+            title: '恢复值',
+            dataIndex: 'resolvedValue',
+            width: 100,
+            render: (_, record) => {
+                // 只有已恢复的告警才显示恢复值
+                if (record.status !== 'resolved' || record.resolvedValue === undefined) {
+                    return '-';
+                }
+                if (record.alertType === 'network') {
+                    return `${record.resolvedValue.toFixed(2)} MB/s`;
+                }
+                if (record.alertType === 'cert') {
+                    return `${record.resolvedValue.toFixed(0)} 天`;
+                }
+                if (record.alertType === 'service' || record.alertType === 'agent_offline') {
+                    return record.resolvedValue === 0 ? '已在线' : `${record.resolvedValue.toFixed(0)} 秒`;
+                }
+                return `${record.resolvedValue.toFixed(2)}%`;
             },
         },
         {
@@ -285,6 +306,9 @@ const AlertRecordList = () => {
                     showQuickJumper: true,
                     pageSizeOptions: ['10', '20', '50', '100'],
                     showTotal: (total) => `共 ${total} 条`,
+                }}
+                scroll={{
+                    x: 'max-content'
                 }}
                 onChange={handleTableChange}
             />

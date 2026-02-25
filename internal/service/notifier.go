@@ -282,8 +282,20 @@ func (n *Notifier) buildResolvedMessage(
 		fmt.Sprintf("告警类型: %s", record.AlertType),
 	}
 
+	// 显示告警值和恢复值的对比
 	if metadata.ShowActual {
-		lines = append(lines, fmt.Sprintf("当前值: %.2f%s", record.ActualValue, metadata.ValueUnit))
+		// 对于服务下线和探针离线，恢复值为0时显示"已在线"
+		if (record.AlertType == "service" || record.AlertType == "agent_offline") && record.ResolvedValue == 0 {
+			lines = append(lines,
+				fmt.Sprintf("告警值: %.2f%s", record.ActualValue, metadata.ValueUnit),
+				"恢复状态: 已在线",
+			)
+		} else {
+			lines = append(lines,
+				fmt.Sprintf("告警值: %.2f%s", record.ActualValue, metadata.ValueUnit),
+				fmt.Sprintf("恢复值: %.2f%s", record.ResolvedValue, metadata.ValueUnit),
+			)
+		}
 	}
 
 	lines = append(lines,
@@ -632,6 +644,8 @@ func (n *Notifier) buildCustomBody(agent *models.Agent, record *models.AlertReco
 			v = fmt.Sprintf("%.2f", record.Threshold)
 		case "alert.actualValue":
 			v = fmt.Sprintf("%.2f", record.ActualValue)
+		case "alert.resolvedValue":
+			v = fmt.Sprintf("%.2f", record.ResolvedValue)
 		case "alert.firedAt":
 			// 格式化的触发时间 (使用系统时区，Docker 中设置为 Asia/Shanghai)
 			v = utils.FormatTimestamp(record.FiredAt)
