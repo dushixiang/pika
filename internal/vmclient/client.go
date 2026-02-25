@@ -220,6 +220,40 @@ func (c *VMClient) Query(ctx context.Context, query string) (*QueryResult, error
 	return &result, nil
 }
 
+// DeleteSeries 删除时间序列数据
+func (c *VMClient) DeleteSeries(ctx context.Context, matchers []string) error {
+	if len(matchers) == 0 {
+		return nil
+	}
+
+	reqCtx, cancel := context.WithTimeout(ctx, c.queryTimeout)
+	defer cancel()
+
+	params := url.Values{}
+	for _, matcher := range matchers {
+		params.Add("match[]", matcher)
+	}
+
+	reqURL := fmt.Sprintf("%s/api/v1/admin/tsdb/delete_series?%s", c.baseURL, params.Encode())
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, reqURL, nil)
+	if err != nil {
+		return fmt.Errorf("create request failed: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("delete series failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete series failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
 // ConvertToDataPoints 将查询结果转换为数据点列表
 func ConvertToDataPoints(result *QueryResult) []DataPoint {
 	if result == nil || len(result.Data.Result) == 0 {

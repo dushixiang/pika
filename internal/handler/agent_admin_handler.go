@@ -229,6 +229,15 @@ func (h *AgentHandler) Delete(c echo.Context) error {
 		client.Conn.Close()
 	}
 
+	// 删除探针在 VictoriaMetrics 中的历史指标数据
+	if err := h.metricService.DeleteAgentMetrics(ctx, agentID); err != nil {
+		h.logger.Error("删除探针 VictoriaMetrics 数据失败",
+			zap.String("agentID", agentID),
+			zap.String("name", agent.Name),
+			zap.Error(err))
+		return orz.NewError(500, "删除探针指标数据失败")
+	}
+
 	// 删除探针及其所有相关数据
 	if err := h.agentService.DeleteAgent(ctx, agentID); err != nil {
 		h.logger.Error("删除探针失败",

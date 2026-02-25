@@ -124,6 +124,14 @@ func (h *MonitorHandler) Delete(c echo.Context) error {
 	id := c.Param("id")
 
 	ctx := c.Request().Context()
+	// 删除服务监控在 VictoriaMetrics 中的历史指标数据
+	if err := h.metricService.DeleteMonitorMetrics(ctx, id); err != nil {
+		h.logger.Error("删除服务监控 VictoriaMetrics 数据失败",
+			zap.String("monitorID", id),
+			zap.Error(err))
+		return orz.NewError(500, "删除服务监控指标数据失败")
+	}
+
 	if err := h.monitorService.DeleteMonitor(ctx, id); err != nil {
 		return err
 	}

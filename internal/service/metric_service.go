@@ -344,6 +344,50 @@ func (s *MetricService) GetLatestMetrics(agentID string) (*metric.LatestMetrics,
 	return metrics, ok
 }
 
+// DeleteAgentMetrics 删除探针在 VictoriaMetrics 中的历史指标
+func (s *MetricService) DeleteAgentMetrics(ctx context.Context, agentID string) error {
+	if agentID == "" {
+		return fmt.Errorf("agentID 不能为空")
+	}
+
+	// 删除内存中的最新指标缓存
+	s.latestCache.Delete(agentID)
+
+	// 删除 VictoriaMetrics 中该探针的所有 pika 指标
+	matcher := fmt.Sprintf(`{__name__=~"pika_.*",agent_id=%q}`, agentID)
+	if err := s.vmClient.DeleteSeries(ctx, []string{matcher}); err != nil {
+		s.logger.Error("删除探针 VictoriaMetrics 数据失败",
+			zap.String("agentID", agentID),
+			zap.Error(err))
+		return err
+	}
+
+	s.logger.Info("探针 VictoriaMetrics 数据删除成功", zap.String("agentID", agentID))
+	return nil
+}
+
+// DeleteMonitorMetrics 删除服务监控在 VictoriaMetrics 中的历史指标
+func (s *MetricService) DeleteMonitorMetrics(ctx context.Context, monitorID string) error {
+	if monitorID == "" {
+		return fmt.Errorf("monitorID 不能为空")
+	}
+
+	// 删除内存中的监控缓存
+	s.monitorLatestCache.Delete(monitorID)
+
+	// 删除 VictoriaMetrics 中该监控任务的所有 pika monitor 指标
+	matcher := fmt.Sprintf(`{__name__=~"pika_monitor_.*",monitor_id=%q}`, monitorID)
+	if err := s.vmClient.DeleteSeries(ctx, []string{matcher}); err != nil {
+		s.logger.Error("删除服务监控 VictoriaMetrics 数据失败",
+			zap.String("monitorID", monitorID),
+			zap.Error(err))
+		return err
+	}
+
+	s.logger.Info("服务监控 VictoriaMetrics 数据删除成功", zap.String("monitorID", monitorID))
+	return nil
+}
+
 // GetAvailableNetworkInterfaces 获取探针的可用网卡列表（从 VictoriaMetrics 查询）
 func (s *MetricService) GetAvailableNetworkInterfaces(ctx context.Context, agentID string) ([]string, error) {
 	// 查询 interface label 的所有值，排除空字符串（汇总数据）
