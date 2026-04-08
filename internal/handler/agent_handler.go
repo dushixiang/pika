@@ -43,8 +43,9 @@ func NewAgentHandler(logger *zap.Logger, agentService *service.AgentService, tra
 
 	// 初始化upgrader，需要在创建handler之后因为需要引用h.checkOrigin
 	h.upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024 * 32,
-		WriteBufferSize: 1024 * 32,
+		ReadBufferSize:    1024 * 32,
+		WriteBufferSize:   1024 * 32,
+		EnableCompression: true,
 	}
 
 	// 设置WebSocket消息处理器

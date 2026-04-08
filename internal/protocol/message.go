@@ -43,6 +43,11 @@ type MetricsPayload struct {
 	Data      interface{} `json:"data"`
 	Timestamp int64       `json:"timestamp,omitempty"` // 客户端采集时间(毫秒)
 }
+
+// BundlePayload 批量指标数据包装
+type BundlePayload struct {
+	Items []MetricsPayload `json:"items"`
+}
 type MessageType string
 
 // 控制消息
@@ -55,6 +60,7 @@ const (
 	MessageTypeUninstall   MessageType = "uninstall"
 	// 指标消息
 	MessageTypeMetrics       MessageType = "metrics"
+	MessageTypeBundle        MessageType = "bundle"
 	MessageTypeMonitorConfig MessageType = "monitor_config"
 	// 防篡改消息
 	MessageTypeTamperProtect MessageType = "tamper_protect"

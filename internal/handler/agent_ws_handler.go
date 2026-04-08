@@ -80,6 +80,9 @@ func (h *AgentHandler) handleWebSocketMessage(ctx context.Context, agentID strin
 	case protocol.MessageTypeMetrics:
 		return h.handleMetricsMessage(ctx, agentID, data)
 
+	case protocol.MessageTypeBundle:
+		return h.handleBundleMessage(ctx, agentID, data)
+
 	case protocol.MessageTypeCommandResp:
 		return h.handleCommandResponseMessage(ctx, agentID, data)
 
@@ -170,6 +173,26 @@ func (h *AgentHandler) handleMetricsMessage(ctx context.Context, agentID string,
 		return err
 	}
 	return h.metricService.HandleMetricData(ctx, agentID, string(metricsWrapper.Type), metricsData, metricsWrapper.Timestamp)
+}
+
+func (h *AgentHandler) handleBundleMessage(ctx context.Context, agentID string, data json.RawMessage) error {
+	var bundle protocol.BundlePayload
+	if err := json.Unmarshal(data, &bundle); err != nil {
+		return err
+	}
+
+	for _, item := range bundle.Items {
+		metricsData, err := json.Marshal(item.Data)
+		if err != nil {
+			h.logger.Warn("failed to marshal bundled metric item", zap.Error(err))
+			continue
+		}
+		if err := h.metricService.HandleMetricData(ctx, agentID, string(item.Type), metricsData, item.Timestamp); err != nil {
+			h.logger.Warn("failed to handle bundled metric item", zap.Error(err), zap.String("type", string(item.Type)))
+			continue
+		}
+	}
+	return nil
 }
 
 func (h *AgentHandler) handleCommandResponseMessage(ctx context.Context, agentID string, data json.RawMessage) error {

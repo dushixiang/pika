@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -152,7 +153,11 @@ func (a *Agent) runOnce(ctx context.Context, onRegistered func()) error {
 	slog.Info("正在连接到服务器", "url", wsURL)
 
 	// 创建自定义的 Dialer
-	var dialer = websocket.DefaultDialer
+	dialer := &websocket.Dialer{
+		Proxy:            http.ProxyFromEnvironment,
+		HandshakeTimeout: 45 * time.Second,
+		EnableCompression: true,
+	}
 	if a.cfg.Server.InsecureSkipVerify {
 		dialer.TLSClientConfig = &tls.Config{
 			InsecureSkipVerify: true,
@@ -498,6 +503,26 @@ func (a *Agent) metricsLoop(ctx context.Context) {
 	}
 }
 
+type bundleWriter struct {
+	items []protocol.MetricsPayload
+}
+
+func (w *bundleWriter) WriteJSON(v interface{}) error {
+	msg, ok := v.(protocol.OutboundMessage)
+	if !ok {
+		return fmt.Errorf("invalid message type for bundleWriter")
+	}
+
+	if msg.Type == protocol.MessageTypeMetrics {
+		payload, ok := msg.Data.(protocol.MetricsPayload)
+		if ok {
+			w.items = append(w.items, payload)
+			return nil
+		}
+	}
+	return fmt.Errorf("only metrics messages can be bundled")
+}
+
 // collectAndSendAllMetrics 采集并发送所有动态指标
 func (a *Agent) collectAndSendAllMetrics(manager *collector.Manager) error {
 	if manager == nil {
@@ -514,58 +539,73 @@ func (a *Agent) collectAndSendAllMetrics(manager *collector.Manager) error {
 	}
 
 	writer := newOutboundWriter(conn, a.outboundBuffer)
+	bw := &bundleWriter{}
 	var hasError bool
 
 	// CPU 动态指标
-	if err := manager.CollectAndSendCPU(writer); err != nil {
-		slog.Warn("发送CPU指标失败", "error", err)
+	if err := manager.CollectAndSendCPU(bw); err != nil {
+		slog.Warn("采集CPU指标失败", "error", err)
 		hasError = true
 	}
 
 	// 内存动态指标
-	if err := manager.CollectAndSendMemory(writer); err != nil {
-		slog.Warn("发送内存指标失败", "error", err)
+	if err := manager.CollectAndSendMemory(bw); err != nil {
+		slog.Warn("采集内存指标失败", "error", err)
 		hasError = true
 	}
 
 	// 磁盘指标
-	if err := manager.CollectAndSendDisk(writer); err != nil {
-		slog.Warn("发送磁盘指标失败", "error", err)
+	if err := manager.CollectAndSendDisk(bw); err != nil {
+		slog.Warn("采集磁盘指标失败", "error", err)
 		hasError = true
 	}
 
 	// 磁盘 IO 指标
-	if err := manager.CollectAndSendDiskIO(writer); err != nil {
-		slog.Warn("发送磁盘IO指标失败", "error", err)
+	if err := manager.CollectAndSendDiskIO(bw); err != nil {
+		slog.Warn("采集磁盘IO指标失败", "error", err)
 		hasError = true
 	}
 
 	// 网络指标
-	if err := manager.CollectAndSendNetwork(writer); err != nil {
-		slog.Warn("发送网络指标失败", "error", err)
+	if err := manager.CollectAndSendNetwork(bw); err != nil {
+		slog.Warn("采集网络指标失败", "error", err)
 		hasError = true
 	}
 
 	// 网络连接统计
-	if err := manager.CollectAndSendNetworkConnection(writer); err != nil {
-		slog.Warn("发送网络连接统计失败", "error", err)
+	if err := manager.CollectAndSendNetworkConnection(bw); err != nil {
+		slog.Warn("采集网络连接统计失败", "error", err)
 		hasError = true
 	}
 
 	// 主机信息（包含 Load）
-	if err := manager.CollectAndSendHost(writer); err != nil {
-		slog.Warn("发送主机信息失败", "error", err)
+	if err := manager.CollectAndSendHost(bw); err != nil {
+		slog.Warn("采集主机信息失败", "error", err)
 		hasError = true
 	}
 
 	// GPU 信息（可选）
-	if err := manager.CollectAndSendGPU(writer); err != nil {
-		slog.Info("发送GPU信息失败", "error", err)
+	if err := manager.CollectAndSendGPU(bw); err != nil {
+		slog.Info("采集GPU信息失败", "error", err)
 	}
 
 	// 温度信息（可选）
-	if err := manager.CollectAndSendTemperature(writer); err != nil {
-		slog.Info("发送温度信息失败", "error", err)
+	if err := manager.CollectAndSendTemperature(bw); err != nil {
+		slog.Info("采集温度信息失败", "error", err)
+	}
+
+	// 发送打包后的指标
+	if len(bw.items) > 0 {
+		bundle := protocol.BundlePayload{
+			Items: bw.items,
+		}
+		if err := writer.WriteJSON(protocol.OutboundMessage{
+			Type: protocol.MessageTypeBundle,
+			Data: bundle,
+		}); err != nil {
+			slog.Warn("发送打包指标失败", "error", err)
+			hasError = true
+		}
 	}
 
 	if writer.buffered {
