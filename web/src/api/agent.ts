@@ -559,3 +559,12 @@ export const getSSHLoginEvents = async (agentId: string, params?: any) => {
 export const deleteSSHLoginEvents = async (agentId: string) => {
     await del(`/admin/agents/${agentId}/ssh-login/events`);
 };
+
+// 清理残留的探针指标数据
+export interface CleanupMetricsResponse {
+    message: string;
+}
+
+export const cleanupOrphanedAgentMetrics = async () => {
+    return post<CleanupMetricsResponse>('/admin/agents/cleanup-metrics', {});
+};

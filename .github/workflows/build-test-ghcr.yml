@@ -1,0 +1,117 @@
+name: 构建 amd64 测试镜像到 GHCR
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  # 使用 GitHub Container Registry
+  GHCR_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}  # 会自动变成 ghcr.io/用户名/仓库名
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      # 检出代码
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 安装 make 和 upx
+      - name: 安装 make 和 upx
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make upx-ucl
+
+      # 设置 Golang
+      - name: 设置 Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+
+      # 设置 Node.js
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 构建所有组件（前端、agents、服务端）
+      - name: 构建所有组件
+        run: |
+          make build-release
+
+      # 验证 index.html 模板代码
+      - name: 验证 index.html 模板代码
+        run: |
+          if grep -q "{{.CustomJS}}" web/dist/index.html && grep -q "{{.CustomCSS}}" web/dist/index.html; then
+            echo "✓ 自定义模板代码已成功添加到 index.html"
+          else
+            echo "✗ 自定义模板代码未找到，重新执行 patch-html"
+            go run cmd/patch-html/main.go
+          fi
+
+      # 列出编译产物
+      - name: 列出编译产物
+        run: |
+          ls -lh ./bin/
+          echo "---"
+          ls -lh ./bin/agents/
+
+      # 设置 Docker Buildx
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 登录 GitHub Container Registry
+      - name: 登录 GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 提取 Docker 元数据
+      - name: 提取 Docker 元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=test-amd64
+            type=raw,value=latest
+
+      # 构建并推送 amd64 Docker 镜像到 GHCR
+      - name: 构建并推送 amd64 测试镜像
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64  # 只构建 amd64 平台
+          file: Dockerfile
+          push: true  # 总是推送，无论是什么分支
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=registry,ref=${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}:cache
+          cache-to: |
+            type=registry,ref=${{ env.GHCR_REGISTRY }}/${{ env.IMAGE_NAME }}:cache,mode=max
+
+      # 生成构建总结
+      - name: 生成构建总结
+        run: |
+          echo "## amd64 测试镜像构建成功 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**分支:** main" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**镜像标签:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**平台:** linux/amd64" >> $GITHUB_STEP_SUMMARY

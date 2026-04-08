@@ -48,6 +48,99 @@ func NewMetricService(logger *zap.Logger, db *gorm.DB, propertyService *Property
 	}
 }
 
+// CleanAgentMetrics 清理指定探针的所有指标数据
+func (s *MetricService) CleanAgentMetrics(ctx context.Context, agentID string) error {
+	if s.vmClient == nil {
+		return fmt.Errorf("vmClient not initialized")
+	}
+
+	s.logger.Info("开始清理探针指标数据", zap.String("agentID", agentID))
+
+	// 在 VictoriaMetrics 中删除与该 agent 相关的所有时间序列数据
+	matchers := []string{
+		fmt.Sprintf(`{agent_id="%s"}`, agentID), // 删除具有该 agent_id 标签的所有时间序列
+	}
+
+	if err := s.vmClient.DeleteSeries(ctx, matchers); err != nil {
+		s.logger.Error("删除VictoriaMetrics中的探针指标数据失败",
+			zap.String("agentID", agentID),
+			zap.Error(err))
+		return fmt.Errorf("删除VictoriaMetrics中的探针指标数据失败: %w", err)
+	}
+
+	s.logger.Info("成功清理探针指标数据", zap.String("agentID", agentID))
+	return nil
+}
+
+// CleanOrphanedAgentMetrics 批量清理已删除探针的指标数据
+func (s *MetricService) CleanOrphanedAgentMetrics(ctx context.Context) error {
+	if s.vmClient == nil {
+		return fmt.Errorf("vmClient not initialized")
+	}
+
+	s.logger.Info("开始清理已删除探针的指标数据")
+
+	// 获取 VictoriaMetrics 中的所有 agent_id 值
+	agentIDs, err := s.vmClient.GetLabelValues(ctx, "agent_id", []string{})
+	if err != nil {
+		s.logger.Error("获取VictoriaMetrics中的agent_id列表失败", zap.Error(err))
+		return fmt.Errorf("获取VictoriaMetrics中的agent_id列表失败: %w", err)
+	}
+
+	if len(agentIDs) == 0 {
+		s.logger.Info("没有在VictoriaMetrics中找到任何agent_id，跳过清理")
+		return nil
+	}
+
+	// 获取当前数据库中所有存在的 agent id
+	dbAgents, err := s.agentRepo.FindAll(ctx)
+	if err != nil {
+		s.logger.Error("查询数据库中的探针列表失败", zap.Error(err))
+		return fmt.Errorf("查询数据库中的探针列表失败: %w", err)
+	}
+
+	// 创建现有 agent id 的映射表
+	existingAgentIDs := make(map[string]bool)
+	for _, agent := range dbAgents {
+		existingAgentIDs[agent.ID] = true
+	}
+
+	// 找出已不在数据库中存在的 agent id
+	var orphanedAgentIDs []string
+	for _, agentID := range agentIDs {
+		if !existingAgentIDs[agentID] {
+			orphanedAgentIDs = append(orphanedAgentIDs, agentID)
+		}
+	}
+
+	if len(orphanedAgentIDs) == 0 {
+		s.logger.Info("没有找到残留的探针指标数据需要清理")
+		return nil
+	}
+
+	s.logger.Info("发现需清理的残留探针", zap.Strings("agentIDs", orphanedAgentIDs))
+
+	// 逐个清理残留探针的指标数据
+	for _, agentID := range orphanedAgentIDs {
+		matchers := []string{
+			fmt.Sprintf(`{agent_id="%s"}`, agentID),
+		}
+
+		if err := s.vmClient.DeleteSeries(ctx, matchers); err != nil {
+			s.logger.Error("删除VictoriaMetrics中的残留探针指标数据失败",
+				zap.String("agentID", agentID),
+				zap.Error(err))
+			// 继续处理下一个，不要因为一个失败而终止
+			continue
+		}
+
+		s.logger.Info("成功清理残留探针指标数据", zap.String("agentID", agentID))
+	}
+
+	s.logger.Info("完成残留探针指标数据清理", zap.Int("clearedCount", len(orphanedAgentIDs)))
+	return nil
+}
+
 // HandleMetricData 处理指标数据
 func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, metricType string, data json.RawMessage, timestamp int64) error {
 	if timestamp == 0 {

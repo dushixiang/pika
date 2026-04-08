@@ -1,12 +1,12 @@
 import {useMemo, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import type {MenuProps} from 'antd';
-import {App, Button, Divider, Dropdown, Form, Input, Select, Space, Table, Tag} from 'antd';
+import {App, Button, Divider, Dropdown, Form, Input, Select, Space, Table, Tag, message} from 'antd';
 import type {ColumnsType} from 'antd/es/table';
-import {Edit, Eye, EyeOff, FileWarning, Lock, MoreVertical, Plus, RefreshCw, Shield, Tags, Trash2} from 'lucide-react';
+import {Edit, Eye, EyeOff, FileWarning, Lock, MoreVertical, Plus, RefreshCw, Shield, Tags, Trash2, Wrench} from 'lucide-react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import {deleteAgent, getTags, listAgentsByAdmin} from '@/api/agent.ts';
+import {cleanupOrphanedAgentMetrics, deleteAgent, getTags, listAgentsByAdmin} from '@/api/agent.ts';
 import type {Agent} from '@/types';
 import {getErrorMessage} from '@/lib/utils';
 import {PageHeader} from '@admin/components';
@@ -29,6 +29,47 @@ const AgentList = () => {
     const [batchSSHModalVisible, setBatchSSHModalVisible] = useState(false);
     const [batchVisibilityModalVisible, setBatchVisibilityModalVisible] = useState(false);
     const [editingAgentId, setEditingAgentId] = useState<string | undefined>(undefined);
+
+    // 清理遗留指标数据的 mutation
+    const cleanupMutation = useMutation({
+        mutationFn: cleanupOrphanedAgentMetrics,
+        onSuccess: (response) => {
+            messageApi.success(response.data.message || '成功清理残留探针指标数据');
+            // 清理完成后，延时刷新页面显示最新状态（清理操作不影响探针列表本身）
+            setTimeout(() => {
+                queryClient.invalidateQueries({queryKey: ['admin', 'agents']});
+            }, 2000); // 延时 2 秒后刷新，让用户能看到清理结果
+        },
+        onError: (error: unknown) => {
+            messageApi.error(getErrorMessage(error, '清理残留探针指标数据失败'));
+        },
+    });
+
+    // 清理遗留指标数据
+    const handleCleanupMetrics = () => {
+        modal.confirm({
+            title: '清理残留探针指标数据',
+            content: (
+                <div>
+                    <p>确定要清理已删除探针的残留指标数据吗？</p>
+                    <p className="text-orange-500 text-sm mt-2">
+                        此操作将扫描数据库和VictoriaMetrics中的探针数据，清理已经删除探针的残留指标数据
+                    </p>
+                </div>
+            ),
+            okText: '确认清理',
+            cancelText: '取消',
+            okButtonProps: {style: {background: '#16a34a'}}, // 绿色按钮提示非危险操作
+            centered: true,
+            onOk: async () => {
+                try {
+                    await cleanupMutation.mutateAsync();
+                } catch (e) {
+                    // 错误已经在 mutation 中处理
+                }
+            },
+        });
+    };
 
     // 过滤条件
     const [keyword, setKeyword] = useState('');
@@ -494,6 +535,17 @@ const AgentList = () => {
                     },
                 ]}
             />
+
+            <Button
+                key="cleanup-metrics"
+                icon={<Wrench size={16}/>}
+                onClick={handleCleanupMetrics}
+                loading={cleanupMutation.isPending}
+                type="default"
+                danger={false}
+            >
+                {cleanupMutation.isPending ? '清理中...' : '清理残留指标数据'}
+            </Button>
 
             <Divider/>
 

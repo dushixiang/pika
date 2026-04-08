@@ -376,7 +376,15 @@ func (s *AgentService) DeleteAgent(ctx context.Context, agentID string) error {
 			return err
 		}
 
-		// 4. 最后删除探针本身
+		// 4. 清理 VictoriaMetrics 中的指标数据（非事务操作，失败不阻止删除）
+		if s.metricService != nil {
+			if err := s.metricService.CleanAgentMetrics(ctx, agentID); err != nil {
+				s.logger.Error("清理VictoriaMetrics中的探针指标数据失败", zap.String("agentId", agentID), zap.Error(err))
+				// 记录错误但不停止删除流程
+			}
+		}
+
+		// 5. 最后删除探针本身
 		if err := s.AgentRepo.DeleteById(ctx, agentID); err != nil {
 			s.logger.Error("删除探针失败", zap.String("agentId", agentID), zap.Error(err))
 			return err
