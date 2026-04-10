@@ -86,6 +86,7 @@ export const CpuChart = ({agentId, timeRange, start, end}: CpuChartProps) => {
                             strokeWidth={2}
                             fill="url(#cpuAreaGradient)"
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                     </AreaChart>
                 </ResponsiveContainer>

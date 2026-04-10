@@ -48,6 +48,104 @@ func NewMetricService(logger *zap.Logger, db *gorm.DB, propertyService *Property
 	}
 }
 
+// CleanAgentMetrics 清理指定探针的所有指标数据
+func (s *MetricService) CleanAgentMetrics(ctx context.Context, agentID string) error {
+	if s.vmClient == nil {
+		return fmt.Errorf("vmClient not initialized")
+	}
+
+	s.logger.Info("开始清理探针指标数据", zap.String("agentID", agentID))
+
+	// 在 VictoriaMetrics 中删除与该 agent 相关的所有时间序列数据
+	matchers := []string{
+		fmt.Sprintf(`{agent_id="%s"}`, agentID), // 删除具有该 agent_id 标签的所有时间序列
+	}
+
+	if err := s.vmClient.DeleteSeries(ctx, matchers); err != nil {
+		s.logger.Error("删除VictoriaMetrics中的探针指标数据失败",
+			zap.String("agentID", agentID),
+			zap.Error(err))
+		return fmt.Errorf("删除VictoriaMetrics中的探针指标数据失败: %w", err)
+	}
+
+	s.logger.Info("成功清理探针指标数据", zap.String("agentID", agentID))
+	return nil
+}
+
+// CleanOrphanedAgentMetrics 批量清理已删除探针的指标数据
+func (s *MetricService) CleanOrphanedAgentMetrics(ctx context.Context) error {
+	if s.vmClient == nil {
+		return fmt.Errorf("vmClient not initialized")
+	}
+
+	s.logger.Info("开始清理已删除探针的指标数据")
+
+	// 获取 VictoriaMetrics 中的所有 agent_id 值
+	agentIDs, err := s.vmClient.GetLabelValues(ctx, "agent_id", []string{})
+	if err != nil {
+		s.logger.Error("获取VictoriaMetrics中的agent_id列表失败", zap.Error(err))
+		return fmt.Errorf("获取VictoriaMetrics中的agent_id列表失败: %w", err)
+	}
+
+	if len(agentIDs) == 0 {
+		s.logger.Info("没有在VictoriaMetrics中找到任何agent_id，跳过清理")
+		return nil
+	}
+
+	// 获取当前数据库中所有存在的 agent id
+	dbAgents, err := s.agentRepo.FindAll(ctx)
+	if err != nil {
+		s.logger.Error("查询数据库中的探针列表失败", zap.Error(err))
+		return fmt.Errorf("查询数据库中的探针列表失败: %w", err)
+	}
+
+	// 创建现有 agent id 的映射表
+	existingAgentIDs := make(map[string]bool)
+	for _, agent := range dbAgents {
+		existingAgentIDs[agent.ID] = true
+	}
+
+	// 找出已不在数据库中存在的 agent id
+	var orphanedAgentIDs []string
+	for _, agentID := range agentIDs {
+		if !existingAgentIDs[agentID] {
+			orphanedAgentIDs = append(orphanedAgentIDs, agentID)
+		}
+	}
+
+	if len(orphanedAgentIDs) == 0 {
+		s.logger.Info("没有找到残留的探针指标数据需要清理")
+		return nil
+	}
+
+	s.logger.Info("发现需清理的残留探针", zap.Strings("agentIDs", orphanedAgentIDs))
+
+	// 逐个清理残留探针的指标数据
+	for _, agentID := range orphanedAgentIDs {
+		// 1. 清理内存缓存
+		s.DeleteAgentLatestMetricsCache(agentID)
+		s.CleanAgentFromMonitorCache(agentID)
+
+		// 2. 清理 VictoriaMetrics 数据
+		matchers := []string{
+			fmt.Sprintf(`{agent_id="%s"}`, agentID),
+		}
+
+		if err := s.vmClient.DeleteSeries(ctx, matchers); err != nil {
+			s.logger.Error("删除VictoriaMetrics中的残留探针指标数据失败",
+				zap.String("agentID", agentID),
+				zap.Error(err))
+			// 继续处理下一个，不要因为一个失败而终止
+			continue
+		}
+
+		s.logger.Info("成功清理残留探针指标数据", zap.String("agentID", agentID))
+	}
+
+	s.logger.Info("完成残留探针指标数据清理", zap.Int("clearedCount", len(orphanedAgentIDs)))
+	return nil
+}
+
 // HandleMetricData 处理指标数据
 func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, metricType string, data json.RawMessage, timestamp int64) error {
 	if timestamp == 0 {
@@ -315,6 +413,34 @@ func (s *MetricService) CleanMonitorCache(ctx context.Context, monitorID string)
 	}
 
 	return nil
+}
+
+// CleanAgentFromMonitorCache 从所有监控缓存中移除指定探针的数据
+func (s *MetricService) CleanAgentFromMonitorCache(agentID string) {
+	// 获取所有监控缓存键
+	monitorIDs := s.monitorLatestCache.Keys()
+
+	for _, monitorID := range monitorIDs {
+		// 获取监控缓存
+		latestMetrics, ok := s.monitorLatestCache.Get(monitorID)
+		if !ok {
+			continue
+		}
+
+		// 从该监控缓存中删除指定探针的数据
+		latestMetrics.Agents.Delete(agentID)
+		s.logger.Debug("从监控缓存中移除探针数据",
+			zap.String("monitorID", monitorID),
+			zap.String("agentID", agentID))
+	}
+
+	s.logger.Info("已从所有监控缓存中移除探针数据", zap.String("agentID", agentID))
+}
+
+// DeleteAgentLatestMetricsCache 删除探针在内存中的最新指标缓存
+func (s *MetricService) DeleteAgentLatestMetricsCache(agentID string) {
+	s.latestCache.Delete(agentID)
+	s.logger.Debug("已删除探针最新指标缓存", zap.String("agentID", agentID))
 }
 
 // updateMonitorCache 更新监控数据缓存
@@ -710,7 +836,7 @@ func (s *MetricService) GetMonitorHistory(ctx context.Context, monitorID string,
 }
 
 // GetMonitorAgentStats 获取监控任务各探针的统计数据（只从缓存读取）
-func (s *MetricService) GetMonitorAgentStats(monitorID string) []protocol.MonitorData {
+func (s *MetricService) GetMonitorAgentStats(ctx context.Context, monitorID string) []protocol.MonitorData {
 	// 从缓存读取监控数据
 	latestMetrics, ok := s.monitorLatestCache.Get(monitorID)
 	if !ok {
@@ -719,7 +845,6 @@ func (s *MetricService) GetMonitorAgentStats(monitorID string) []protocol.Monito
 	}
 
 	// 查询监控任务配置
-	ctx := context.Background()
 	monitorTask, err := s.monitorRepo.FindById(ctx, monitorID)
 	if err != nil {
 		s.logger.Error("查询监控任务失败", zap.String("monitorID", monitorID), zap.Error(err))
@@ -779,7 +904,7 @@ func (s *MetricService) GetMonitorAgentStats(monitorID string) []protocol.Monito
 }
 
 // GetMonitorStats 获取监控任务的聚合统计数据（只从缓存读取）
-func (s *MetricService) GetMonitorStats(monitorID string) *metric.MonitorStatsResult {
+func (s *MetricService) GetMonitorStats(ctx context.Context, monitorID string) *metric.MonitorStatsResult {
 	// 从缓存读取监控数据
 	latestMetrics, ok := s.monitorLatestCache.Get(monitorID)
 	if !ok {
@@ -790,7 +915,6 @@ func (s *MetricService) GetMonitorStats(monitorID string) *metric.MonitorStatsRe
 	}
 
 	// 查询监控任务配置
-	ctx := context.Background()
 	monitorTask, err := s.monitorRepo.FindById(ctx, monitorID)
 	if err != nil {
 		s.logger.Error("查询监控任务失败", zap.String("monitorID", monitorID), zap.Error(err))

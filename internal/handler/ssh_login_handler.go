@@ -1,9 +1,6 @@
 package handler
 
 import (
-	"context"
-	"net/http"
-
 	"github.com/dushixiang/pika/internal/models"
 	"github.com/dushixiang/pika/internal/service"
 	"github.com/go-orz/orz"
@@ -30,20 +27,16 @@ func NewSSHLoginHandler(logger *zap.Logger, service *service.SSHLoginService) *S
 func (h *SSHLoginHandler) GetConfig(c echo.Context) error {
 	agentID := c.Param("id")
 	if agentID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"message": "探针ID不能为空",
-		})
+		return orz.NewError(400, "探针ID不能为空")
 	}
 
 	config, err := h.service.GetConfig(c.Request().Context(), agentID)
 	if err != nil {
 		h.logger.Error("获取SSH登录监控配置失败", zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": "获取配置失败",
-		})
+		return orz.NewError(500, "获取配置失败")
 	}
 
-	return c.JSON(http.StatusOK, config)
+	return orz.Ok(c, config)
 }
 
 // UpdateConfig 更新SSH登录监控配置
@@ -59,12 +52,10 @@ func (h *SSHLoginHandler) UpdateConfig(c echo.Context) error {
 	err := h.service.UpdateConfig(c.Request().Context(), agentID, &req)
 	if err != nil {
 		h.logger.Error("更新SSH登录监控配置失败", zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": "更新配置失败",
-		})
+		return orz.NewError(500, "更新配置失败")
 	}
 
-	return c.JSON(http.StatusOK, orz.Map{})
+	return orz.Ok(c, orz.Map{})
 }
 
 // ListEvents 查询SSH登录事件
@@ -81,7 +72,7 @@ func (h *SSHLoginHandler) ListEvents(c echo.Context) error {
 		Equal("ip", c.QueryParam("ip")).
 		Equal("status", c.QueryParam("status"))
 
-	ctx := context.Background()
+	ctx := c.Request().Context()
 	page, err := builder.Execute(ctx)
 	if err != nil {
 		return err
@@ -95,27 +86,21 @@ func (h *SSHLoginHandler) ListEvents(c echo.Context) error {
 func (h *SSHLoginHandler) GetEvent(c echo.Context) error {
 	eventID := c.Param("id")
 	if eventID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"message": "事件ID不能为空",
-		})
+		return orz.NewError(400, "事件ID不能为空")
 	}
 
-	ctx := context.Background()
+	ctx := c.Request().Context()
 	event, exists, err := h.service.SSHLoginEventRepo.FindByIdExists(ctx, eventID)
 	if err != nil {
 		h.logger.Error("获取SSH登录事件失败", zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": "获取事件失败",
-		})
+		return orz.NewError(500, "获取事件失败")
 	}
 
 	if !exists {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"message": "事件不存在",
-		})
+		return orz.NewError(404, "事件不存在")
 	}
 
-	return c.JSON(http.StatusOK, event)
+	return orz.Ok(c, event)
 }
 
 // DeleteEvents 删除探针的所有SSH登录事件
@@ -123,12 +108,10 @@ func (h *SSHLoginHandler) GetEvent(c echo.Context) error {
 func (h *SSHLoginHandler) DeleteEvents(c echo.Context) error {
 	agentID := c.Param("id")
 
-	ctx := context.Background()
+	ctx := c.Request().Context()
 	if err := h.service.DeleteEventsByAgentID(ctx, agentID); err != nil {
 		h.logger.Error("删除SSH登录事件失败", zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": "删除失败",
-		})
+		return orz.NewError(500, "删除失败")
 	}
 
 	return orz.Ok(c, orz.Map{})

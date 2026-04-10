@@ -264,38 +264,40 @@ const ApiKeyList = () => {
                 ]}
             />
 
-            <Divider/>
+            <div className="bg-white dark:bg-[#1c1c21] rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm p-4 sm:p-6 space-y-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <Input.Search
+                        placeholder="按名称搜索"
+                        allowClear
+                        value={searchValue}
+                        onChange={(event) => {
+                            const nextValue = event.target.value;
+                            setSearchValue(nextValue);
+                            if (!nextValue) {
+                                handleSearch('');
+                            }
+                        }}
+                        onSearch={handleSearch}
+                        className="w-full max-w-md"
+                    />
+                </div>
 
-            <div style={{marginBottom: 16}}>
-                <Input.Search
-                    placeholder="按名称搜索"
-                    allowClear
-                    value={searchValue}
-                    onChange={(event) => {
-                        const nextValue = event.target.value;
-                        setSearchValue(nextValue);
-                        if (!nextValue) {
-                            handleSearch('');
-                        }
+                <Table<ApiKey>
+                    columns={columns}
+                    dataSource={apiKeyPaging?.items || []}
+                    loading={isLoading || isFetching}
+                    rowKey="id"
+                    scroll={{x: 'max-content'}}
+                    tableLayout="fixed"
+                    pagination={{
+                        current: pageIndex,
+                        pageSize,
+                        total: apiKeyPaging?.total || 0,
+                        showSizeChanger: true,
                     }}
-                    onSearch={handleSearch}
-                    style={{width: 260}}
+                    onChange={handleTableChange}
                 />
             </div>
-
-            <Table<ApiKey>
-                columns={columns}
-                dataSource={apiKeyPaging?.items || []}
-                loading={isLoading || isFetching}
-                rowKey="id"
-                pagination={{
-                    current: pageIndex,
-                    pageSize,
-                    total: apiKeyPaging?.total || 0,
-                    showSizeChanger: true,
-                }}
-                onChange={handleTableChange}
-            />
 
             <ApiKeyModal
                 open={isModalVisible}

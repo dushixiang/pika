@@ -27,31 +27,67 @@ const MonitorCard = ({monitor, displayMode}: {
         staleTime: 30000,
     });
 
-    // 转换时序数据为图表数据 - 保持原始 timestamp
+    // 转换时序数据为图表数据 - 使用统一格点对该对齐多探针数据
     const chartData = useMemo(() => {
         if (!historyData?.series || historyData.series.length === 0) {
             return [];
         }
 
-        // 按时间戳聚合多个探针的数据
-        const timeMap = new Map<number, number[]>();
+        const validSeries = historyData.series.filter(s => s.data && s.data.length > 0);
+        if (validSeries.length === 0) return [];
 
-        historyData.series.forEach(series => {
-            series.data?.forEach(point => {
-                if (!timeMap.has(point.timestamp)) {
-                    timeMap.set(point.timestamp, []);
-                }
-                timeMap.get(point.timestamp)!.push(point.value);
-            });
+        // 确定全局时间范围
+        let minTime = Infinity, maxTime = -Infinity;
+        validSeries.forEach(s => {
+            minTime = Math.min(minTime, s.data![0].timestamp);
+            maxTime = Math.max(maxTime, s.data![s.data!.length - 1].timestamp);
         });
 
-        // 根据显示模式计算聚合值
-        return Array.from(timeMap.entries()).map(([timestamp, values]) => ({
-            timestamp,
-            value: displayMode === 'avg'
-                ? Math.round(values.reduce((a, b) => a + b, 0) / values.length)
-                : Math.max(...values),
-        }));
+        if (minTime >= maxTime) return [];
+
+        // 定义目标采集点 (1小时数据，建议 60 个采集点)
+        const maxPoints = 60; 
+        const timeStep = (maxTime - minTime) / (maxPoints - 1);
+        const targetTimestamps: number[] = [];
+        for (let i = 0; i < maxPoints; i++) {
+            targetTimestamps.push(minTime + i * timeStep);
+        }
+
+        // 线性插值函数
+        const interpolate = (data: Array<{ timestamp: number; value: number }>, targetTime: number): number | null => {
+            if (data.length === 0) return null;
+            if (data.length === 1) return data[0].timestamp === targetTime ? data[0].value : null;
+            if (targetTime < data[0].timestamp || targetTime > data[data.length - 1].timestamp) return null;
+            
+            let left = 0, right = data.length - 1;
+            while (right - left > 1) {
+                const mid = Math.floor((left + right) / 2);
+                if (data[mid].timestamp <= targetTime) left = mid;
+                else right = mid;
+            }
+            const leftPoint = data[left];
+            const rightPoint = data[right];
+            const ratio = (targetTime - leftPoint.timestamp) / (rightPoint.timestamp - leftPoint.timestamp);
+            return leftPoint.value + ratio * (rightPoint.value - leftPoint.value);
+        };
+
+        // 对每个目标时间点，计算所有探针的聚合值
+        return targetTimestamps.map(timestamp => {
+            const values: number[] = [];
+            validSeries.forEach(s => {
+                const val = interpolate(s.data!, timestamp);
+                if (val !== null) values.push(val);
+            });
+
+            if (values.length === 0) return { timestamp, value: 0 };
+
+            return {
+                timestamp,
+                value: displayMode === 'avg'
+                    ? Math.round(values.reduce((a, b) => a + b, 0) / values.length)
+                    : Math.max(...values),
+            };
+        });
     }, [historyData, displayMode]);
 
     const displayValue = displayMode === 'avg' ? monitor.responseTime : monitor.responseTimeMax;

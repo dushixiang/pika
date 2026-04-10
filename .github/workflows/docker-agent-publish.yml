@@ -59,10 +59,10 @@ jobs:
         with:
           go-version: '1.25.0'
 
-      # 构建 agents
+      # 构建 agents (release版本使用最佳压缩)
       - name: 构建 agents
         run: |
-          make build-agents
+          make build-agents RELEASE=true
 
       # 列出编译产物
       - name: 列出编译产物

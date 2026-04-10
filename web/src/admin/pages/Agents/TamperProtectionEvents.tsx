@@ -146,6 +146,7 @@ const TamperProtectionEvents: React.FC<TamperProtectionEventsProps> = ({agentId}
                 dataSource={eventsPaging?.data.items || []}
                 loading={isLoading || isFetching}
                 rowKey="id"
+                scroll={{x: 'max-content'}}
                 pagination={{
                     current: pageIndex,
                     pageSize,

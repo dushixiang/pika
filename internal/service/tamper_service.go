@@ -208,16 +208,16 @@ func (s *TamperService) CreateEvent(ctx context.Context, agentID string, eventDa
 		return err
 	}
 
-	s.sendTamperEventNotification(agentID, eventData)
+	s.sendTamperEventNotification(ctx, agentID, eventData)
 	return nil
 }
 
-func (s *TamperService) sendTamperEventNotification(agentID string, eventData *protocol.TamperEventData) {
+func (s *TamperService) sendTamperEventNotification(ctx context.Context, agentID string, eventData *protocol.TamperEventData) {
 	if s.notificationSvc == nil {
 		return
 	}
 
-	agent, err := s.agentRepo.FindById(context.Background(), agentID)
+	agent, err := s.agentRepo.FindById(ctx, agentID)
 	if err != nil {
 		s.logger.Error("获取探针信息失败", zap.String("agentId", agentID), zap.Error(err))
 		return

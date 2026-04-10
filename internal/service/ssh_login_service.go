@@ -172,17 +172,17 @@ func (s *SSHLoginService) HandleEvent(ctx context.Context, agentID string, event
 		s.logger.Info("IP在白名单中，忽略事件", zap.String("agentId", agentID), zap.String("ip", eventData.IP))
 		return nil
 	}
-	s.sendLoginSuccessNotification(agentID, eventData, ipLocation)
+	s.sendLoginSuccessNotification(ctx, agentID, eventData, ipLocation)
 
 	return nil
 }
 
-func (s *SSHLoginService) sendLoginSuccessNotification(agentID string, eventData protocol.SSHLoginEvent, ipLocation string) {
+func (s *SSHLoginService) sendLoginSuccessNotification(ctx context.Context, agentID string, eventData protocol.SSHLoginEvent, ipLocation string) {
 	if s.notificationSvc == nil {
 		return
 	}
 
-	agent, err := s.agentRepo.FindById(context.Background(), agentID)
+	agent, err := s.agentRepo.FindById(ctx, agentID)
 	if err != nil {
 		s.logger.Error("获取探针信息失败", zap.String("agentId", agentID), zap.Error(err))
 		return
@@ -195,7 +195,7 @@ func (s *SSHLoginService) sendLoginSuccessNotification(agentID string, eventData
 
 	sourceIP := eventData.IP
 	if s.notificationSvc != nil {
-		if maskIP, err := s.notificationSvc.IsMaskIPEnabled(context.Background()); err == nil && maskIP {
+		if maskIP, err := s.notificationSvc.IsMaskIPEnabled(ctx); err == nil && maskIP {
 			sourceIP = maskIPAddress(sourceIP)
 		}
 	}

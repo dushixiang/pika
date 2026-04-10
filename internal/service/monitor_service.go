@@ -219,7 +219,7 @@ func (s *MonitorService) ListByAuth(ctx context.Context, isAuthenticated bool) (
 	items := make([]metric.PublicMonitorOverview, 0, len(monitors))
 	for _, monitor := range monitors {
 		// 查询统计数据
-		stats := s.metricService.GetMonitorStats(monitor.ID)
+		stats := s.metricService.GetMonitorStats(ctx, monitor.ID)
 		// 构建监控概览对象
 		item := s.buildMonitorOverview(monitor, stats)
 		items = append(items, item)
@@ -341,7 +341,7 @@ func (s *MonitorService) GetMonitorStatsByID(ctx context.Context, monitorID stri
 	}
 
 	// 查询统计数据
-	stats := s.metricService.GetMonitorStats(monitorID)
+	stats := s.metricService.GetMonitorStats(ctx, monitorID)
 	// 构建监控概览对象
 	overview := s.buildMonitorOverview(monitor, stats)
 
@@ -381,7 +381,7 @@ func (s *MonitorService) GetLatestMonitorMetricsByType(ctx context.Context, moni
 	// 在缓存中查询最新的监控数据
 	var result []protocol.MonitorData
 	for _, task := range monitorTasks {
-		monitorData := s.metricService.GetMonitorAgentStats(task.ID)
+		monitorData := s.metricService.GetMonitorAgentStats(ctx, task.ID)
 		// 填充监控任务名称
 		for i := range monitorData {
 			monitorData[i].MonitorName = task.Name
@@ -403,7 +403,7 @@ func (s *MonitorService) GetAllLatestMonitorMetrics(ctx context.Context) ([]prot
 	// 在缓存中查询最新的监控数据
 	var result []protocol.MonitorData
 	for _, task := range monitorTasks {
-		monitorData := s.metricService.GetMonitorAgentStats(task.ID)
+		monitorData := s.metricService.GetMonitorAgentStats(ctx, task.ID)
 		// 填充监控任务名称
 		for i := range monitorData {
 			monitorData[i].MonitorName = task.Name

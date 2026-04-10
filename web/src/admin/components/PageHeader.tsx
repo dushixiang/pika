@@ -10,6 +10,7 @@ export interface Action {
     onClick: () => void;
     danger?: boolean;
     disabled?: boolean;
+    loading?: boolean;
 }
 
 interface PageHeaderProps {
@@ -38,6 +39,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({title, description, actio
                             onClick={action.onClick}
                             danger={action.danger}
                             disabled={action.disabled}
+                            loading={action.loading}
                         >
                             {action.label}
                         </Button>

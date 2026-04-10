@@ -250,6 +250,7 @@ func setupApi(app *orz.App, components *AppComponents) {
 		adminApi.POST("/agents/batch/tags", components.AgentHandler.BatchUpdateTags)
 		adminApi.POST("/agents/batch/visibility", components.AgentHandler.BatchUpdateVisibility)
 		adminApi.DELETE("/agents/:id", components.AgentHandler.Delete)
+		adminApi.POST("/agents/cleanup-metrics", components.AgentHandler.CleanupOrphanedAgentMetrics) // 清理残留指标数据
 		adminApi.POST("/agents/:id/command", components.AgentHandler.SendCommand)
 
 		// 流量管理（管理员访问）

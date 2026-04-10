@@ -280,41 +280,43 @@ const DDNSPage = () => {
                 ]}
             />
 
-            <Divider/>
+            <div className="bg-white dark:bg-[#1c1c21] rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm p-4 sm:p-6 space-y-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <Input.Search
+                        placeholder="按配置名称搜索"
+                        allowClear
+                        value={searchValue}
+                        onChange={(event) => {
+                            const nextValue = event.target.value;
+                            setSearchValue(nextValue);
+                            if (!nextValue) {
+                                handleSearch('');
+                            }
+                        }}
+                        onSearch={handleSearch}
+                        className="w-full max-w-md"
+                    />
+                    <Button type="primary" icon={<Plus size={16}/>} onClick={handleCreate}>
+                        新建配置
+                    </Button>
+                </div>
 
-            <div style={{marginBottom: 16, display: 'flex', justifyContent: 'space-between'}}>
-                <Input.Search
-                    placeholder="按配置名称搜索"
-                    allowClear
-                    value={searchValue}
-                    onChange={(event) => {
-                        const nextValue = event.target.value;
-                        setSearchValue(nextValue);
-                        if (!nextValue) {
-                            handleSearch('');
-                        }
+                <Table<DDNSConfig>
+                    columns={columns}
+                    dataSource={ddnsPaging?.items || []}
+                    loading={isLoading || isFetching}
+                    rowKey="id"
+                    scroll={{x: 'max-content'}}
+                    tableLayout="fixed"
+                    pagination={{
+                        current: pageIndex,
+                        pageSize,
+                        total: ddnsPaging?.total || 0,
+                        showSizeChanger: true,
                     }}
-                    onSearch={handleSearch}
-                    style={{width: 260}}
+                    onChange={handleTableChange}
                 />
-                <Button type="primary" icon={<Plus size={16}/>} onClick={handleCreate}>
-                    新建配置
-                </Button>
             </div>
-
-            <Table<DDNSConfig>
-                columns={columns}
-                dataSource={ddnsPaging?.items || []}
-                loading={isLoading || isFetching}
-                rowKey="id"
-                pagination={{
-                    current: pageIndex,
-                    pageSize,
-                    total: ddnsPaging?.total || 0,
-                    showSizeChanger: true,
-                }}
-                onChange={handleTableChange}
-            />
 
             <DDNSModal
                 open={modalOpen}

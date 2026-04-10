@@ -109,6 +109,7 @@ export const DiskIOChart = ({agentId, timeRange, start, end}: DiskIOChartProps) 
                             strokeWidth={2}
                             fill="url(#colorDiskRead)"
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                         <Area
                             type="monotone"
@@ -118,6 +119,7 @@ export const DiskIOChart = ({agentId, timeRange, start, end}: DiskIOChartProps) 
                             strokeWidth={2}
                             fill="url(#colorDiskWrite)"
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                     </AreaChart>
                 </ResponsiveContainer>

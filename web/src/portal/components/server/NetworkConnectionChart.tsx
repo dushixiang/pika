@@ -98,6 +98,7 @@ export const NetworkConnectionChart = ({agentId, timeRange, start, end}: Network
                             strokeWidth={2}
                             dot={false}
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                         <Line
                             type="monotone"
@@ -107,6 +108,7 @@ export const NetworkConnectionChart = ({agentId, timeRange, start, end}: Network
                             strokeWidth={2}
                             dot={false}
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                         <Line
                             type="monotone"
@@ -116,6 +118,7 @@ export const NetworkConnectionChart = ({agentId, timeRange, start, end}: Network
                             strokeWidth={2}
                             dot={false}
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                         <Line
                             type="monotone"
@@ -125,6 +128,7 @@ export const NetworkConnectionChart = ({agentId, timeRange, start, end}: Network
                             strokeWidth={2}
                             dot={false}
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                     </LineChart>
                 </ResponsiveContainer>

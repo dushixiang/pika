@@ -105,10 +105,35 @@ const ServerList = () => {
         refetchInterval: 30000,
     });
 
-    // 计算统计数据
+    // 计算所有标签（包括ALL和ONLINE/OFFLINE）
+    const allTags = useMemo(() => {
+        const tags = ['ALL', 'ONLINE', 'OFFLINE'];
+        if (tagsData && tagsData.length > 0) {
+            tagsData.forEach((tag: string) => {
+                if (!tags.includes(tag.toUpperCase())) {
+                    tags.push(tag.toUpperCase());
+                }
+            });
+        }
+        return tags;
+    }, [tagsData]);
+
+    // 过滤逻辑
+    const displayAgents = useMemo(() => {
+        if (selectedTag === 'ONLINE') {
+            return agents.filter(a => a.status === 1);
+        } else if (selectedTag === 'OFFLINE') {
+            return agents.filter(a => a.status !== 1);
+        } else if (selectedTag && selectedTag !== 'ALL') {
+            return agents.filter(a => a.tags?.map(t => t.toUpperCase()).includes(selectedTag));
+        }
+        return agents;
+    }, [agents, selectedTag]);
+
+    // 计算统计数据（基于过滤后的 displayAgents）
     const stats = useMemo(() => {
-        const total = agents.length;
-        const online = agents?.filter(a => a.status === 1).length;
+        const total = displayAgents.length;
+        const online = displayAgents.filter(a => a.status === 1).length;
         const offline = total - online;
 
         // 计算网络统计
@@ -117,7 +142,7 @@ const ServerList = () => {
         let totalUploadTotal = 0;
         let totalDownloadTotal = 0;
 
-        agents.forEach(agent => {
+        displayAgents.forEach(agent => {
             if (agent.status === 1 && agent.metrics?.network) {
                 totalUploadRate += agent.metrics.network.totalBytesSentRate || 0;
                 totalDownloadRate += agent.metrics.network.totalBytesRecvRate || 0;
@@ -135,7 +160,7 @@ const ServerList = () => {
             uploadTotal: totalUploadTotal,
             downloadTotal: totalDownloadTotal
         };
-    }, [agents]);
+    }, [displayAgents]);
 
     const handleNavigate = (agentId: string) => {
         navigate(`/servers/${agentId}`);
@@ -143,26 +168,6 @@ const ServerList = () => {
 
     if (isLoading) {
         return <LoadingSpinner/>;
-    }
-
-    // 计算所有标签（包括ALL和ONLINE/OFFLINE）
-    const allTags = ['ALL', 'ONLINE', 'OFFLINE'];
-    if (tagsData && tagsData.length > 0) {
-        tagsData.forEach((tag: string) => {
-            if (!allTags.includes(tag.toUpperCase())) {
-                allTags.push(tag.toUpperCase());
-            }
-        });
-    }
-
-    // 过滤逻辑
-    let displayAgents = agents;
-    if (selectedTag === 'ONLINE') {
-        displayAgents = agents?.filter(a => a.status === 1);
-    } else if (selectedTag === 'OFFLINE') {
-        displayAgents = agents?.filter(a => a.status !== 1);
-    } else if (selectedTag && selectedTag !== 'ALL') {
-        displayAgents = agents?.filter(a => a.tags?.map(t => t.toUpperCase()).includes(selectedTag));
     }
 
     // debug

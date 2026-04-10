@@ -61,6 +61,7 @@ export const MiniChart = ({data, lastValue, id}: MiniChartProps) => {
                         strokeWidth={2}
                         filter={`url(#glow-${id})`}
                         isAnimationActive={false}
+                        connectNulls
                         dot={false}
                     />
                 </AreaChart>

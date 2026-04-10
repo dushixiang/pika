@@ -15,18 +15,19 @@ import (
 
 // AlertService 告警服务
 type AlertService struct {
-	Service         *orz.Service
-	AlertRecordRepo *repo.AlertRecordRepo
-	AlertStateRepo  *repo.AlertStateRepo
-	agentRepo       *repo.AgentRepo
-	monitorService  *MonitorService
-	propertyService *PropertyService
-	notifier        *Notifier
-	logger          *zap.Logger
+	Service           *orz.Service
+	AlertRecordRepo   *repo.AlertRecordRepo
+	AlertStateRepo    *repo.AlertStateRepo
+	agentRepo         *repo.AgentRepo
+	monitorService    *MonitorService
+	propertyService   *PropertyService
+	notifier          *Notifier
+	notificationQueue *NotificationQueue
+	logger            *zap.Logger
 }
 
 func NewAlertService(logger *zap.Logger, db *gorm.DB, propertyService *PropertyService, monitorService *MonitorService, notifier *Notifier) *AlertService {
-	return &AlertService{
+	service := &AlertService{
 		Service:         orz.NewService(db),
 		AlertRecordRepo: repo.NewAlertRecordRepo(db),
 		AlertStateRepo:  repo.NewAlertStateRepo(db),
@@ -36,6 +37,11 @@ func NewAlertService(logger *zap.Logger, db *gorm.DB, propertyService *PropertyS
 		notifier:        notifier,
 		logger:          logger,
 	}
+
+	service.notificationQueue = NewNotificationQueue(db, service, service.AlertRecordRepo, logger)
+	service.notificationQueue.Start()
+
+	return service
 }
 
 // Clear 清空告警记录
@@ -55,6 +61,12 @@ func (s *AlertService) Clear(ctx context.Context) error {
 
 		return nil
 	})
+}
+
+// Shutdown 关闭告警服务
+func (s *AlertService) Shutdown() {
+	s.logger.Info("关闭告警服务")
+	s.notificationQueue.Shutdown()
 }
 
 // CheckMetrics 检查指标并触发告警
@@ -148,6 +160,7 @@ func (s *AlertService) checkAlert(ctx context.Context, config *models.AlertConfi
 	// 保存状态到数据库
 	if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 		s.logger.Error("保存告警状态失败", zap.Error(err))
+		return
 	}
 
 	if shouldFire {
@@ -197,6 +210,7 @@ func (s *AlertService) fireAlert(ctx context.Context, config *models.AlertConfig
 	state.LastRecordID = record.ID
 	if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 		s.logger.Error("保存告警状态失败", zap.Error(err))
+		return
 	}
 
 	// 发送通知 - 使用新的 context 避免父 context 取消影响通知发送
@@ -294,31 +308,23 @@ func (s *AlertService) calculateLevel(value, threshold float64) string {
 	}
 }
 
-// sendAlertNotification 发送告警通知(带panic恢复)
+// sendAlertNotification 发送告警通知(通过队列异步发送)
 func (s *AlertService) sendAlertNotification(record *models.AlertRecord, agent *models.Agent) {
-	defer func() {
-		if r := recover(); r != nil {
-			s.logger.Error("发送告警通知时发生panic",
-				zap.Any("panic", r),
-				zap.Int64("recordId", record.ID),
-			)
-		}
-	}()
+	s.notificationQueue.Enqueue(record.ID, agent)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// 获取告警配置（包含 MaskIP 设置）
+// sendAlertNotificationSync 同步发送告警通知(供队列worker调用)
+func (s *AlertService) sendAlertNotificationSync(ctx context.Context, record *models.AlertRecord, agent *models.Agent) error {
 	alertConfig, err := s.propertyService.GetAlertConfig(ctx)
 	if err != nil {
 		s.logger.Error("获取告警配置失败", zap.Error(err))
-		return
+		return fmt.Errorf("获取告警配置失败: %w", err)
 	}
 
 	channelConfigs, err := s.propertyService.GetNotificationChannelConfigs(ctx)
 	if err != nil {
 		s.logger.Error("获取通知渠道配置失败", zap.Error(err))
-		return
+		return fmt.Errorf("获取通知渠道配置失败: %w", err)
 	}
 
 	var enabledChannels []models.NotificationChannelConfig
@@ -329,12 +335,10 @@ func (s *AlertService) sendAlertNotification(record *models.AlertRecord, agent *
 	}
 
 	if len(enabledChannels) == 0 {
-		return
+		return fmt.Errorf("没有启用的通知渠道")
 	}
 
-	if err := s.notifier.SendNotificationByConfigs(ctx, enabledChannels, record, agent, alertConfig.MaskIP); err != nil {
-		s.logger.Error("发送告警通知失败", zap.Error(err))
-	}
+	return s.notifier.SendNotificationByConfigs(ctx, enabledChannels, record, agent, alertConfig.MaskIP)
 }
 
 // CheckMonitorAlerts 检查监控相关告警（证书和服务下线）
@@ -386,6 +390,31 @@ func (s *AlertService) checkCertificateAlerts(ctx context.Context, config *model
 		return err
 	}
 
+	// 收集所有 agentIds，批量查询探针信息
+	agentIdSet := make(map[string]bool)
+	for _, monitor := range monitors {
+		if monitor.AgentId != "" {
+			agentIdSet[monitor.AgentId] = true
+		}
+	}
+
+	agentIds := make([]string, 0, len(agentIdSet))
+	for id := range agentIdSet {
+		agentIds = append(agentIds, id)
+	}
+
+	agentMap := make(map[string]*models.Agent)
+	if len(agentIds) > 0 {
+		agents, err := s.agentRepo.ListByIDs(ctx, agentIds)
+		if err != nil {
+			s.logger.Error("批量获取探针信息失败", zap.Error(err))
+			return err
+		}
+		for i := range agents {
+			agentMap[agents[i].ID] = &agents[i]
+		}
+	}
+
 	for _, monitor := range monitors {
 		// 如果证书不存在或已过期，跳过
 		if monitor.CertExpiryTime == 0 {
@@ -394,20 +423,20 @@ func (s *AlertService) checkCertificateAlerts(ctx context.Context, config *model
 
 		certDaysLeft := float64(monitor.CertDaysLeft)
 
-		// 获取探针信息
-		agent, err := s.agentRepo.FindById(ctx, monitor.AgentId)
-		if err != nil {
-			s.logger.Error("获取探针信息失败", zap.String("agentId", monitor.AgentId), zap.Error(err))
+		// 从 map 中获取探针信息
+		agent, exists := agentMap[monitor.AgentId]
+		if !exists {
+			s.logger.Error("探针信息不存在", zap.String("agentId", monitor.AgentId))
 			continue
 		}
 
 		// 检查证书剩余天数是否低于阈值
 		if certDaysLeft <= config.Rules.CertThreshold && certDaysLeft >= 0 {
 			// 触发告警（证书告警不需要持续时间，直接触发）
-			s.checkCertAlert(ctx, config, &agent, &monitor, certDaysLeft, now)
+			s.checkCertAlert(ctx, config, agent, &monitor, certDaysLeft, now)
 		} else {
 			// 恢复告警（如果之前触发过）
-			s.resolveCertAlert(ctx, config, &agent, &monitor, certDaysLeft)
+			s.resolveCertAlert(ctx, config, agent, &monitor, certDaysLeft)
 		}
 	}
 
@@ -444,6 +473,7 @@ func (s *AlertService) checkCertAlert(ctx context.Context, config *models.AlertC
 	// 保存状态到数据库
 	if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 		s.logger.Error("保存告警状态失败", zap.Error(err))
+		return
 	}
 
 	if !shouldFire {
@@ -489,6 +519,7 @@ func (s *AlertService) checkCertAlert(ctx context.Context, config *models.AlertC
 	state.LastRecordID = record.ID
 	if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 		s.logger.Error("保存告警状态失败", zap.Error(err))
+		return
 	}
 
 	// 发送通知
@@ -536,6 +567,7 @@ func (s *AlertService) resolveCertAlert(ctx context.Context, config *models.Aler
 	state.LastRecordID = 0
 	if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 		s.logger.Error("保存告警状态失败", zap.Error(err))
+		return
 	}
 }
 
@@ -558,11 +590,36 @@ func (s *AlertService) checkServiceDownAlerts(ctx context.Context, config *model
 		return err
 	}
 
+	// 收集所有 agentIds，批量查询探针信息
+	agentIdSet := make(map[string]bool)
 	for _, monitor := range monitors {
-		// 获取探针信息
-		agent, err := s.agentRepo.FindById(ctx, monitor.AgentId)
+		if monitor.AgentId != "" {
+			agentIdSet[monitor.AgentId] = true
+		}
+	}
+
+	agentIds := make([]string, 0, len(agentIdSet))
+	for id := range agentIdSet {
+		agentIds = append(agentIds, id)
+	}
+
+	agentMap := make(map[string]*models.Agent)
+	if len(agentIds) > 0 {
+		agents, err := s.agentRepo.ListByIDs(ctx, agentIds)
 		if err != nil {
-			s.logger.Error("获取探针信息失败", zap.String("agentId", monitor.AgentId), zap.Error(err))
+			s.logger.Error("批量获取探针信息失败", zap.Error(err))
+			return err
+		}
+		for i := range agents {
+			agentMap[agents[i].ID] = &agents[i]
+		}
+	}
+
+	for _, monitor := range monitors {
+		// 从 map 中获取探针信息
+		agent, exists := agentMap[monitor.AgentId]
+		if !exists {
+			s.logger.Error("探针信息不存在", zap.String("agentId", monitor.AgentId))
 			continue
 		}
 
@@ -605,14 +662,15 @@ func (s *AlertService) checkServiceDownAlerts(ctx context.Context, config *model
 		// 保存状态到数据库
 		if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 			s.logger.Error("保存告警状态失败", zap.Error(err))
+			continue
 		}
 
 		if shouldFire {
-			s.fireServiceDownAlert(ctx, config, &agent, &monitor, state, now)
+			s.fireServiceDownAlert(ctx, config, agent, &monitor, state, now)
 		}
 
 		if shouldResolve {
-			s.resolveServiceDownAlert(ctx, config, &agent, &monitor, state)
+			s.resolveServiceDownAlert(ctx, config, agent, &monitor, state)
 		}
 	}
 
@@ -660,6 +718,7 @@ func (s *AlertService) fireServiceDownAlert(ctx context.Context, config *models.
 	state.LastRecordID = record.ID
 	if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 		s.logger.Error("保存告警状态失败", zap.Error(err))
+		return
 	}
 
 	// 发送通知
@@ -699,6 +758,7 @@ func (s *AlertService) resolveServiceDownAlert(ctx context.Context, config *mode
 	state.LastRecordID = 0
 	if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 		s.logger.Error("保存告警状态失败", zap.Error(err))
+		return
 	}
 }
 
@@ -753,6 +813,7 @@ func (s *AlertService) checkAgentOfflineAlerts(ctx context.Context, config *mode
 		// 保存状态到数据库
 		if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 			s.logger.Error("保存告警状态失败", zap.Error(err))
+			continue
 		}
 
 		if shouldFire {
@@ -799,6 +860,7 @@ func (s *AlertService) fireAgentOfflineAlert(ctx context.Context, config *models
 	state.LastRecordID = record.ID
 	if err := s.AlertStateRepo.SaveAlertState(ctx, state); err != nil {
 		s.logger.Error("保存告警状态失败", zap.Error(err))
+		return
 	}
 
 	// 发送通知

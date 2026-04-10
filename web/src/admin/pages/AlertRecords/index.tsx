@@ -271,47 +271,46 @@ const AlertRecordList = () => {
                 ]}
             />
 
-            <Divider/>
+            <div className="bg-white dark:bg-[#1c1c21] rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm p-4 sm:p-6 space-y-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <Space>
+                        <Select
+                            placeholder="选择探针"
+                            allowClear
+                            showSearch={{
+                                filterOption: (inputValue, option) =>
+                                    (option?.label?.toString() ?? '')
+                                        .toLowerCase()
+                                        .includes(inputValue.toLowerCase()),
+                            }}
+                            style={{width: 200}}
+                            value={selectedAgentId || undefined}
+                            onChange={handleAgentChange}
+                            options={agentOptions}
+                        />
+                    </Space>
+                </div>
 
-            <div style={{marginBottom: 16}}>
-                <Space>
-                    <Select
-                        placeholder="选择探针"
-                        allowClear
-                        showSearch={{
-                            filterOption: (inputValue, option) =>
-                                (option?.label?.toString() ?? '')
-                                    .toLowerCase()
-                                    .includes(inputValue.toLowerCase()),
-                        }}
-                        style={{width: 200}}
-                        value={selectedAgentId || undefined}
-                        onChange={handleAgentChange}
-                        options={agentOptions}
-                    />
-                </Space>
+                <Table<AlertRecord>
+                    columns={columns}
+                    dataSource={alertPaging?.items || []}
+                    loading={isLoading || isFetching}
+                    rowKey="id"
+                    size={'small'}
+                    scroll={{x: 'max-content'}}
+                    tableLayout="fixed"
+                    pagination={{
+                        current: pageIndex,
+                        pageSize,
+                        total: alertPaging?.total || 0,
+                        showSizeChanger: true,
+                        showQuickJumper: true,
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                        showTotal: (total) => `共 ${total} 条`,
+                    }}
+                    onChange={handleTableChange}
+                />
             </div>
-
-            <Table<AlertRecord>
-                columns={columns}
-                dataSource={alertPaging?.items || []}
-                loading={isLoading || isFetching}
-                rowKey="id"
-                size={'small'}
-                pagination={{
-                    current: pageIndex,
-                    pageSize,
-                    total: alertPaging?.total || 0,
-                    showSizeChanger: true,
-                    showQuickJumper: true,
-                    pageSizeOptions: ['10', '20', '50', '100'],
-                    showTotal: (total) => `共 ${total} 条`,
-                }}
-                scroll={{
-                    x: 'max-content'
-                }}
-                onChange={handleTableChange}
-            />
         </div>
     );
 };

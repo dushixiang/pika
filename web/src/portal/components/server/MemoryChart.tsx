@@ -86,6 +86,7 @@ export const MemoryChart = ({agentId, timeRange, start, end}: MemoryChartProps) 
                             strokeWidth={2}
                             fill="url(#memoryAreaGradient)"
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                     </AreaChart>
                 </ResponsiveContainer>

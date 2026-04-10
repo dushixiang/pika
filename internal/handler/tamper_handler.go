@@ -1,9 +1,6 @@
 package handler
 
 import (
-	"context"
-	"net/http"
-
 	"github.com/dushixiang/pika/internal/models"
 	"github.com/dushixiang/pika/internal/service"
 	"github.com/go-orz/orz"
@@ -37,12 +34,10 @@ func (h *TamperHandler) UpdateConfig(c echo.Context) error {
 	err := h.tamperService.UpdateConfig(c.Request().Context(), agentID, &req)
 	if err != nil {
 		h.logger.Error("更新防篡改配置失败", zap.Error(err), zap.String("agentId", agentID))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"message": "更新配置失败",
-		})
+		return orz.NewError(500, "更新配置失败")
 	}
 
-	return c.JSON(http.StatusOK, orz.Map{})
+	return orz.Ok(c, orz.Map{})
 }
 
 // GetConfig 获取探针的防篡改配置
@@ -53,12 +48,10 @@ func (h *TamperHandler) GetConfig(c echo.Context) error {
 	config, err := h.tamperService.GetConfigByAgentID(c.Request().Context(), agentID)
 	if err != nil {
 		h.logger.Error("获取防篡改配置失败", zap.Error(err), zap.String("agentId", agentID))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"message": "获取配置失败",
-		})
+		return orz.NewError(500, "获取配置失败")
 	}
 
-	return c.JSON(http.StatusOK, config)
+	return orz.Ok(c, config)
 }
 
 // ListEvents 获取探针的防篡改事件
@@ -75,7 +68,7 @@ func (h *TamperHandler) ListEvents(c echo.Context) error {
 		Equal("operation", c.QueryParam("operation")).
 		Contains("details", c.QueryParam("details"))
 
-	ctx := context.Background()
+	ctx := c.Request().Context()
 	page, err := builder.Execute(ctx)
 	if err != nil {
 		return err
@@ -89,9 +82,7 @@ func (h *TamperHandler) DeleteEvents(c echo.Context) error {
 	err := h.tamperService.DeleteEventsByAgentID(c.Request().Context(), agentID)
 	if err != nil {
 		h.logger.Error("删除防篡改事件失败", zap.Error(err), zap.String("agentId", agentID))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"message": "删除事件失败",
-		})
+		return orz.NewError(500, "删除事件失败")
 	}
-	return c.JSON(http.StatusOK, orz.Map{})
+	return orz.Ok(c, orz.Map{})
 }

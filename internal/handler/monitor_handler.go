@@ -178,7 +178,7 @@ func (h *MonitorHandler) GetAgentStatsByID(c echo.Context) error {
 		return err
 	}
 
-	stats := h.metricService.GetMonitorAgentStats(id)
+	stats := h.metricService.GetMonitorAgentStats(ctx, id)
 	for i := range stats {
 		stats[i].Target = "" // 隐藏目标地址
 	}

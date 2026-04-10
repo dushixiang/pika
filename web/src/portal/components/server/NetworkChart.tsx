@@ -141,6 +141,7 @@ export const NetworkChart = ({agentId, timeRange, start, end}: NetworkChartProps
                             strokeWidth={2}
                             fill="url(#color-upload)"
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                         <Area
                             type="monotone"
@@ -150,6 +151,7 @@ export const NetworkChart = ({agentId, timeRange, start, end}: NetworkChartProps
                             strokeWidth={2}
                             fill="url(#color-download)"
                             activeDot={{r: 3}}
+                            connectNulls
                         />
                     </AreaChart>
                 </ResponsiveContainer>

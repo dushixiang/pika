@@ -113,6 +113,7 @@ export const GpuChart = ({agentId, timeRange, start, end}: GpuChartProps) => {
                         strokeWidth={2}
                         dot={false}
                         activeDot={{r: 3}}
+                        connectNulls
                     />
                     <Line
                         yAxisId="right"
@@ -123,6 +124,7 @@ export const GpuChart = ({agentId, timeRange, start, end}: GpuChartProps) => {
                         strokeWidth={2}
                         dot={false}
                         activeDot={{r: 3}}
+                        connectNulls
                     />
                 </LineChart>
             </ResponsiveContainer>

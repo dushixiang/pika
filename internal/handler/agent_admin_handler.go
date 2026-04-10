@@ -229,15 +229,6 @@ func (h *AgentHandler) Delete(c echo.Context) error {
 		client.Conn.Close()
 	}
 
-	// 删除探针在 VictoriaMetrics 中的历史指标数据
-	if err := h.metricService.DeleteAgentMetrics(ctx, agentID); err != nil {
-		h.logger.Error("删除探针 VictoriaMetrics 数据失败",
-			zap.String("agentID", agentID),
-			zap.String("name", agent.Name),
-			zap.Error(err))
-		return orz.NewError(500, "删除探针指标数据失败")
-	}
-
 	// 删除探针及其所有相关数据
 	if err := h.agentService.DeleteAgent(ctx, agentID); err != nil {
 		h.logger.Error("删除探针失败",
@@ -252,6 +243,24 @@ func (h *AgentHandler) Delete(c echo.Context) error {
 		zap.String("name", agent.Name))
 
 	return orz.Ok(c, orz.Map{})
+}
+
+// CleanupOrphanedAgentMetrics 手动清除所有已删除探针残留的指标数据
+func (h *AgentHandler) CleanupOrphanedAgentMetrics(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	h.logger.Info("开始手动清理残留探针指标数据")
+
+	if err := h.metricService.CleanOrphanedAgentMetrics(ctx); err != nil {
+		h.logger.Error("清除残留探针指标数据失败", zap.Error(err))
+		return orz.NewError(500, "清除残留探针指标数据失败: "+err.Error())
+	}
+
+	h.logger.Info("完成残留探针指标数据清理")
+
+	return orz.Ok(c, orz.Map{
+		"message": "已成功清理残留探针指标数据",
+	})
 }
 
 // BatchUpdateTags 批量更新探针标签
