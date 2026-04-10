@@ -44,7 +44,9 @@ jobs:
       # 构建所有组件（前端、agents、服务端）
       - name: 构建所有组件
         run: |
-          make build-release
+          make build-web
+          make build-agents
+          make build-servers
 
       # 验证 index.html 模板代码
       - name: 验证 index.html 模板代码
