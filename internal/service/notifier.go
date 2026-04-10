@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/dushixiang/pika/internal/models"
 	"github.com/dushixiang/pika/internal/utils"
@@ -251,25 +252,30 @@ func (n *Notifier) buildFiringMessage(
 	levelIcon string,
 	metadata AlertTypeMetadata,
 ) string {
+	title := fmt.Sprintf("%s %s", levelIcon, metadata.Name)
+	if record.Level != "" && record.Level != "info" {
+		title = fmt.Sprintf("%s %s【%s】", levelIcon, metadata.Name, strings.ToUpper(record.Level))
+	}
+
 	lines := []string{
-		fmt.Sprintf("%s %s", levelIcon, metadata.Name),
+		title,
 		"",
-		fmt.Sprintf("探针: %s", agent.Name),
-		fmt.Sprintf("主机: %s", agent.Hostname),
-		fmt.Sprintf("IP: %s", displayIP),
-		fmt.Sprintf("告警类型: %s", record.AlertType),
-		fmt.Sprintf("告警消息: %s", record.Message),
+		fmt.Sprintf("📍 探针: %s", agent.Name),
+		fmt.Sprintf("🖥️  主机: %s", agent.Hostname),
+		fmt.Sprintf("🌐 IP: %s", displayIP),
+		"",
+		"⚠️ " + record.Message,
 	}
 
 	if metadata.ShowThreshold {
-		lines = append(lines, fmt.Sprintf("阈值: %.2f%s", record.Threshold, metadata.ThresholdUnit))
+		lines = append(lines, fmt.Sprintf("📊 阈值: %.2f%s", record.Threshold, metadata.ThresholdUnit))
 	}
 
 	if metadata.ShowActual {
-		lines = append(lines, fmt.Sprintf("当前值: %.2f%s", record.ActualValue, metadata.ValueUnit))
+		lines = append(lines, fmt.Sprintf("📈 当前值: %.2f%s", record.ActualValue, metadata.ValueUnit))
 	}
 
-	lines = append(lines, fmt.Sprintf("触发时间: %s", utils.FormatTimestamp(record.FiredAt)))
+	lines = append(lines, "", fmt.Sprintf("🕐 时间: %s", utils.FormatTimestamp(record.FiredAt)))
 
 	return strings.Join(lines, "\n")
 }
@@ -290,32 +296,32 @@ func (n *Notifier) buildResolvedMessage(
 	lines := []string{
 		fmt.Sprintf("✅ %s已恢复", metadata.Name),
 		"",
-		fmt.Sprintf("探针: %s (%s)", agent.Name, agent.ID),
-		fmt.Sprintf("主机: %s", agent.Hostname),
-		fmt.Sprintf("IP: %s", displayIP),
-		fmt.Sprintf("告警类型: %s", record.AlertType),
+		fmt.Sprintf("📍 探针: %s", agent.Name),
+		fmt.Sprintf("🖥️  主机: %s", agent.Hostname),
+		fmt.Sprintf("🌐 IP: %s", displayIP),
+		"",
+		"✓ " + record.Message,
 	}
-
-	lines = append(lines, fmt.Sprintf("告警详情: %s", record.Message))
 
 	if metadata.ShowActual {
 		if (record.AlertType == "service" || record.AlertType == "agent_offline") && record.ResolvedValue == 0 {
 			lines = append(lines,
-				fmt.Sprintf("离线时长: %.0f秒", record.ActualValue),
-				"恢复状态: 已在线",
+				fmt.Sprintf("⏱️  离线时长: %.0f秒", record.ActualValue),
+				"✅ 恢复状态: 已在线",
 			)
 		} else {
 			lines = append(lines,
-				fmt.Sprintf("告警值: %.2f%s", record.ActualValue, metadata.ValueUnit),
-				fmt.Sprintf("恢复值: %.2f%s", record.ResolvedValue, metadata.ValueUnit),
+				fmt.Sprintf("📈 告警值: %.2f%s", record.ActualValue, metadata.ValueUnit),
+				fmt.Sprintf("📉 恢复值: %.2f%s", record.ResolvedValue, metadata.ValueUnit),
 			)
 		}
 	}
 
-	lines = append(lines,
-		fmt.Sprintf("持续时间: %s", durationStr),
-		fmt.Sprintf("恢复时间: %s", utils.FormatTimestamp(record.ResolvedAt)),
-	)
+	if durationStr != "" {
+		lines = append(lines, fmt.Sprintf("⏱️  持续时间: %s", durationStr))
+	}
+
+	lines = append(lines, fmt.Sprintf("🕐 恢复时间: %s", utils.FormatTimestamp(record.ResolvedAt)))
 
 	return strings.Join(lines, "\n")
 }
@@ -327,25 +333,30 @@ func (n *Notifier) buildNoticeMessage(
 	levelIcon string,
 	metadata AlertTypeMetadata,
 ) string {
+	title := fmt.Sprintf("%s %s", levelIcon, metadata.Name)
+	if record.Level != "" && record.Level != "info" {
+		title = fmt.Sprintf("%s %s【%s】", levelIcon, metadata.Name, strings.ToUpper(record.Level))
+	}
+
 	lines := []string{
-		fmt.Sprintf("%s %s通知", levelIcon, metadata.Name),
+		title,
 		"",
-		fmt.Sprintf("探针: %s", agent.Name),
-		fmt.Sprintf("主机: %s", agent.Hostname),
-		fmt.Sprintf("IP: %s", displayIP),
-		fmt.Sprintf("告警类型: %s", record.AlertType),
-		fmt.Sprintf("告警消息: %s", record.Message),
+		fmt.Sprintf("📍 探针: %s", agent.Name),
+		fmt.Sprintf("🖥️  主机: %s", agent.Hostname),
+		fmt.Sprintf("🌐 IP: %s", displayIP),
+		"",
+		"ℹ️ " + record.Message,
 	}
 
 	if metadata.ShowThreshold {
-		lines = append(lines, fmt.Sprintf("阈值: %.2f%s", record.Threshold, metadata.ThresholdUnit))
+		lines = append(lines, fmt.Sprintf("📊 阈值: %.2f%s", record.Threshold, metadata.ThresholdUnit))
 	}
 
 	if metadata.ShowActual {
-		lines = append(lines, fmt.Sprintf("当前值: %.2f%s", record.ActualValue, metadata.ValueUnit))
+		lines = append(lines, fmt.Sprintf("📈 当前值: %.2f%s", record.ActualValue, metadata.ValueUnit))
 	}
 
-	lines = append(lines, fmt.Sprintf("触发时间: %s", utils.FormatTimestamp(record.FiredAt)))
+	lines = append(lines, "", fmt.Sprintf("🕐 时间: %s", utils.FormatTimestamp(record.FiredAt)))
 
 	return strings.Join(lines, "\n")
 }
@@ -524,15 +535,20 @@ func (n *Notifier) sendFeishu(ctx context.Context, webhook, signSecret, message 
 
 // sendTelegram 发送 Telegram 通知
 func (n *Notifier) sendTelegram(ctx context.Context, botToken, chatID, message string) error {
-	// 构造 Telegram Bot API URL
+	if utf8.RuneCountInString(message) > 4096 {
+		n.logger.Warn("Telegram消息过长，进行截断",
+			zap.Int("originalLen", utf8.RuneCountInString(message)),
+			zap.Int("truncatedLen", 4096),
+		)
+		runes := []rune(message)
+		message = string(runes[:4093]) + "..."
+	}
+
 	webhookURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
 
-	// 构造消息体
 	body := map[string]interface{}{
 		"chat_id": chatID,
 		"text":    message,
-		// 可选：使用 Markdown 格式
-		// "parse_mode": "Markdown",
 	}
 
 	_, err := n.sendJSONRequest(ctx, webhookURL, body)
@@ -1035,21 +1051,24 @@ func (n *Notifier) SendNotificationByConfigs(ctx context.Context, channelConfigs
 func (n *Notifier) sendToChannel(ctx context.Context, channelConfig *models.NotificationChannelConfig, message string, agent *models.Agent, record *models.AlertRecord, maskIP bool) error {
 	n.logger.Info("发送通知", zap.String("channelType", channelConfig.Type))
 
+	channelCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
 	switch channelConfig.Type {
 	case "dingtalk":
-		return n.sendDingTalkByConfig(ctx, channelConfig.Config, message)
+		return n.sendDingTalkByConfig(channelCtx, channelConfig.Config, message)
 	case "wecom":
-		return n.sendWeComByConfig(ctx, channelConfig.Config, message)
+		return n.sendWeComByConfig(channelCtx, channelConfig.Config, message)
 	case "wecomApp":
-		return n.sendWeComAppByConfig(ctx, channelConfig.Config, message)
+		return n.sendWeComAppByConfig(channelCtx, channelConfig.Config, message)
 	case "feishu":
-		return n.sendFeishuByConfig(ctx, channelConfig.Config, message)
+		return n.sendFeishuByConfig(channelCtx, channelConfig.Config, message)
 	case "telegram":
-		return n.sendTelegramByConfig(ctx, channelConfig.Config, message)
+		return n.sendTelegramByConfig(channelCtx, channelConfig.Config, message)
 	case "email":
-		return n.sendEmailByConfig(ctx, channelConfig.Config, message)
+		return n.sendEmailByConfig(channelCtx, channelConfig.Config, message)
 	case "webhook":
-		return n.sendWebhookByConfig(ctx, channelConfig.Config, agent, record, maskIP)
+		return n.sendWebhookByConfig(channelCtx, channelConfig.Config, agent, record, maskIP)
 	default:
 		return fmt.Errorf("不支持的通知渠道类型: %s", channelConfig.Type)
 	}
