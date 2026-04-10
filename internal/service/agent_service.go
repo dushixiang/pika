@@ -389,7 +389,16 @@ func (s *AgentService) DeleteAgent(ctx context.Context, agentID string) error {
 		return err
 	}
 
-	// 5. 清理 VictoriaMetrics 中的指标数据（事务外执行，失败不影响数据库删除结果）
+	// 5. 清理内存缓存中的探针数据（事务外执行）
+	if s.metricService != nil {
+		// 清理探针最新指标缓存
+		s.metricService.DeleteAgentLatestMetricsCache(agentID)
+
+		// 清理监控缓存中该探针的数据
+		s.metricService.CleanAgentFromMonitorCache(agentID)
+	}
+
+	// 6. 清理 VictoriaMetrics 中的指标数据（事务外执行，失败不影响数据库删除结果）
 	if s.metricService != nil {
 		if err := s.metricService.CleanAgentMetrics(ctx, agentID); err != nil {
 			s.logger.Error("清理VictoriaMetrics中的探针指标数据失败", zap.String("agentId", agentID), zap.Error(err))

@@ -122,6 +122,11 @@ func (s *MetricService) CleanOrphanedAgentMetrics(ctx context.Context) error {
 
 	// 逐个清理残留探针的指标数据
 	for _, agentID := range orphanedAgentIDs {
+		// 1. 清理内存缓存
+		s.DeleteAgentLatestMetricsCache(agentID)
+		s.CleanAgentFromMonitorCache(agentID)
+
+		// 2. 清理 VictoriaMetrics 数据
 		matchers := []string{
 			fmt.Sprintf(`{agent_id="%s"}`, agentID),
 		}
@@ -408,6 +413,34 @@ func (s *MetricService) CleanMonitorCache(ctx context.Context, monitorID string)
 	}
 
 	return nil
+}
+
+// CleanAgentFromMonitorCache 从所有监控缓存中移除指定探针的数据
+func (s *MetricService) CleanAgentFromMonitorCache(agentID string) {
+	// 获取所有监控缓存键
+	monitorIDs := s.monitorLatestCache.Keys()
+
+	for _, monitorID := range monitorIDs {
+		// 获取监控缓存
+		latestMetrics, ok := s.monitorLatestCache.Get(monitorID)
+		if !ok {
+			continue
+		}
+
+		// 从该监控缓存中删除指定探针的数据
+		latestMetrics.Agents.Delete(agentID)
+		s.logger.Debug("从监控缓存中移除探针数据",
+			zap.String("monitorID", monitorID),
+			zap.String("agentID", agentID))
+	}
+
+	s.logger.Info("已从所有监控缓存中移除探针数据", zap.String("agentID", agentID))
+}
+
+// DeleteAgentLatestMetricsCache 删除探针在内存中的最新指标缓存
+func (s *MetricService) DeleteAgentLatestMetricsCache(agentID string) {
+	s.latestCache.Delete(agentID)
+	s.logger.Debug("已删除探针最新指标缓存", zap.String("agentID", agentID))
 }
 
 // updateMonitorCache 更新监控数据缓存
