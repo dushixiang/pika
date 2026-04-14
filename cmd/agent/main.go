@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -140,6 +141,20 @@ var registerCmd = &cobra.Command{
 	Run:   registerAgent,
 }
 
+// logCmd 查看日志命令
+var logCmd = &cobra.Command{
+	Use:   "log",
+	Short: "查看日志",
+	Long:  `查看 Agent 运行日志，支持实时跟踪`,
+	Run:   viewLog,
+}
+
+var (
+	logFollow  bool
+	logLines   int
+	logService bool
+)
+
 // infoCmd 信息命令
 var infoCmd = &cobra.Command{
 	Use:   "info",
@@ -174,10 +189,16 @@ func init() {
 	registerCmd.Flags().StringVarP(&agentName, "name", "n", "", "探针名称（默认使用主机名）")
 	registerCmd.Flags().BoolVarP(&autoConfirm, "yes", "y", false, "自动确认配置并继续安装")
 
+	// log 命令参数
+	logCmd.Flags().BoolVarP(&logFollow, "follow", "f", false, "实时跟踪日志输出")
+	logCmd.Flags().IntVarP(&logLines, "lines", "n", 100, "显示最近多少行日志")
+	logCmd.Flags().BoolVarP(&logService, "service", "s", false, "强制查看服务日志（跳过日志文件）")
+
 	// 添加子命令
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(registerCmd) // 注册命令放在前面，方便用户发现
 	rootCmd.AddCommand(infoCmd)
+	rootCmd.AddCommand(logCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(installCmd)
 	rootCmd.AddCommand(uninstallCmd)
@@ -590,4 +611,141 @@ func showInfo(cmd *cobra.Command, args []string) {
 	hostname, _ := os.Hostname()
 	fmt.Printf("   主机名: %s\n", hostname)
 	fmt.Println()
+}
+
+// viewLog 查看日志
+func viewLog(cmd *cobra.Command, args []string) {
+	// 加载配置
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("❌ 加载配置失败: %v", err)
+	}
+
+	// 判断是否以服务模式运行
+	serviceRunning := false
+	if runtime.GOOS == "linux" {
+		// 检查 systemd 服务状态
+		if out, err := exec.Command("systemctl", "is-active", "pika-agent").CombinedOutput(); err == nil && strings.TrimSpace(string(out)) == "active" {
+			serviceRunning = true
+		}
+	} else if runtime.GOOS == "darwin" {
+		if out, err := exec.Command("launchctl", "list", "org.pika.pika-agent").CombinedOutput(); err == nil && len(strings.TrimSpace(string(out))) > 0 {
+			serviceRunning = true
+		}
+	} else if runtime.GOOS == "windows" {
+		if out, err := exec.Command("sc", "query", "pika-agent").CombinedOutput(); err == nil && strings.Contains(string(out), "RUNNING") {
+			serviceRunning = true
+		}
+	}
+
+	// 决定日志来源
+	// 1. 如果指定了 --service 或者服务正在运行，查看服务日志
+	// 2. 否则，查看日志文件
+	if logService || serviceRunning {
+		viewServiceLog()
+	} else {
+		viewLogFile(cfg)
+	}
+}
+
+// viewServiceLog 查看系统服务日志
+func viewServiceLog() {
+	args := []string{}
+
+	switch runtime.GOOS {
+	case "linux":
+		// 使用 journalctl
+		args = append(args, "journalctl")
+		args = append(args, "-u", "pika-agent")
+		args = append(args, "-n", fmt.Sprintf("%d", logLines))
+		if logFollow {
+			args = append(args, "-f")
+		}
+	case "darwin":
+		// 使用 log show
+		args = append(args, "log", "show")
+		args = append(args, "--predicate", `subsystem == "org.pika.pika-agent"`)
+		args = append(args, "--last", fmt.Sprintf("%d", logLines))
+		if logFollow {
+			args = append(args, "--stream")
+		}
+	case "windows":
+		// 使用 PowerShell Get-WinEvent
+		psCmd := fmt.Sprintf("Get-WinEvent -FilterHashtable @{LogName='Application';ProviderName='pika-agent'} -MaxEvents %d | Format-List TimeCreated, Message", logLines)
+		args = append(args, "powershell", "-NoProfile", "-Command", psCmd)
+	default:
+		log.Printf("⚠️  当前系统 (%s) 不支持查看服务日志", runtime.GOOS)
+		return
+	}
+
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if logFollow {
+		fmt.Printf("📋 正在跟踪系统服务日志 (最近 %d 行)...\n", logLines)
+		fmt.Println("按 Ctrl+C 退出")
+		fmt.Println()
+	} else {
+		fmt.Printf("📋 系统服务日志 (最近 %d 行)：\n", logLines)
+		fmt.Println(strings.Repeat("─", 50))
+	}
+
+	if err := cmd.Run(); err != nil {
+		log.Printf("⚠️  查看服务日志失败: %v", err)
+	}
+}
+
+// viewLogFile 查看日志文件
+func viewLogFile(cfg *config.Config) {
+	logFile := cfg.Agent.LogFile
+	if logFile == "" {
+		// 默认日志路径
+		logFile = getHomeLogPath()
+	}
+
+	// 检查日志文件是否存在
+	if _, err := os.Stat(logFile); os.IsNotExist(err) {
+		log.Printf("⚠️  日志文件不存在: %s", logFile)
+		fmt.Println()
+		fmt.Println("💡 提示: 如果 Agent 以服务方式运行，请使用以下命令查看日志:")
+		if runtime.GOOS == "linux" {
+			fmt.Println("   journalctl -u pika-agent -n 100 -f")
+		} else if runtime.GOOS == "darwin" {
+			fmt.Println("   log show --predicate 'subsystem == \"org.pika.pika-agent\"' --last 100")
+		} else if runtime.GOOS == "windows" {
+			fmt.Println("   Get-WinEvent -FilterHashtable @{LogName='Application';ProviderName='pika-agent'} -MaxEvents 100")
+		}
+		fmt.Println()
+		fmt.Println("或者使用 --service 参数直接查看服务日志:")
+		fmt.Println("   agent log --service")
+		return
+	}
+
+	if logFollow {
+		fmt.Printf("📋 正在跟踪日志: %s (最近 %d 行)...\n", logFile, logLines)
+		fmt.Println("按 Ctrl+C 退出")
+		fmt.Println(strings.Repeat("─", 50))
+
+		// 使用 tail -f
+		cmd := exec.Command("tail", "-f", "-n", fmt.Sprintf("%d", logLines), logFile)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			log.Printf("⚠️  跟踪日志失败: %v", err)
+		}
+	} else {
+		fmt.Printf("📋 日志文件: %s (最近 %d 行)\n", logFile, logLines)
+		fmt.Println(strings.Repeat("─", 50))
+
+		// 读取文件最后 N 行
+		cmd := exec.Command("tail", "-n", fmt.Sprintf("%d", logLines), logFile)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			log.Printf("⚠️  读取日志失败: %v", err)
+		}
+	}
 }
