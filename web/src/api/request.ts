@@ -81,7 +81,6 @@ const sendRequest = async <T>(url: string, config: RequestConfig = {}): Promise<
         if (response.status === 401) {
             localStorage.removeItem('token');
             localStorage.removeItem('userInfo');
-            window.location.href = '/login';
             throw new HttpError('未认证或认证已过期', {
                 status: response.status,
                 statusText: response.statusText,

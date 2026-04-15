@@ -90,7 +90,6 @@ const AdminLayout = () => {
         const userInfoStr = localStorage.getItem('userInfo');
 
         if (!token || !userInfoStr) {
-            navigate('/login');
             return;
         }
 
