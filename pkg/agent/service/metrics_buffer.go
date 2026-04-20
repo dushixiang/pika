@@ -236,7 +236,7 @@ func (w *outboundWriter) WriteJSON(v interface{}) error {
 		}
 		w.buffered = true
 		w.sendErr = err
-		return nil
+		return err
 	}
 
 	return nil
