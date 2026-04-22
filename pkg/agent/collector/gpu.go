@@ -1,14 +1,18 @@
 package collector
 
 import (
+	"context"
 	"encoding/csv"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dushixiang/pika/internal/protocol"
 )
+
+const nvidiaSmiTimeout = 15 * time.Second
 
 // gpuStaticInfo GPU 静态信息
 type gpuStaticInfo struct {
@@ -42,7 +46,9 @@ func (g *GPUCollector) initStatic() {
 		}
 
 		// 查询静态信息: index, name, uuid, memory.total
-		cmd := exec.Command("nvidia-smi",
+		ctx, cancel := context.WithTimeout(context.Background(), nvidiaSmiTimeout)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "nvidia-smi",
 			"--query-gpu=index,name,uuid,memory.total",
 			"--format=csv,noheader,nounits")
 
@@ -105,7 +111,9 @@ func (g *GPUCollector) Collect() ([]*protocol.GPUData, error) {
 func (g *GPUCollector) collectDynamic() ([]*protocol.GPUData, error) {
 	// 使用 nvidia-smi 查询动态数据
 	// 输出格式: index, temperature.gpu, utilization.gpu, memory.used, memory.free, power.draw, fan.speed
-	cmd := exec.Command("nvidia-smi",
+	ctx, cancel := context.WithTimeout(context.Background(), nvidiaSmiTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "nvidia-smi",
 		"--query-gpu=index,temperature.gpu,utilization.gpu,memory.used,memory.free,power.draw,fan.speed",
 		"--format=csv,noheader,nounits")
 

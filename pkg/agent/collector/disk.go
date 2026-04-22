@@ -57,5 +57,10 @@ func (d *DiskCollector) Collect() ([]protocol.DiskData, error) {
 		diskDataList = append(diskDataList, diskData)
 	}
 
+	// 所有白名单分区均采集失败时，返回空列表表示异常
+	if len(diskDataList) == 0 {
+		return nil, nil
+	}
+
 	return diskDataList, nil
 }

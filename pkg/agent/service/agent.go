@@ -28,9 +28,10 @@ import (
 )
 
 const (
-	agentPingInterval = 10 * time.Second
-	agentPongWait     = 30 * time.Second
-	agentWriteWait    = 5 * time.Second
+	agentPingInterval       = 10 * time.Second
+	agentPongWait           = 30 * time.Second
+	agentWriteWait          = 5 * time.Second
+	agentCollectTimeout     = 30 * time.Second
 )
 
 // safeConn 线程安全的 WebSocket 连接包装器
@@ -61,6 +62,13 @@ func (sc *safeConn) ReadJSON(v interface{}) error {
 // Close 关闭连接
 func (sc *safeConn) Close() error {
 	return sc.conn.Close()
+}
+
+// WriteControl 线程安全地写入控制消息
+func (sc *safeConn) WriteControl(messageType int, data []byte, deadline time.Time) error {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	return sc.conn.WriteControl(messageType, data, deadline)
 }
 
 // Agent 探针服务
@@ -222,7 +230,7 @@ func (a *Agent) runOnce(ctx context.Context, onRegistered func()) error {
 
 	// 主动发送 Ping，快速检测断线
 	wg.Go(func() {
-		if err := a.pingLoop(ctx, rawConn, done); err != nil {
+		if err := a.pingLoop(ctx, conn, done); err != nil {
 			select {
 			case errChan <- fmt.Errorf("ping失败: %w", err):
 			default:
@@ -314,7 +322,7 @@ func (a *Agent) readLoop(conn *websocket.Conn, done chan struct{}) error {
 	}
 }
 
-func (a *Agent) pingLoop(ctx context.Context, conn *websocket.Conn, done chan struct{}) error {
+func (a *Agent) pingLoop(ctx context.Context, conn *safeConn, done chan struct{}) error {
 	ticker := time.NewTicker(agentPingInterval)
 	defer ticker.Stop()
 
@@ -529,6 +537,42 @@ func (a *Agent) collectAndSendAllMetrics(manager *collector.Manager) error {
 		return fmt.Errorf("采集器未初始化")
 	}
 
+	type result struct {
+		err error
+	}
+	done := make(chan result, 1)
+
+	go func() {
+		done <- result{err: a.doCollectAndSend(manager)}
+	}()
+
+	select {
+	case r := <-done:
+		return r.err
+	case <-time.After(agentCollectTimeout):
+		return fmt.Errorf("指标采集超时 (超过 %v)", agentCollectTimeout)
+	}
+}
+
+// collectTimer 采集耗时计时器，记录每个采集器的耗时
+type collectTimer struct {
+	name  string
+	start time.Time
+}
+
+func newCollectTimer(name string) *collectTimer {
+	return &collectTimer{name: name, start: time.Now()}
+}
+
+func (t *collectTimer) done() {
+	d := time.Since(t.start)
+	if d > 500*time.Millisecond {
+		slog.Info("采集耗时", "collector", t.name, "duration", d)
+	}
+}
+
+// doCollectAndSend 执行实际的采集和发送
+func (a *Agent) doCollectAndSend(manager *collector.Manager) error {
 	conn := a.getActiveConn()
 	if conn != nil {
 		if sent, err := a.outboundBuffer.Flush(conn); err != nil {
@@ -543,56 +587,92 @@ func (a *Agent) collectAndSendAllMetrics(manager *collector.Manager) error {
 	var hasError bool
 
 	// CPU 动态指标
-	if err := manager.CollectAndSendCPU(bw); err != nil {
-		slog.Warn("采集CPU指标失败", "error", err)
-		hasError = true
-	}
+	func() {
+		t := newCollectTimer("cpu")
+		defer t.done()
+		if err := manager.CollectAndSendCPU(bw); err != nil {
+			slog.Warn("采集CPU指标失败", "error", err)
+			hasError = true
+		}
+	}()
 
 	// 内存动态指标
-	if err := manager.CollectAndSendMemory(bw); err != nil {
-		slog.Warn("采集内存指标失败", "error", err)
-		hasError = true
-	}
+	func() {
+		t := newCollectTimer("memory")
+		defer t.done()
+		if err := manager.CollectAndSendMemory(bw); err != nil {
+			slog.Warn("采集内存指标失败", "error", err)
+			hasError = true
+		}
+	}()
 
 	// 磁盘指标
-	if err := manager.CollectAndSendDisk(bw); err != nil {
-		slog.Warn("采集磁盘指标失败", "error", err)
-		hasError = true
-	}
+	func() {
+		t := newCollectTimer("disk")
+		defer t.done()
+		if err := manager.CollectAndSendDisk(bw); err != nil {
+			slog.Warn("采集磁盘指标失败", "error", err)
+			hasError = true
+		}
+	}()
 
 	// 磁盘 IO 指标
-	if err := manager.CollectAndSendDiskIO(bw); err != nil {
-		slog.Warn("采集磁盘IO指标失败", "error", err)
-		hasError = true
-	}
+	func() {
+		t := newCollectTimer("disk_io")
+		defer t.done()
+		if err := manager.CollectAndSendDiskIO(bw); err != nil {
+			slog.Warn("采集磁盘IO指标失败", "error", err)
+			hasError = true
+		}
+	}()
 
 	// 网络指标
-	if err := manager.CollectAndSendNetwork(bw); err != nil {
-		slog.Warn("采集网络指标失败", "error", err)
-		hasError = true
-	}
+	func() {
+		t := newCollectTimer("network")
+		defer t.done()
+		if err := manager.CollectAndSendNetwork(bw); err != nil {
+			slog.Warn("采集网络指标失败", "error", err)
+			hasError = true
+		}
+	}()
 
 	// 网络连接统计
-	if err := manager.CollectAndSendNetworkConnection(bw); err != nil {
-		slog.Warn("采集网络连接统计失败", "error", err)
-		hasError = true
-	}
+	func() {
+		t := newCollectTimer("network_connection")
+		defer t.done()
+		if err := manager.CollectAndSendNetworkConnection(bw); err != nil {
+			slog.Warn("采集网络连接统计失败", "error", err)
+			hasError = true
+		}
+	}()
 
 	// 主机信息（包含 Load）
-	if err := manager.CollectAndSendHost(bw); err != nil {
-		slog.Warn("采集主机信息失败", "error", err)
-		hasError = true
-	}
+	func() {
+		t := newCollectTimer("host")
+		defer t.done()
+		if err := manager.CollectAndSendHost(bw); err != nil {
+			slog.Warn("采集主机信息失败", "error", err)
+			hasError = true
+		}
+	}()
 
 	// GPU 信息（可选）
-	if err := manager.CollectAndSendGPU(bw); err != nil {
-		slog.Info("采集GPU信息失败", "error", err)
-	}
+	func() {
+		t := newCollectTimer("gpu")
+		defer t.done()
+		if err := manager.CollectAndSendGPU(bw); err != nil {
+			slog.Info("采集GPU信息失败", "error", err)
+		}
+	}()
 
 	// 温度信息（可选）
-	if err := manager.CollectAndSendTemperature(bw); err != nil {
-		slog.Info("采集温度信息失败", "error", err)
-	}
+	func() {
+		t := newCollectTimer("temperature")
+		defer t.done()
+		if err := manager.CollectAndSendTemperature(bw); err != nil {
+			slog.Info("采集温度信息失败", "error", err)
+		}
+	}()
 
 	// 发送打包后的指标
 	if len(bw.items) > 0 {
@@ -613,6 +693,8 @@ func (a *Agent) collectAndSendAllMetrics(manager *collector.Manager) error {
 			slog.Info("当前连接不可用，消息已写入缓存")
 		} else if writer.sendErr != nil {
 			slog.Warn("发送消息失败，已写入缓存", "error", writer.sendErr)
+			// 连接写失败视为连接异常，返回错误触发重连
+			return fmt.Errorf("连接发送失败: %w", writer.sendErr)
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 
 	"github.com/dushixiang/pika/pkg/agent"
@@ -203,7 +204,23 @@ func NewServiceManager(cfg *config.Config) (*ServiceManager, error) {
 
 // Install 安装服务
 func (m *ServiceManager) Install() error {
-	return m.service.Install()
+	// 先尝试直接安装
+	err := m.service.Install()
+	if err == nil {
+		return nil
+	}
+
+	// 只有当是"服务已存在"的错误时才清理重装
+	if strings.Contains(err.Error(), "already exists") {
+		slog.Info("服务已存在，先清理旧服务再重新安装...")
+		_ = m.service.Stop()
+		_ = m.service.Uninstall()
+		// 再次尝试安装
+		return m.service.Install()
+	}
+
+	// 其他错误直接返回
+	return err
 }
 
 // Uninstall 卸载服务

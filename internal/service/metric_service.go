@@ -184,6 +184,11 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 		if err := json.Unmarshal(data, &diskDataList); err != nil {
 			return err
 		}
+		// 无有效磁盘数据时，不更新缓存（保留上一次有效值）
+		if len(diskDataList) == 0 {
+			metrics := s.convertToMetrics(agentID, metricType, diskDataList, timestamp)
+			return s.vmClient.Write(ctx, metrics)
+		}
 		// 计算汇总数据用于缓存
 		var totalTotal, totalUsed, totalFree uint64
 		for _, diskData := range diskDataList {
@@ -191,10 +196,7 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 			totalUsed += diskData.Used
 			totalFree += diskData.Free
 		}
-		var usagePercent float64
-		if totalTotal > 0 {
-			usagePercent = float64(totalUsed) / float64(totalTotal) * 100
-		}
+		usagePercent := float64(totalUsed) / float64(totalTotal) * 100
 		latestMetrics.Disk = &metric.DiskSummary{
 			UsagePercent: usagePercent,
 			TotalDisks:   len(diskDataList),
@@ -209,6 +211,11 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 		var networkDataList []protocol.NetworkData
 		if err := json.Unmarshal(data, &networkDataList); err != nil {
 			return err
+		}
+		// 无有效网络数据时，不更新缓存（保留上一次有效值）
+		if len(networkDataList) == 0 {
+			metrics := s.convertToMetrics(agentID, metricType, networkDataList, timestamp)
+			return s.vmClient.Write(ctx, metrics)
 		}
 		// 计算汇总数据用于缓存
 		var totalSentRate, totalRecvRate uint64
@@ -266,6 +273,11 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 		if err := json.Unmarshal(data, &gpuDataList); err != nil {
 			return err
 		}
+		// 无 GPU 数据时，不更新缓存
+		if len(gpuDataList) == 0 {
+			metrics := s.convertToMetrics(agentID, metricType, gpuDataList, timestamp)
+			return s.vmClient.Write(ctx, metrics)
+		}
 		// 更新缓存
 		latestMetrics.GPU = gpuDataList
 		metrics := s.convertToMetrics(agentID, metricType, gpuDataList, timestamp)
@@ -275,6 +287,11 @@ func (s *MetricService) HandleMetricData(ctx context.Context, agentID string, me
 		var tempDataList []protocol.TemperatureData
 		if err := json.Unmarshal(data, &tempDataList); err != nil {
 			return err
+		}
+		// 无温度数据时，不更新缓存
+		if len(tempDataList) == 0 {
+			metrics := s.convertToMetrics(agentID, metricType, tempDataList, timestamp)
+			return s.vmClient.Write(ctx, metrics)
 		}
 		// 更新缓存
 		latestMetrics.Temp = tempDataList

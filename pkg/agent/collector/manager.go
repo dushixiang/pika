@@ -67,8 +67,9 @@ func (m *Manager) CollectAndSendMemory(conn WebSocketWriter) error {
 // CollectAndSendDisk 采集并发送磁盘指标
 func (m *Manager) CollectAndSendDisk(conn WebSocketWriter) error {
 	diskDataList, err := m.diskCollector.Collect()
-	if err != nil {
-		return err
+	if err != nil || len(diskDataList) == 0 {
+		// 采集失败或无有效数据，不发送空列表
+		return nil
 	}
 	return m.sendMetrics(conn, protocol.MetricTypeDisk, diskDataList)
 }
@@ -85,8 +86,9 @@ func (m *Manager) CollectAndSendDiskIO(conn WebSocketWriter) error {
 // CollectAndSendNetwork 采集并发送网络指标
 func (m *Manager) CollectAndSendNetwork(conn WebSocketWriter) error {
 	networkDataList, err := m.networkCollector.Collect()
-	if err != nil {
-		return err
+	if err != nil || len(networkDataList) == 0 {
+		// 采集失败或无有效数据，不发送空列表
+		return nil
 	}
 	return m.sendMetrics(conn, protocol.MetricTypeNetwork, networkDataList)
 }
